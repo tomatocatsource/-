@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>配置ボード</title>
+<style>
+  :root{
+    --bg:#EDEBE3;
+    --surface:#FFFFFF;
+    --ink:#23241F;
+    --ink-soft:#6B6C5F;
+    --line:#D9D6C9;
+    --accent:#2F6B5E;
+    --accent-dark:#20493F;
+    --danger:#B23B32;
+    --plate-red:#C6423A;
+    --plate-blue:#2E5C93;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic Medium","Meiryo",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior-y:contain;
+  }
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    padding:9px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+  }
+  .title-main{font-size:17px;font-weight:700;letter-spacing:-.01em;}
+  .title-sub{font-size:12px;color:var(--ink-soft);margin-left:6px;}
+  .btn-ghost{
+    background:transparent;border:1px solid var(--line);border-radius:8px;
+    padding:7px 13px;font-size:13px;color:var(--ink);cursor:pointer;
+  }
+  .btn-ghost:active{background:var(--bg);}
+  .top-icon-btn{width:38px;height:38px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;border-radius:9px;}
+
+  /* ---------- info bar (date + headcount, compact) ---------- */
+  .info-bar{
+    flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--line);
+    padding:6px 16px;display:flex;align-items:center;justify-content:space-between;
+    gap:10px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);
+  }
+  .info-date{font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;flex-shrink:0;}
+  .info-date:active{opacity:.6;}
+  .info-stats b{color:var(--ink);font-weight:700;}
+
+  /* ---------- board ---------- */
+  .board-wrap{flex:1;overflow-y:auto;padding:12px;padding-bottom:6px;-webkit-overflow-scrolling:touch;}
+  .board-grid{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .location-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:7px 10px;
+    min-height:42px;
+    display:flex;flex-direction:column;gap:4px;
+    transition:box-shadow .15s, border-color .15s;
+  }
+  .location-card.drag-over{
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px rgba(47,107,94,.25) inset;
+  }
+  .location-name-row{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
+  .location-name{font-weight:600;font-size:13px;line-height:1.25;word-break:break-word;}
+  .location-edit-btn{
+    flex-shrink:0;background:none;border:none;color:var(--ink-soft);
+    font-size:13px;cursor:pointer;padding:2px 4px;line-height:1;
+  }
+  .location-body{flex:1;display:flex;flex-direction:column;gap:2px;}
+  .location-half{
+    display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:center;
+    gap:5px;min-height:20px;border-radius:6px;transition:background-color .12s;
+  }
+  .location-half.location-row{
+    flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-bottom:1px;
+  }
+  .location-half.drag-over-half{background:rgba(47,107,94,.14);}
+  .location-divider{border-top:1px dashed var(--line);margin:3px 0;}
+  .location-empty-hint{font-size:11px;color:var(--ink-soft);margin:auto;}
+  .add-location-card{
+    border:1.5px dashed var(--line);background:transparent;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink-soft);font-size:13px;min-height:38px;
+    border-radius:var(--radius);cursor:pointer;
+  }
+  .empty-board-msg{text-align:center;color:var(--ink-soft);font-size:13px;padding:24px 8px;}
+  .location-pair-row{display:flex;align-items:stretch;gap:0;}
+  .location-pair-row .location-card{flex:1;min-width:0;}
+  .location-pair-row .location-card:not(:first-child){border-top-left-radius:0;border-bottom-left-radius:0;}
+  .location-pair-row .location-card:not(:last-child){border-top-right-radius:0;border-bottom-right-radius:0;border-right:none;}
+  .location-pair-divider{width:0;border-left:1px dashed var(--line);flex-shrink:0;}
+  .location-body-split{flex-direction:row;gap:0;}
+  .location-left-slot{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    flex:0 0 26px;gap:4px;min-height:100%;
+  }
+  .location-left-slot .nameplate-chip{
+    writing-mode:vertical-rl;text-orientation:upright;padding:5px 3px;letter-spacing:1px;
+  }
+  .location-left-divider{width:0;border-left:1px dashed var(--line);margin:0 6px;flex-shrink:0;}
+  .location-right-area{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .checkbox-label{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12.5px;color:var(--ink);}
+  .checkbox-label input{width:auto;flex-shrink:0;}
+
+  /* ---------- nameplate chips ---------- */
+  .nameplate-chip{
+    position:relative;flex-shrink:0;
+    display:inline-flex;align-items:center;
+    padding:3px 7px;border-radius:6px;font-size:11px;font-weight:500;
+    background:#fff;border:1.5px solid var(--ink);white-space:nowrap;color:var(--ink);
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+    cursor:grab;
+    transition:transform .1s;
+  }
+  .nameplate-chip::before{
+    content:"";position:absolute;inset:-6px;
+  }
+  .nameplate-chip:active{transform:scale(.94);}
+  .nameplate-chip.plate-red{border-color:var(--plate-red);}
+  .nameplate-chip.plate-blue{border-color:var(--plate-blue);}
+  .nameplate-chip.plate-white{border-color:var(--ink);}
+  .chip-dragging-source{opacity:.35;}
+  .drag-ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:9999;box-shadow:0 8px 20px rgba(0,0,0,.28);}
+
+  /* ---------- pool bar ---------- */
+  .pool-bar{
+    position:sticky;bottom:0;z-index:20;flex-shrink:0;
+    background:var(--surface);border-top:1px solid var(--line);
+    padding:8px 16px calc(18px + env(safe-area-inset-bottom));
+  }
+  .pool-label{font-size:12px;color:var(--ink-soft);margin-bottom:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;}
+  .pool-label b{color:var(--ink);font-weight:600;}
+  .pool-row{display:flex;align-items:center;gap:8px;}
+  .pool-add-btn{
+    flex-shrink:0;width:30px;height:30px;border-radius:8px;border:1.5px dashed var(--line);
+    background:transparent;color:var(--ink-soft);font-size:17px;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
+  }
+  .pool-add-btn:active{background:var(--bg);}
+  .pool-scroller{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;touch-action:pan-x;flex:1;min-width:0;}
+  .pool-bar.drag-over-pool{background:rgba(47,107,94,.10);}
+  .pool-bar.drag-over-pool .pool-scroller{outline:2px dashed var(--accent);outline-offset:2px;border-radius:8px;}
+
+
+  /* ---------- overlays / modal / sheet ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(35,36,31,.45);
+    display:none;align-items:flex-end;justify-content:center;z-index:100;
+  }
+  .overlay.open{display:flex;}
+  #templateOverlay{z-index:90;}
+  #modalOverlay{z-index:110;}
+  .modal,.sheet{
+    background:var(--surface);width:100%;max-width:420px;
+    border-radius:16px 16px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+    max-height:82vh;overflow-y:auto;
+  }
+  .sheet-header{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:16px;margin-bottom:12px;}
+  .icon-btn{background:none;border:none;font-size:20px;color:var(--ink-soft);cursor:pointer;line-height:1;padding:4px;}
+  label{display:block;font-size:12px;color:var(--ink-soft);margin:14px 0 4px;}
+  label:first-of-type{margin-top:0;}
+  input[type="text"], input[type="date"]{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:15px;background:var(--bg);color:var(--ink);
+  }
+  input[type="text"]:focus, input[type="date"]:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  textarea{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;
+    font-size:13px;background:var(--bg);color:var(--ink);font-family:inherit;
+    resize:none;min-height:90px;line-height:1.5;word-break:break-all;
+  }
+  textarea:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .swatch-row{display:flex;gap:12px;margin-top:6px;}
+  .swatch{
+    width:36px;height:36px;border-radius:50%;border:2px solid var(--line);cursor:pointer;
+  }
+  .swatch.selected{box-shadow:0 0 0 3px rgba(47,107,94,.35);border-color:var(--accent);}
+  .swatch.plate-white-sw{background:#fff;border-color:var(--ink);}
+  .swatch.plate-red-sw{background:var(--plate-red);border-color:var(--plate-red);}
+  .swatch.plate-blue-sw{background:var(--plate-blue);border-color:var(--plate-blue);}
+  .choice-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+  .choice-btn{
+    flex:1;min-width:52px;padding:10px 8px;border:1px solid var(--line);border-radius:8px;
+    text-align:center;font-size:13px;font-weight:600;cursor:pointer;
+    background:var(--bg);color:var(--ink-soft);
+  }
+  .choice-btn.selected{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .btn-primary{
+    flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;
+    padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-secondary{
+    flex:1;background:transparent;border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:12px 14px;font-size:14px;cursor:pointer;
+  }
+  .btn-danger{
+    flex:1;background:transparent;border:1px solid var(--danger);color:var(--danger);
+    border-radius:8px;padding:12px 14px;font-size:14px;cursor:pointer;
+  }
+  .btn-sm{flex:none;padding:6px 9px;font-size:12px;}
+  .confirm-msg{font-size:14px;line-height:1.7;color:var(--ink);margin:6px 0 0;}
+  .sheet-section-title{
+    font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.03em;
+    margin-top:16px;margin-bottom:8px;
+  }
+  .sheet-collapse-toggle{
+    display:flex;align-items:center;justify-content:space-between;width:100%;
+    background:none;border:none;padding:0;cursor:pointer;font:inherit;text-align:left;
+  }
+  @keyframes physicsShake{
+    0%,100%{transform:translate(0,0);}
+    20%{transform:translate(-4px,2px);}
+    40%{transform:translate(4px,-2px);}
+    60%{transform:translate(-3px,-2px);}
+    80%{transform:translate(3px,2px);}
+  }
+  body.physics-shake .board-wrap,body.physics-shake .topbar{animation:physicsShake .35s ease;}
+  .collapse-arrow{
+    display:inline-block;font-size:34px;line-height:1;color:var(--ink-soft);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  .sheet-collapse-toggle[aria-expanded="true"] .collapse-arrow{transform:rotate(180deg);}
+  .sheet-section.collapsible{
+    display:grid;grid-template-rows:0fr;
+    transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1);
+  }
+  .sheet-section.collapsible.open{grid-template-rows:1fr;}
+  .collapsible-inner{overflow:hidden;min-height:0;}
+  .sheet-section:first-of-type{margin-top:0;}
+  .sheet-btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .sheet-btn-row .btn-primary, .sheet-btn-row .btn-secondary{flex:1;min-width:120px;}
+  .sheet-divider{border-top:1px solid var(--line);margin-top:18px;}
+  .template-list{margin-top:10px;}
+  .template-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .template-name{font-size:14px;font-weight:600;flex:1;word-break:break-word;}
+  .template-actions{display:flex;gap:6px;flex-shrink:0;}
+
+
+  /* ---------- themes ---------- */
+  /* 以前作成した各デザインを、そのまま現在の配置ボードへ移植 */
+  body[data-theme="play"]{
+    --bg:#fff4d6;--surface:#fff;--ink:#171717;--ink-soft:#555;--line:#171717;--accent:#ff3d71;--accent-dark:#d51f4f;--danger:#e5395f;--plate-red:#ff6688;--plate-blue:#66d9ff;--radius:12px;
+    background:linear-gradient(135deg,#fff4d6 0 48%,#ffe0eb 48% 100%);
+  }
+  body[data-theme="play"] .topbar{background:#2d5bff;border-bottom:3px solid #171717;box-shadow:0 4px 0 #171717;}
+  body[data-theme="play"] .title-main{color:#fff;text-shadow:2px 2px 0 #171717;}
+  body[data-theme="play"] .title-sub{color:#fff;opacity:.85;}
+  body[data-theme="play"] .btn-ghost{background:#ffd928;border:2px solid #171717;color:#171717;border-radius:7px;box-shadow:2px 2px 0 #171717;}
+  body[data-theme="play"] .btn-ghost:active{background:#ffd928;transform:translate(2px,2px);box-shadow:1px 1px 0 #171717;}
+  body[data-theme="play"] .info-bar{background:#fff;border-bottom:2px solid #171717;color:#555;}
+  body[data-theme="play"] .info-date,body[data-theme="play"] .info-stats b{color:#171717;}
+  body[data-theme="play"] .location-card{background:#fff;border:2px solid #171717;border-radius:10px;box-shadow:3px 3px 0 #171717;}
+  body[data-theme="play"] .location-card.drag-over{border-color:#ff3d71;box-shadow:0 0 0 2px #ff3d71 inset,3px 3px 0 #171717;}
+  body[data-theme="play"] .location-name{color:#171717}.location-edit-btn{color:#555;}
+  body[data-theme="play"] .add-location-card{border:2px dashed #171717;background:#fff9ed;color:#555;box-shadow:2px 2px 0 #171717;}
+  body[data-theme="play"] .nameplate-chip{background:#ffec57;color:#171717;border:2px solid #171717;box-shadow:2px 2px 0 #171717;border-radius:9px;font-weight:900;}
+  body[data-theme="play"] .nameplate-chip.plate-red{background:#ff6688;color:#fff;border-color:#171717;}
+  body[data-theme="play"] .nameplate-chip.plate-blue{background:#66d9ff;color:#171717;border-color:#171717;}
+  body[data-theme="play"] .nameplate-chip.plate-white{background:#b7f36b;color:#171717;border-color:#171717;}
+  body[data-theme="play"] .pool-bar{background:#ffea66;border-top:3px solid #171717;box-shadow:0 -3px 0 rgba(23,23,23,.12);}
+  body[data-theme="play"] .pool-label{color:#444}body[data-theme="play"] .pool-label b{color:#e52b22;}
+  body[data-theme="play"] .pool-add-btn{border:2px solid #171717;background:#fff;color:#111;border-radius:4px;box-shadow:1px 1px 0 #171717;}
+  body[data-theme="play"] .overlay{background:rgba(23,23,23,.48)}
+  body[data-theme="play"] .modal,body[data-theme="play"] .sheet{background:#fff8ef;border-top:3px solid #171717;box-shadow:0 -8px 0 rgba(23,23,23,.14);}
+  body[data-theme="play"] input[type="text"],body[data-theme="play"] input[type="date"]{background:#fff;color:#111;border:2px solid #171717;border-radius:4px;}
+
+  body[data-theme="mono"]{--bg:#f0f0f0;--surface:#fff;--ink:#111;--ink-soft:#666;--line:#222;--accent:#111;--accent-dark:#000;--danger:#444;--plate-red:#333;--plate-blue:#777;--radius:5px;}
+  body[data-theme="mono"] .topbar,body[data-theme="mono"] .info-bar,body[data-theme="mono"] .pool-bar{border-color:#222;}
+  body[data-theme="mono"] .location-card{border:2px solid #222;box-shadow:2px 2px 0 #aaa;}
+  body[data-theme="mono"] .nameplate-chip{background:#fff;color:#111;border:2px solid #222;border-radius:4px;box-shadow:2px 2px 0 #aaa;}
+
+  body[data-theme="neon"]{--bg:#0a0014;--surface:#1a0a2e;--ink:#fef4ff;--ink-soft:#b48fd1;--line:#3d2159;--accent:#ff2ec4;--accent-dark:#c400a0;--danger:#ff3860;--plate-red:#ff3860;--plate-blue:#05f2ff;--radius:16px;background:#0a0014;background-image:radial-gradient(circle at 8% 0%,rgba(255,46,196,.22),transparent 32%),radial-gradient(circle at 92% 100%,rgba(5,242,255,.18),transparent 34%),radial-gradient(circle at 50% 50%,rgba(139,92,246,.08),transparent 60%);}
+  body[data-theme="neon"] .topbar{background:rgba(15,4,28,.85);border-bottom:2px solid #ff2ec4;box-shadow:0 0 26px rgba(255,46,196,.25),0 2px 30px rgba(5,242,255,.1);backdrop-filter:blur(14px)}
+  body[data-theme="neon"] .title-main{text-shadow:0 0 8px #ff2ec4,0 0 22px rgba(255,46,196,.6),0 0 40px rgba(5,242,255,.3);letter-spacing:.09em}body[data-theme="neon"] .title-sub{color:#c9a3e0}
+  body[data-theme="neon"] .btn-ghost{background:#1a0a2e;border:2px solid #05f2ff;color:#8ff9ff;border-radius:999px;box-shadow:0 0 14px rgba(5,242,255,.25),inset 0 0 8px rgba(5,242,255,.08)}
+  body[data-theme="neon"] .info-bar{background:rgba(15,4,28,.85);border-bottom-color:#3d2159;color:#b48fd1}body[data-theme="neon"] .info-date{color:#fef4ff}body[data-theme="neon"] .info-stats b{color:#ff2ec4;text-shadow:0 0 10px rgba(255,46,196,.55)}
+  body[data-theme="neon"] .location-card{background:rgba(26,10,46,.92);border:1px solid #4a2d70;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,.35),0 0 14px rgba(139,92,246,.08)}body[data-theme="neon"] .location-card.drag-over{border-color:#ff2ec4;box-shadow:0 0 0 2px rgba(255,46,196,.3) inset,0 0 26px rgba(255,46,196,.2)}
+  body[data-theme="neon"] .location-name{color:#fef4ff}body[data-theme="neon"] .location-edit-btn{color:#b48fd1}body[data-theme="neon"] .add-location-card{border:1px dashed #5a3a80;background:rgba(26,10,46,.4);color:#b48fd1}
+  body[data-theme="neon"] .nameplate-chip{background:#170826;color:#fef4ff;border:1px solid #ff2ec4;box-shadow:0 0 12px rgba(255,46,196,.3);border-radius:999px;font-weight:700}body[data-theme="neon"] .nameplate-chip.plate-red{border-color:#ff3860;box-shadow:0 0 14px rgba(255,56,96,.4)}body[data-theme="neon"] .nameplate-chip.plate-blue{border-color:#05f2ff;box-shadow:0 0 14px rgba(5,242,255,.4)}body[data-theme="neon"] .nameplate-chip.plate-white{border-color:#d4ff00;box-shadow:0 0 14px rgba(212,255,0,.35)}
+  body[data-theme="neon"] .pool-bar{background:rgba(15,4,28,.92);border-top:2px solid #ff2ec4;box-shadow:0 -5px 24px rgba(255,46,196,.12);backdrop-filter:blur(14px)}body[data-theme="neon"] .pool-label{color:#b48fd1}body[data-theme="neon"] .pool-label b{color:#ff2ec4}
+  body[data-theme="neon"] .pool-add-btn{border:2px solid #05f2ff;background:#1a0a2e;color:#8ff9ff;border-radius:999px}
+  body[data-theme="neon"] .overlay{background:rgba(4,0,10,.78);backdrop-filter:blur(5px)}body[data-theme="neon"] .modal,body[data-theme="neon"] .sheet{background:#1a0a2e;border-top:2px solid #ff2ec4;box-shadow:0 -12px 40px rgba(255,46,196,.15)}
+
+  body[data-theme="cyber"]{--bg:#070b12;--surface:#0c121b;--ink:#e8f7ff;--ink-soft:#7790a0;--line:#1c3545;--accent:#00e5ff;--accent-dark:#00a8bb;--danger:#ff5874;--plate-red:#ff5874;--plate-blue:#3eaeff;--radius:5px;background-color:#070b12;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:24px 24px;}
+  body[data-theme="cyber"] .topbar{background:rgba(7,11,18,.94);border-bottom-color:#164456;box-shadow:0 2px 20px rgba(0,229,255,.07);backdrop-filter:blur(8px)}body[data-theme="cyber"] .title-main{letter-spacing:.08em;text-shadow:0 0 10px rgba(0,229,255,.35)}body[data-theme="cyber"] .title-sub{color:#55798a}
+  body[data-theme="cyber"] .btn-ghost{background:#0b1822;border-color:#1e5366;color:#9fefff;border-radius:4px}
+  body[data-theme="cyber"] .info-bar{background:rgba(7,11,18,.9);border-bottom-color:#164456;color:#688796}body[data-theme="cyber"] .info-date{color:#dffaff}body[data-theme="cyber"] .info-stats b{color:#00e5ff}
+  body[data-theme="cyber"] .location-card{background:rgba(12,18,27,.94);border-color:#1d3e4d;border-radius:5px;box-shadow:0 0 0 1px rgba(0,229,255,.025),0 5px 16px rgba(0,0,0,.28)}body[data-theme="cyber"] .location-card.drag-over{border-color:#00e5ff;box-shadow:0 0 0 1px #00e5ff inset,0 0 16px rgba(0,229,255,.16)}
+  body[data-theme="cyber"] .location-name{color:#e7fbff}body[data-theme="cyber"] .location-edit-btn{color:#5e8595}body[data-theme="cyber"] .add-location-card{border-color:#245267;background:rgba(12,18,27,.45);color:#5e899a;border-radius:5px}
+  body[data-theme="cyber"] .nameplate-chip{background:#101b25;color:#e8fbff;border-color:#628391;border-radius:4px;box-shadow:0 0 7px rgba(0,229,255,.07)}body[data-theme="cyber"] .nameplate-chip.plate-red{border-color:#ff5874;box-shadow:0 0 8px rgba(255,88,116,.14)}body[data-theme="cyber"] .nameplate-chip.plate-blue{border-color:#3eaeff;box-shadow:0 0 8px rgba(62,174,255,.14)}
+  body[data-theme="cyber"] .pool-bar{background:rgba(7,11,18,.96);border-top-color:#164456;box-shadow:0 -4px 18px rgba(0,229,255,.05)}body[data-theme="cyber"] .pool-label{color:#62808e}body[data-theme="cyber"] .pool-label b{color:#00e5ff}body[data-theme="cyber"] .pool-add-btn{border-color:#245267;background:#0b1822;color:#8feaff;border-radius:4px}
+  body[data-theme="cyber"] .overlay{background:rgba(0,4,8,.72)}body[data-theme="cyber"] .modal,body[data-theme="cyber"] .sheet{background:#0c121b;border-top-color:#1d5265;box-shadow:0 -10px 35px rgba(0,0,0,.45)}
+
+  body[data-theme="apple"]{--bg:#f5f5f7;--surface:#fff;--ink:#1d1d1f;--ink-soft:#86868b;--line:#d2d2d7;--accent:#007aff;--accent-dark:#005ecb;--danger:#ff3b30;--plate-red:#ff3b30;--plate-blue:#007aff;--radius:14px;background:#f5f5f7;}
+  body[data-theme="apple"] .topbar{background:rgba(255,255,255,.82);border-bottom-color:rgba(0,0,0,.08);box-shadow:0 1px 8px rgba(0,0,0,.04);backdrop-filter:blur(18px)}body[data-theme="apple"] .title-sub{color:#86868b}body[data-theme="apple"] .btn-ghost{background:rgba(255,255,255,.75);border-color:#d2d2d7;color:#1d1d1f;border-radius:10px}
+  body[data-theme="apple"] .info-bar{background:rgba(255,255,255,.75);border-bottom-color:rgba(0,0,0,.08);color:#86868b}body[data-theme="apple"] .info-date{color:#1d1d1f}body[data-theme="apple"] .info-stats b{color:#007aff}
+  body[data-theme="apple"] .location-card{background:rgba(255,255,255,.94);border-color:rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.055)}body[data-theme="apple"] .location-card.drag-over{border-color:#007aff;box-shadow:0 0 0 2px rgba(0,122,255,.16) inset,0 4px 14px rgba(0,122,255,.08)}
+  body[data-theme="apple"] .nameplate-chip{background:#fff;color:#1d1d1f;border-color:#c7c7cc;box-shadow:0 2px 6px rgba(0,0,0,.08);border-radius:9px}body[data-theme="apple"] .nameplate-chip.plate-red{border-color:#ff3b30}body[data-theme="apple"] .nameplate-chip.plate-blue{border-color:#007aff}
+  body[data-theme="apple"] .pool-bar{background:rgba(255,255,255,.84);border-top-color:rgba(0,0,0,.08);box-shadow:0 -4px 16px rgba(0,0,0,.06);backdrop-filter:blur(18px)}body[data-theme="apple"] .pool-label{color:#86868b}body[data-theme="apple"] .pool-label b{color:#007aff}body[data-theme="apple"] .pool-add-btn{border-color:#d2d2d7;background:#fff;color:#1d1d1f;border-radius:10px}
+  body[data-theme="apple"] .overlay{background:rgba(0,0,0,.28);backdrop-filter:blur(6px)}body[data-theme="apple"] .modal,body[data-theme="apple"] .sheet{background:rgba(255,255,255,.96);border-top-color:#d2d2d7;box-shadow:0 -12px 36px rgba(0,0,0,.14)}
+
+  body[data-theme="retro"]{--bg:#16112a;--surface:#21183a;--ink:#fff6d6;--ink-soft:#b9a8c9;--line:#49365d;--accent:#ffd34e;--accent-dark:#d7a900;--danger:#ff657a;--plate-red:#ff657a;--plate-blue:#63b5ff;--radius:5px;background:radial-gradient(circle at 50% 0%,#30204e 0,#16112a 55%);}
+  body[data-theme="retro"] .topbar{background:#21183a;border-bottom:3px solid #49365d;box-shadow:0 5px 0 rgba(0,0,0,.22)}body[data-theme="retro"] .title-main{letter-spacing:.08em;text-shadow:2px 2px 0 #4a2c67}body[data-theme="retro"] .title-sub{color:#b9a8c9}
+  body[data-theme="retro"] .btn-ghost{background:#2b2048;border:2px solid #655078;color:#fff6d6;border-radius:4px;box-shadow:2px 2px 0 #0c0817}
+  body[data-theme="retro"] .info-bar{background:#1b1430;border-bottom:2px solid #49365d;color:#b9a8c9}body[data-theme="retro"] .info-date{color:#fff6d6}body[data-theme="retro"] .info-stats b{color:#ffd34e}
+  body[data-theme="retro"] .location-card{background:#21183a;border:2px solid #49365d;box-shadow:3px 3px 0 #0b0715}body[data-theme="retro"] .location-card.drag-over{border-color:#ffd34e;box-shadow:0 0 0 2px #ffd34e inset,3px 3px 0 #0b0715}
+  body[data-theme="retro"] .location-name{color:#fff6d6}body[data-theme="retro"] .location-edit-btn{color:#b9a8c9}body[data-theme="retro"] .add-location-card{border:2px dashed #655078;background:#1b1430;color:#b9a8c9}
+  body[data-theme="retro"] .nameplate-chip{background:#2b2048;color:#fff6d6;border:2px solid #8d78a0;box-shadow:2px 2px 0 #0b0715;border-radius:3px;font-weight:700}body[data-theme="retro"] .nameplate-chip.plate-red{border-color:#ff657a}body[data-theme="retro"] .nameplate-chip.plate-blue{border-color:#63b5ff}body[data-theme="retro"] .nameplate-chip.plate-white{border-color:#e5d8b9}
+  body[data-theme="retro"] .pool-bar{background:#1b1430;border-top:3px solid #49365d;box-shadow:0 -5px 0 rgba(0,0,0,.16)}body[data-theme="retro"] .pool-label{color:#b9a8c9}body[data-theme="retro"] .pool-label b{color:#ffd34e}body[data-theme="retro"] .pool-add-btn{border:2px solid #655078;background:#2b2048;color:#fff6d6;border-radius:4px}
+  body[data-theme="retro"] .overlay{background:rgba(8,4,18,.72)}body[data-theme="retro"] .modal,body[data-theme="retro"] .sheet{background:#21183a;border-top:3px solid #655078;box-shadow:0 -10px 0 rgba(0,0,0,.2)}
+
+  /* ---------- additional themes ---------- */
+  body[data-theme="sakura"]{--bg:#FFF3F6;--surface:#FFFFFF;--ink:#4A2E35;--ink-soft:#957178;--line:#F6D9E2;--accent:#E85D8A;--accent-dark:#C13F6B;--danger:#D6485C;--plate-red:#E85D8A;--plate-blue:#5B8DBE;--radius:14px;background:#FFF3F6;}
+  body[data-theme="sakura"] .topbar{background:rgba(255,255,255,.92);border-bottom:1px solid #F6D9E2;box-shadow:0 2px 14px rgba(210,110,150,.08)}body[data-theme="sakura"] .title-sub{color:#957178}
+  body[data-theme="sakura"] .btn-ghost{background:#FFF9FB;border:1px solid #F6D9E2;color:#7A4A54;border-radius:11px}
+  body[data-theme="sakura"] .info-bar{background:rgba(255,255,255,.8);border-bottom:1px solid #F6D9E2}body[data-theme="sakura"] .info-date{color:#4A2E35}body[data-theme="sakura"] .info-stats b{color:#E85D8A}
+  body[data-theme="sakura"] .location-card{border:1px solid #F6D9E2;box-shadow:0 3px 14px rgba(210,110,150,.08)}body[data-theme="sakura"] .location-card.drag-over{border-color:#E85D8A;box-shadow:0 0 0 2px rgba(232,93,138,.18) inset,0 4px 14px rgba(232,93,138,.1)}
+  body[data-theme="sakura"] .add-location-card{border:1px dashed #EFC0CF;background:#FFF9FB;color:#957178}
+  body[data-theme="sakura"] .nameplate-chip{background:#FFFAFC;border:1px solid #F0C3D3;color:#5C3A42;border-radius:9px;box-shadow:0 2px 7px rgba(210,110,150,.07)}body[data-theme="sakura"] .nameplate-chip.plate-red{background:#FDEBF1;border-color:#E85D8A}body[data-theme="sakura"] .nameplate-chip.plate-blue{background:#EAF2FA;border-color:#5B8DBE}body[data-theme="sakura"] .nameplate-chip.plate-white{background:#FFF8E9;border-color:#D9A441}
+  body[data-theme="sakura"] .pool-bar{background:rgba(255,255,255,.94);border-top:1px solid #F6D9E2;box-shadow:0 -3px 14px rgba(210,110,150,.06)}body[data-theme="sakura"] .pool-label{color:#957178}body[data-theme="sakura"] .pool-label b{color:#E85D8A}body[data-theme="sakura"] .pool-add-btn{border:1px dashed #EFC0CF;background:#FFF9FB;color:#B25876;border-radius:10px}
+  body[data-theme="sakura"] .overlay{background:rgba(80,40,55,.22)}body[data-theme="sakura"] .modal,body[data-theme="sakura"] .sheet{background:#FFFCFD;border-top:1px solid #F6D9E2;box-shadow:0 -8px 30px rgba(150,80,110,.12)}
+
+  body[data-theme="midnight"]{--bg:#0D1321;--surface:#161F35;--ink:#EDEEF5;--ink-soft:#8A93AE;--line:#28324D;--accent:#D4AF37;--accent-dark:#B08D22;--danger:#E0555A;--plate-red:#E0555A;--plate-blue:#4C8DFF;--radius:9px;background:#0D1321;background-image:radial-gradient(circle at 15% 0%,rgba(212,175,55,.08),transparent 30%);}
+  body[data-theme="midnight"] .topbar{background:rgba(13,19,33,.92);border-bottom:1px solid #28324D;box-shadow:0 2px 18px rgba(0,0,0,.3);backdrop-filter:blur(12px)}body[data-theme="midnight"] .title-main{letter-spacing:.03em;text-shadow:0 0 10px rgba(212,175,55,.2)}body[data-theme="midnight"] .title-sub{color:#8A93AE}
+  body[data-theme="midnight"] .btn-ghost{background:#161F35;border:1px solid #3A4568;color:#E7C463;border-radius:8px}
+  body[data-theme="midnight"] .info-bar{background:rgba(13,19,33,.92);border-bottom:1px solid #28324D;color:#8A93AE}body[data-theme="midnight"] .info-date{color:#EDEEF5}body[data-theme="midnight"] .info-stats b{color:#D4AF37}
+  body[data-theme="midnight"] .location-card{background:rgba(22,31,53,.95);border:1px solid #28324D;box-shadow:0 5px 18px rgba(0,0,0,.3)}body[data-theme="midnight"] .location-card.drag-over{border-color:#D4AF37;box-shadow:0 0 0 2px rgba(212,175,55,.22) inset,0 0 18px rgba(212,175,55,.12)}
+  body[data-theme="midnight"] .location-name{color:#EDEEF5}body[data-theme="midnight"] .location-edit-btn{color:#8A93AE}body[data-theme="midnight"] .add-location-card{border:1px dashed #3A4568;background:rgba(22,31,53,.5);color:#8A93AE}
+  body[data-theme="midnight"] .nameplate-chip{background:#111A2E;color:#EDEEF5;border:1px solid #3A4568;border-radius:7px;box-shadow:0 0 8px rgba(0,0,0,.25)}body[data-theme="midnight"] .nameplate-chip.plate-red{border-color:#E0555A;box-shadow:0 0 10px rgba(224,85,90,.16)}body[data-theme="midnight"] .nameplate-chip.plate-blue{border-color:#4C8DFF;box-shadow:0 0 10px rgba(76,141,255,.16)}body[data-theme="midnight"] .nameplate-chip.plate-white{border-color:#D4AF37;box-shadow:0 0 10px rgba(212,175,55,.18)}
+  body[data-theme="midnight"] .pool-bar{background:rgba(13,19,33,.95);border-top:1px solid #28324D;box-shadow:0 -5px 20px rgba(0,0,0,.28)}body[data-theme="midnight"] .pool-label{color:#8A93AE}body[data-theme="midnight"] .pool-label b{color:#D4AF37}body[data-theme="midnight"] .pool-add-btn{border:1px solid #3A4568;background:#161F35;color:#E7C463;border-radius:8px}
+  body[data-theme="midnight"] .overlay{background:rgba(2,4,10,.72);backdrop-filter:blur(5px)}body[data-theme="midnight"] .modal,body[data-theme="midnight"] .sheet{background:#161F35;border-top:1px solid #3A4568;box-shadow:0 -12px 38px rgba(0,0,0,.5)}
+
+  body[data-theme="citrus"]{--bg:#FFF7E8;--surface:#FFFFFF;--ink:#3A2A12;--ink-soft:#8A6F45;--line:#FCE3B0;--accent:#FF8A00;--accent-dark:#DB6D00;--danger:#E2492E;--plate-red:#E2492E;--plate-blue:#2F6FA8;--radius:12px;background:#FFF7E8;}
+  body[data-theme="citrus"] .topbar{background:#FFFFFF;border-bottom:1px solid #FCE3B0;box-shadow:0 2px 14px rgba(255,138,0,.09)}body[data-theme="citrus"] .title-sub{color:#8A6F45}
+  body[data-theme="citrus"] .btn-ghost{background:#FFFBF0;border:1px solid #FCE3B0;color:#6B4E1E;border-radius:10px}
+  body[data-theme="citrus"] .info-bar{background:rgba(255,255,255,.85);border-bottom:1px solid #FCE3B0}body[data-theme="citrus"] .info-date{color:#3A2A12}body[data-theme="citrus"] .info-stats b{color:#FF8A00}
+  body[data-theme="citrus"] .location-card{border:1px solid #FCE3B0;box-shadow:0 3px 13px rgba(255,138,0,.1)}body[data-theme="citrus"] .location-card.drag-over{border-color:#FF8A00;box-shadow:0 0 0 2px rgba(255,138,0,.2) inset,0 4px 14px rgba(255,138,0,.12)}
+  body[data-theme="citrus"] .add-location-card{border:1px dashed #F5C978;background:#FFFBF0;color:#8A6F45}
+  body[data-theme="citrus"] .nameplate-chip{background:#FFFCF5;border:1px solid #F5D28E;color:#523B14;border-radius:8px;box-shadow:0 2px 6px rgba(255,138,0,.08)}body[data-theme="citrus"] .nameplate-chip.plate-red{background:#FDEBE6;border-color:#E2492E}body[data-theme="citrus"] .nameplate-chip.plate-blue{background:#E9F1F8;border-color:#2F6FA8}body[data-theme="citrus"] .nameplate-chip.plate-white{background:#EAF8EC;border-color:#4E9E52}
+  body[data-theme="citrus"] .pool-bar{background:rgba(255,255,255,.92);border-top:1px solid #FCE3B0;box-shadow:0 -3px 14px rgba(255,138,0,.06)}body[data-theme="citrus"] .pool-label{color:#8A6F45}body[data-theme="citrus"] .pool-label b{color:#FF8A00}body[data-theme="citrus"] .pool-add-btn{border:1px dashed #F5C978;background:#FFFBF0;color:#B4700F;border-radius:9px}
+  body[data-theme="citrus"] .overlay{background:rgba(60,40,10,.22)}body[data-theme="citrus"] .modal,body[data-theme="citrus"] .sheet{background:#FFFDF6;border-top:1px solid #FCE3B0;box-shadow:0 -8px 28px rgba(120,80,20,.12)}
+
+  body[data-theme="ink"]{--bg:#F7F5F0;--surface:#FFFFFF;--ink:#1A1A1A;--ink-soft:#6B6B63;--line:#D8D4C8;--accent:#B71C1C;--accent-dark:#8C1313;--danger:#B71C1C;--plate-red:#B71C1C;--plate-blue:#1D3557;--radius:6px;background:#F7F5F0;}
+  body[data-theme="ink"] .topbar{background:#FFFFFF;border-bottom:2px solid #1A1A1A;box-shadow:0 2px 10px rgba(0,0,0,.05)}body[data-theme="ink"] .title-main{letter-spacing:.04em}body[data-theme="ink"] .title-sub{color:#6B6B63}
+  body[data-theme="ink"] .btn-ghost{background:#FFFFFF;border:1px solid #1A1A1A;color:#1A1A1A;border-radius:4px}
+  body[data-theme="ink"] .info-bar{background:#FBFAF7;border-bottom:1px solid #D8D4C8;color:#6B6B63}body[data-theme="ink"] .info-date{color:#1A1A1A}body[data-theme="ink"] .info-stats b{color:#B71C1C}
+  body[data-theme="ink"] .location-card{border:1px solid #1A1A1A;border-radius:4px;box-shadow:2px 2px 0 rgba(0,0,0,.08)}body[data-theme="ink"] .location-card.drag-over{border-color:#B71C1C;box-shadow:0 0 0 2px rgba(183,28,28,.16) inset,2px 2px 0 rgba(0,0,0,.08)}
+  body[data-theme="ink"] .add-location-card{border:1px dashed #A6A296;background:#FBFAF7;color:#6B6B63}
+  body[data-theme="ink"] .nameplate-chip{background:#FFFFFF;color:#1A1A1A;border:1px solid #1A1A1A;border-radius:3px;font-weight:700}body[data-theme="ink"] .nameplate-chip.plate-red{border-color:#B71C1C;color:#B71C1C}body[data-theme="ink"] .nameplate-chip.plate-blue{border-color:#1D3557;color:#1D3557}body[data-theme="ink"] .nameplate-chip.plate-white{border-color:#C9A227;color:#8C6E14}
+  body[data-theme="ink"] .pool-bar{background:#FBFAF7;border-top:2px solid #1A1A1A;box-shadow:0 -3px 10px rgba(0,0,0,.05)}body[data-theme="ink"] .pool-label{color:#6B6B63}body[data-theme="ink"] .pool-label b{color:#B71C1C}body[data-theme="ink"] .pool-add-btn{border:1px solid #1A1A1A;background:#FFFFFF;color:#1A1A1A;border-radius:4px}
+  body[data-theme="ink"] .overlay{background:rgba(20,20,20,.5)}body[data-theme="ink"] .modal,body[data-theme="ink"] .sheet{background:#FFFEFB;border-top:2px solid #1A1A1A;box-shadow:0 -10px 26px rgba(0,0,0,.18)}
+
+  body[data-theme="coral"]{--bg:#EAF7F5;--surface:#FFFFFF;--ink:#1F3A3D;--ink-soft:#5D807F;--line:#CDEAE6;--accent:#FF6F59;--accent-dark:#E1543F;--danger:#D9534F;--plate-red:#FF6F59;--plate-blue:#2A9D8F;--radius:12px;background:#EAF7F5;}
+  body[data-theme="coral"] .topbar{background:rgba(255,255,255,.92);border-bottom:1px solid #CDEAE6;box-shadow:0 2px 14px rgba(30,120,110,.08)}body[data-theme="coral"] .title-sub{color:#5D807F}
+  body[data-theme="coral"] .btn-ghost{background:#F4FCFB;border:1px solid #CDEAE6;color:#28504E;border-radius:10px}
+  body[data-theme="coral"] .info-bar{background:rgba(255,255,255,.82);border-bottom:1px solid #CDEAE6}body[data-theme="coral"] .info-date{color:#1F3A3D}body[data-theme="coral"] .info-stats b{color:#FF6F59}
+  body[data-theme="coral"] .location-card{border:1px solid #CDEAE6;box-shadow:0 3px 13px rgba(30,120,110,.08)}body[data-theme="coral"] .location-card.drag-over{border-color:#FF6F59;box-shadow:0 0 0 2px rgba(255,111,89,.18) inset,0 4px 14px rgba(255,111,89,.1)}
+  body[data-theme="coral"] .add-location-card{border:1px dashed #A9DCD4;background:#F4FCFB;color:#5D807F}
+  body[data-theme="coral"] .nameplate-chip{background:#F7FDFC;border:1px solid #BCE3DC;color:#245250;border-radius:8px;box-shadow:0 2px 6px rgba(30,120,110,.07)}body[data-theme="coral"] .nameplate-chip.plate-red{background:#FFEBE7;border-color:#FF6F59}body[data-theme="coral"] .nameplate-chip.plate-blue{background:#E4F4F2;border-color:#2A9D8F}body[data-theme="coral"] .nameplate-chip.plate-white{background:#FFF4E0;border-color:#F4A300}
+  body[data-theme="coral"] .pool-bar{background:rgba(255,255,255,.92);border-top:1px solid #CDEAE6;box-shadow:0 -3px 14px rgba(30,120,110,.06)}body[data-theme="coral"] .pool-label{color:#5D807F}body[data-theme="coral"] .pool-label b{color:#FF6F59}body[data-theme="coral"] .pool-add-btn{border:1px dashed #A9DCD4;background:#F4FCFB;color:#2A8378;border-radius:9px}
+  body[data-theme="coral"] .overlay{background:rgba(20,55,55,.22)}body[data-theme="coral"] .modal,body[data-theme="coral"] .sheet{background:#FBFEFD;border-top:1px solid #CDEAE6;box-shadow:0 -8px 28px rgba(30,90,85,.12)}
+
+  body[data-theme="forest"]{--bg:#E3EDD8;--surface:#F7FBF1;--ink:#233318;--ink-soft:#5F7050;--line:#C9DBB5;--accent:#3F6B2E;--accent-dark:#2C4D1F;--danger:#A6532E;--plate-red:#A6532E;--plate-blue:#2E6F86;--radius:10px;background:#E3EDD8;background-image:radial-gradient(ellipse 70% 45% at 50% 0%,rgba(255,247,200,.4),transparent 55%),radial-gradient(circle at 12% 85%,rgba(63,107,46,.16),transparent 45%),radial-gradient(circle at 88% 18%,rgba(63,107,46,.12),transparent 42%);}
+  body[data-theme="forest"] .topbar{background:linear-gradient(180deg,#F7FBF1,#E9F2DD);border-bottom:2px solid #8FAE6E;box-shadow:0 3px 13px rgba(40,70,25,.14)}body[data-theme="forest"] .title-main{letter-spacing:.02em}body[data-theme="forest"] .title-sub{color:#5F7050}
+  body[data-theme="forest"] .btn-ghost{background:#F1F7E9;border:1px solid #8FAE6E;color:#2C4D1F;border-radius:8px}
+  body[data-theme="forest"] .info-bar{background:rgba(247,251,241,.85);border-bottom:1px solid #C9DBB5}body[data-theme="forest"] .info-date{color:#233318}body[data-theme="forest"] .info-stats b{color:#3F6B2E}
+  body[data-theme="forest"] .location-card{background:#F7FBF1;border:1px solid #C9DBB5;border-top:3px solid #3F6B2E;box-shadow:0 3px 13px rgba(40,70,25,.12)}body[data-theme="forest"] .location-card.drag-over{border-color:#3F6B2E;box-shadow:0 0 0 2px rgba(63,107,46,.22) inset,0 4px 14px rgba(63,107,46,.14)}
+  body[data-theme="forest"] .add-location-card{border:1px dashed #A9C68A;background:#EEF6E4;color:#5F7050}
+  body[data-theme="forest"] .nameplate-chip{background:#F5FAEF;border:1px solid #C1D8AA;color:#28391B;border-radius:7px;box-shadow:0 2px 6px rgba(40,70,25,.1)}body[data-theme="forest"] .nameplate-chip.plate-red{background:#F0DFD2;border-color:#A6532E}body[data-theme="forest"] .nameplate-chip.plate-blue{background:#DCEAEE;border-color:#2E6F86}body[data-theme="forest"] .nameplate-chip.plate-white{background:#F5EFD3;border-color:#B98B2E}
+  body[data-theme="forest"] .pool-bar{background:linear-gradient(0deg,#E9F2DD,#F7FBF1);border-top:2px solid #8FAE6E;box-shadow:0 -3px 13px rgba(40,70,25,.1)}body[data-theme="forest"] .pool-label{color:#5F7050}body[data-theme="forest"] .pool-label b{color:#3F6B2E}body[data-theme="forest"] .pool-add-btn{border:1px dashed #A9C68A;background:#EEF6E4;color:#2C4D1F;border-radius:8px}
+  body[data-theme="forest"] .overlay{background:rgba(20,35,12,.28)}body[data-theme="forest"] .modal,body[data-theme="forest"] .sheet{background:#F7FBF1;border-top:3px solid #3F6B2E;box-shadow:0 -8px 28px rgba(30,50,15,.16)}
+
+  body[data-theme="iceblue"]{--bg:#EEF5FB;--surface:#FFFFFF;--ink:#1E3A4C;--ink-soft:#6A8899;--line:#D3E6F0;--accent:#2E86C1;--accent-dark:#1F6494;--danger:#D9534F;--plate-red:#D9534F;--plate-blue:#1F6494;--radius:13px;background:#EEF5FB;}
+  body[data-theme="iceblue"] .topbar{background:rgba(255,255,255,.92);border-bottom:1px solid #D3E6F0;box-shadow:0 2px 14px rgba(30,110,160,.08)}body[data-theme="iceblue"] .title-sub{color:#6A8899}
+  body[data-theme="iceblue"] .btn-ghost{background:#F6FBFE;border:1px solid #D3E6F0;color:#245A73;border-radius:11px}
+  body[data-theme="iceblue"] .info-bar{background:rgba(255,255,255,.82);border-bottom:1px solid #D3E6F0}body[data-theme="iceblue"] .info-date{color:#1E3A4C}body[data-theme="iceblue"] .info-stats b{color:#2E86C1}
+  body[data-theme="iceblue"] .location-card{border:1px solid #D3E6F0;box-shadow:0 3px 14px rgba(30,110,160,.08)}body[data-theme="iceblue"] .location-card.drag-over{border-color:#2E86C1;box-shadow:0 0 0 2px rgba(46,134,193,.18) inset,0 4px 14px rgba(46,134,193,.1)}
+  body[data-theme="iceblue"] .add-location-card{border:1px dashed #B7D8E9;background:#F6FBFE;color:#6A8899}
+  body[data-theme="iceblue"] .nameplate-chip{background:#F8FCFE;border:1px solid #C4E0EE;color:#204A5F;border-radius:9px;box-shadow:0 2px 6px rgba(30,110,160,.07)}body[data-theme="iceblue"] .nameplate-chip.plate-red{background:#FBEAE9;border-color:#D9534F}body[data-theme="iceblue"] .nameplate-chip.plate-blue{background:#E4F0F8;border-color:#1F6494}body[data-theme="iceblue"] .nameplate-chip.plate-white{background:#FFF3E0;border-color:#F2A93C}
+  body[data-theme="iceblue"] .pool-bar{background:rgba(255,255,255,.92);border-top:1px solid #D3E6F0;box-shadow:0 -3px 14px rgba(30,110,160,.06)}body[data-theme="iceblue"] .pool-label{color:#6A8899}body[data-theme="iceblue"] .pool-label b{color:#2E86C1}body[data-theme="iceblue"] .pool-add-btn{border:1px dashed #B7D8E9;background:#F6FBFE;color:#1F6494;border-radius:10px}
+  body[data-theme="iceblue"] .overlay{background:rgba(15,40,55,.22)}body[data-theme="iceblue"] .modal,body[data-theme="iceblue"] .sheet{background:#FBFDFE;border-top:1px solid #D3E6F0;box-shadow:0 -8px 28px rgba(20,70,95,.12)}
+
+  body[data-theme="marble"]{--bg:#F4F3F1;--surface:#FFFFFF;--ink:#2B2A28;--ink-soft:#8A8580;--line:#DEDAD3;--accent:#B08D57;--accent-dark:#8C6F3F;--danger:#A84B3E;--plate-red:#A84B3E;--plate-blue:#4A6670;--radius:10px;background:#F4F3F1;background-image:linear-gradient(105deg,transparent 42%,rgba(176,141,87,.07) 42.6%,transparent 43.2%),linear-gradient(15deg,transparent 61%,rgba(58,56,53,.045) 61.6%,transparent 62.2%),linear-gradient(197deg,transparent 27%,rgba(176,141,87,.05) 27.6%,transparent 28.2%),linear-gradient(72deg,transparent 78%,rgba(58,56,53,.035) 78.5%,transparent 79%);}
+  body[data-theme="marble"] .topbar{background:rgba(255,255,255,.88);border-bottom:1px solid #DEDAD3;box-shadow:0 1px 0 rgba(176,141,87,.35),0 2px 12px rgba(0,0,0,.04);backdrop-filter:blur(14px)}body[data-theme="marble"] .title-main{letter-spacing:.02em}body[data-theme="marble"] .title-sub{color:#8A8580}
+  body[data-theme="marble"] .btn-ghost{background:#FFFFFF;border:1px solid #DEDAD3;color:#2B2A28;border-radius:9px}
+  body[data-theme="marble"] .info-bar{background:rgba(255,255,255,.8);border-bottom:1px solid #DEDAD3}body[data-theme="marble"] .info-date{color:#2B2A28}body[data-theme="marble"] .info-stats b{color:#B08D57}
+  body[data-theme="marble"] .location-card{position:relative;background:linear-gradient(155deg,#FFFFFF,#FBFAF8);border:1px solid #DEDAD3;box-shadow:0 3px 14px rgba(0,0,0,.05);overflow:hidden}body[data-theme="marble"] .location-card::before{content:"";position:absolute;top:-30%;right:-10%;width:60%;height:160%;background:linear-gradient(115deg,transparent 47%,rgba(176,141,87,.18) 48.3%,transparent 49.6%);pointer-events:none}body[data-theme="marble"] .location-card.drag-over{border-color:#B08D57;box-shadow:0 0 0 2px rgba(176,141,87,.2) inset,0 4px 14px rgba(176,141,87,.1)}
+  body[data-theme="marble"] .add-location-card{border:1px dashed #CFC9BE;background:#FBFAF8;color:#8A8580}
+  body[data-theme="marble"] .nameplate-chip{background:#FFFFFF;color:#2B2A28;border:1px solid #DEDAD3;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.06)}body[data-theme="marble"] .nameplate-chip.plate-red{background:#F6E7E3;border-color:#A84B3E}body[data-theme="marble"] .nameplate-chip.plate-blue{background:#E7EDEF;border-color:#4A6670}body[data-theme="marble"] .nameplate-chip.plate-white{background:#F2E9D6;border-color:#B08D57}
+  body[data-theme="marble"] .pool-bar{background:rgba(255,255,255,.9);border-top:1px solid #DEDAD3;box-shadow:0 -1px 0 rgba(176,141,87,.3),0 -3px 12px rgba(0,0,0,.04)}body[data-theme="marble"] .pool-label{color:#8A8580}body[data-theme="marble"] .pool-label b{color:#B08D57}body[data-theme="marble"] .pool-add-btn{border:1px dashed #CFC9BE;background:#FBFAF8;color:#6E5A34;border-radius:9px}
+  body[data-theme="marble"] .overlay{background:rgba(40,36,30,.28)}body[data-theme="marble"] .modal,body[data-theme="marble"] .sheet{background:#FEFDFC;border-top:1px solid #DEDAD3;box-shadow:0 -1px 0 rgba(176,141,87,.3),0 -10px 30px rgba(0,0,0,.1)}
+
+  body[data-theme="carbon"]{--bg:#0A0A0C;--surface:#141416;--ink:#F2F2F0;--ink-soft:#8C8C90;--line:#2A2A2E;--accent:#FF1E3C;--accent-dark:#C4102A;--danger:#FF1E3C;--plate-red:#FF1E3C;--plate-blue:#00B4FF;--radius:4px;background:#0A0A0C;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 6px),repeating-linear-gradient(-45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 6px);}
+  body[data-theme="carbon"] .topbar{background:rgba(10,10,12,.94);border-bottom:2px solid #FF1E3C;box-shadow:0 2px 20px rgba(255,30,60,.15);backdrop-filter:blur(10px)}body[data-theme="carbon"] .title-main{letter-spacing:.05em;font-weight:900;text-shadow:0 0 12px rgba(255,30,60,.4)}body[data-theme="carbon"] .title-sub{color:#8C8C90}
+  body[data-theme="carbon"] .btn-ghost{background:#141416;border:1px solid #FF1E3C;color:#FF1E3C;border-radius:3px}
+  body[data-theme="carbon"] .info-bar{background:rgba(10,10,12,.92);border-bottom:1px solid #2A2A2E;color:#8C8C90}body[data-theme="carbon"] .info-date{color:#F2F2F0}body[data-theme="carbon"] .info-stats b{color:#FF1E3C}
+  body[data-theme="carbon"] .location-card{background:#141416;border:1px solid #2A2A2E;border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,.4)}body[data-theme="carbon"] .location-card.drag-over{border-color:#FF1E3C;box-shadow:0 0 0 2px rgba(255,30,60,.25) inset,0 0 18px rgba(255,30,60,.2)}
+  body[data-theme="carbon"] .location-name{color:#F2F2F0}body[data-theme="carbon"] .location-edit-btn{color:#8C8C90}body[data-theme="carbon"] .add-location-card{border:1px dashed #3A3A3E;background:rgba(20,20,22,.5);color:#8C8C90}
+  body[data-theme="carbon"] .nameplate-chip{background:#1A1A1D;color:#F2F2F0;border:1px solid #3A3A3E;border-radius:3px;font-weight:700}body[data-theme="carbon"] .nameplate-chip.plate-red{border-color:#FF1E3C;box-shadow:0 0 10px rgba(255,30,60,.25)}body[data-theme="carbon"] .nameplate-chip.plate-blue{border-color:#00B4FF;box-shadow:0 0 10px rgba(0,180,255,.25)}body[data-theme="carbon"] .nameplate-chip.plate-white{border-color:#C7CBD1;box-shadow:0 0 10px rgba(199,203,209,.2)}
+  body[data-theme="carbon"] .pool-bar{background:rgba(10,10,12,.95);border-top:1px solid #2A2A2E;box-shadow:0 -4px 18px rgba(0,0,0,.35)}body[data-theme="carbon"] .pool-label{color:#8C8C90}body[data-theme="carbon"] .pool-label b{color:#FF1E3C}body[data-theme="carbon"] .pool-add-btn{border:1px solid #3A3A3E;background:#141416;color:#F2F2F0;border-radius:3px}
+  body[data-theme="carbon"] .overlay{background:rgba(0,0,0,.7)}body[data-theme="carbon"] .modal,body[data-theme="carbon"] .sheet{background:#141416;border-top:2px solid #FF1E3C;box-shadow:0 -12px 36px rgba(0,0,0,.5)}
+
+  body[data-theme="desert"]{--bg:#EDDCC0;--surface:#FBF2E3;--ink:#4A3020;--ink-soft:#8C6A48;--line:#D9BD8E;--accent:#C1592B;--accent-dark:#8F3F1C;--danger:#B8432A;--plate-red:#C1592B;--plate-blue:#2E8C8A;--radius:10px;background:#EDDCC0;background-image:linear-gradient(180deg,rgba(255,244,222,.55) 0%,transparent 40%),radial-gradient(ellipse 60% 40% at 20% 100%,rgba(193,89,43,.14),transparent 70%),radial-gradient(ellipse 50% 35% at 85% 90%,rgba(46,140,138,.10),transparent 70%);}
+  body[data-theme="desert"] .topbar{background:linear-gradient(180deg,#FBF2E3,#F3E3C8);border-bottom:2px solid #C99A5B;box-shadow:0 3px 13px rgba(150,80,30,.14)}body[data-theme="desert"] .title-main{letter-spacing:.03em;text-shadow:0 1px 0 rgba(255,255,255,.5)}body[data-theme="desert"] .title-sub{color:#8C6A48}
+  body[data-theme="desert"] .btn-ghost{background:#FBF2E3;border:1px solid #C99A5B;color:#6B3F1E;border-radius:8px}
+  body[data-theme="desert"] .info-bar{background:rgba(251,242,227,.86);border-bottom:1px solid #D9BD8E}body[data-theme="desert"] .info-date{color:#4A3020}body[data-theme="desert"] .info-stats b{color:#C1592B}
+  body[data-theme="desert"] .location-card{background:#FBF2E3;border:1px solid #D9BD8E;border-top:3px solid #C1592B;box-shadow:0 3px 13px rgba(150,80,30,.12)}body[data-theme="desert"] .location-card.drag-over{border-color:#C1592B;box-shadow:0 0 0 2px rgba(193,89,43,.22) inset,0 4px 14px rgba(193,89,43,.14)}
+  body[data-theme="desert"] .add-location-card{border:1px dashed #C99A5B;background:#F4E6CB;color:#8C6A48}
+  body[data-theme="desert"] .nameplate-chip{background:#FCF6EB;border:1px solid #D9BD8E;color:#4A3020;border-radius:7px;box-shadow:0 2px 6px rgba(150,80,30,.1)}body[data-theme="desert"] .nameplate-chip.plate-red{background:#F4D6BE;border-color:#C1592B}body[data-theme="desert"] .nameplate-chip.plate-blue{background:#D9EDEA;border-color:#2E8C8A}body[data-theme="desert"] .nameplate-chip.plate-white{background:#FBEAC0;border-color:#B9852E}
+  body[data-theme="desert"] .pool-bar{background:linear-gradient(0deg,#F3E3C8,#FBF2E3);border-top:2px solid #C99A5B;box-shadow:0 -3px 13px rgba(150,80,30,.1)}body[data-theme="desert"] .pool-label{color:#8C6A48}body[data-theme="desert"] .pool-label b{color:#C1592B}body[data-theme="desert"] .pool-add-btn{border:1px dashed #C99A5B;background:#F4E6CB;color:#8F4A1E;border-radius:8px}
+  body[data-theme="desert"] .overlay{background:rgba(60,35,15,.25)}body[data-theme="desert"] .modal,body[data-theme="desert"] .sheet{background:#FBF2E3;border-top:3px solid #C1592B;box-shadow:0 -8px 28px rgba(90,55,20,.16)}
+
+  body[data-theme="rosegold"]{--bg:#FBF3EF;--surface:#FFFFFF;--ink:#5A3B39;--ink-soft:#9C7A76;--line:#EBD4CB;--accent:#C98A7D;--accent-dark:#A96A5D;--danger:#C25A52;--plate-red:#C98A7D;--plate-blue:#8A9BAE;--radius:14px;background:#FBF3EF;}
+  body[data-theme="rosegold"] .topbar{background:rgba(255,255,255,.92);border-bottom:1px solid #EBD4CB;box-shadow:0 2px 14px rgba(180,120,100,.08)}body[data-theme="rosegold"] .title-main{letter-spacing:.03em}body[data-theme="rosegold"] .title-sub{color:#9C7A76}
+  body[data-theme="rosegold"] .btn-ghost{background:#FEFAF8;border:1px solid #EBD4CB;color:#7A4F4A;border-radius:11px}
+  body[data-theme="rosegold"] .info-bar{background:rgba(255,255,255,.82);border-bottom:1px solid #EBD4CB}body[data-theme="rosegold"] .info-date{color:#5A3B39}body[data-theme="rosegold"] .info-stats b{color:#C98A7D}
+  body[data-theme="rosegold"] .location-card{border:1px solid #EBD4CB;box-shadow:0 3px 14px rgba(180,120,100,.09)}body[data-theme="rosegold"] .location-card.drag-over{border-color:#C98A7D;box-shadow:0 0 0 2px rgba(201,138,125,.2) inset,0 4px 14px rgba(201,138,125,.12)}
+  body[data-theme="rosegold"] .add-location-card{border:1px dashed #E0BFB2;background:#FEFAF8;color:#9C7A76}
+  body[data-theme="rosegold"] .nameplate-chip{background:#FFFCFB;border:1px solid #E7CBC0;color:#5A3B39;border-radius:10px;box-shadow:0 2px 7px rgba(180,120,100,.08)}body[data-theme="rosegold"] .nameplate-chip.plate-red{background:#F6E4DF;border-color:#C98A7D}body[data-theme="rosegold"] .nameplate-chip.plate-blue{background:#E9EDF2;border-color:#8A9BAE}body[data-theme="rosegold"] .nameplate-chip.plate-white{background:#FAF1DC;border-color:#D9B872}
+  body[data-theme="rosegold"] .pool-bar{background:rgba(255,255,255,.94);border-top:1px solid #EBD4CB;box-shadow:0 -3px 14px rgba(180,120,100,.06)}body[data-theme="rosegold"] .pool-label{color:#9C7A76}body[data-theme="rosegold"] .pool-label b{color:#C98A7D}body[data-theme="rosegold"] .pool-add-btn{border:1px dashed #E0BFB2;background:#FEFAF8;color:#A96A5D;border-radius:10px}
+  body[data-theme="rosegold"] .overlay{background:rgba(90,55,55,.2)}body[data-theme="rosegold"] .modal,body[data-theme="rosegold"] .sheet{background:#FFFCFA;border-top:1px solid #EBD4CB;box-shadow:0 -8px 30px rgba(120,80,75,.12)}
+
+  body[data-theme="galaxy"]{--bg:#0B0B24;--surface:#171736;--ink:#EDEBFF;--ink-soft:#8C87B8;--line:#2C2A55;--accent:#8B5CF6;--accent-dark:#6D3FD1;--danger:#FF5C8A;--plate-red:#FF5C8A;--plate-blue:#4FD1E8;--radius:11px;background:#0B0B24;background-image:radial-gradient(1px 1px at 20% 30%,rgba(255,255,255,.5) 50%,transparent 50%),radial-gradient(1px 1px at 70% 60%,rgba(255,255,255,.4) 50%,transparent 50%),radial-gradient(1.5px 1.5px at 40% 80%,rgba(255,255,255,.35) 50%,transparent 50%),radial-gradient(1px 1px at 85% 15%,rgba(255,255,255,.4) 50%,transparent 50%),radial-gradient(circle at 15% 10%,rgba(139,92,246,.16),transparent 32%),radial-gradient(circle at 85% 90%,rgba(79,209,232,.13),transparent 34%);background-size:auto;}
+  body[data-theme="galaxy"] .topbar{background:rgba(11,11,36,.88);border-bottom:1px solid #2C2A55;box-shadow:0 0 22px rgba(139,92,246,.12);backdrop-filter:blur(12px)}body[data-theme="galaxy"] .title-main{letter-spacing:.05em;text-shadow:0 0 16px rgba(139,92,246,.45)}body[data-theme="galaxy"] .title-sub{color:#8C87B8}
+  body[data-theme="galaxy"] .btn-ghost{background:#171736;border:1px solid #4a4590;color:#c9baff;border-radius:9px}
+  body[data-theme="galaxy"] .info-bar{background:rgba(11,11,36,.86);border-bottom:1px solid #2C2A55;color:#8C87B8}body[data-theme="galaxy"] .info-date{color:#EDEBFF}body[data-theme="galaxy"] .info-stats b{color:#8B5CF6;text-shadow:0 0 8px rgba(139,92,246,.4)}
+  body[data-theme="galaxy"] .location-card{background:rgba(23,23,54,.9);border:1px solid #322f66;box-shadow:0 5px 18px rgba(0,0,0,.35)}body[data-theme="galaxy"] .location-card.drag-over{border-color:#8B5CF6;box-shadow:0 0 0 2px rgba(139,92,246,.25) inset,0 0 20px rgba(139,92,246,.18)}
+  body[data-theme="galaxy"] .location-name{color:#EDEBFF}body[data-theme="galaxy"] .location-edit-btn{color:#8C87B8}body[data-theme="galaxy"] .add-location-card{border:1px dashed #3f3b78;background:rgba(23,23,54,.5);color:#8C87B8}
+  body[data-theme="galaxy"] .nameplate-chip{background:#12122e;color:#EDEBFF;border:1px solid #4a4590;border-radius:9px;box-shadow:0 0 8px rgba(139,92,246,.12)}body[data-theme="galaxy"] .nameplate-chip.plate-red{border-color:#FF5C8A;box-shadow:0 0 10px rgba(255,92,138,.22)}body[data-theme="galaxy"] .nameplate-chip.plate-blue{border-color:#4FD1E8;box-shadow:0 0 10px rgba(79,209,232,.22)}body[data-theme="galaxy"] .nameplate-chip.plate-white{border-color:#F0C674;box-shadow:0 0 10px rgba(240,198,116,.2)}
+  body[data-theme="galaxy"] .pool-bar{background:rgba(11,11,36,.92);border-top:1px solid #2C2A55;box-shadow:0 -5px 20px rgba(139,92,246,.08);backdrop-filter:blur(12px)}body[data-theme="galaxy"] .pool-label{color:#8C87B8}body[data-theme="galaxy"] .pool-label b{color:#8B5CF6}body[data-theme="galaxy"] .pool-add-btn{border:1px solid #4a4590;background:#171736;color:#c9baff;border-radius:9px}
+  body[data-theme="galaxy"] .overlay{background:rgba(3,3,14,.75);backdrop-filter:blur(5px)}body[data-theme="galaxy"] .modal,body[data-theme="galaxy"] .sheet{background:#171736;border-top:1px solid #4a4590;box-shadow:0 -12px 38px rgba(0,0,0,.5)}
+  @keyframes galaxyTwinkleA{0%,100%{opacity:.2}50%{opacity:.9}}
+  @keyframes galaxyTwinkleB{0%,100%{opacity:.85}50%{opacity:.25}}
+  body[data-theme="galaxy"]::before,body[data-theme="galaxy"]::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-repeat:no-repeat;}
+  body[data-theme="galaxy"]::before{
+    background-image:
+      radial-gradient(1.6px 1.6px at 12% 22%,#fff 50%,transparent 50%),
+      radial-gradient(1.2px 1.2px at 34% 68%,#fff 50%,transparent 50%),
+      radial-gradient(2px 2px at 58% 12%,#fff 50%,transparent 50%),
+      radial-gradient(1.2px 1.2px at 78% 52%,#fff 50%,transparent 50%),
+      radial-gradient(1.6px 1.6px at 92% 78%,#fff 50%,transparent 50%),
+      radial-gradient(1.2px 1.2px at 6% 85%,#fff 50%,transparent 50%);
+    animation:galaxyTwinkleA 2.6s ease-in-out infinite;
+  }
+  body[data-theme="galaxy"]::after{
+    background-image:
+      radial-gradient(1.2px 1.2px at 22% 45%,#fff 50%,transparent 50%),
+      radial-gradient(1.6px 1.6px at 46% 88%,#fff 50%,transparent 50%),
+      radial-gradient(1.2px 1.2px at 68% 30%,#fff 50%,transparent 50%),
+      radial-gradient(2px 2px at 85% 62%,#fff 50%,transparent 50%),
+      radial-gradient(1.2px 1.2px at 4% 40%,#fff 50%,transparent 50%),
+      radial-gradient(1.6px 1.6px at 62% 6%,#fff 50%,transparent 50%);
+    animation:galaxyTwinkleB 3.4s ease-in-out infinite;
+    animation-delay:.8s;
+  }
+
+  /* ---------- shonen battle (manga-style energy) ---------- */
+  body[data-theme="shonen"]{--bg:#FFF6E9;--surface:#FFFFFF;--ink:#201A14;--ink-soft:#8A7358;--line:#2A2A2A;--accent:#FF6B00;--accent-dark:#CC5500;--danger:#E63946;--plate-red:#E63946;--plate-blue:#1E5FAE;--radius:8px;background-color:#FFF6E9;background-image:repeating-conic-gradient(from 0deg at 50% -10%,rgba(255,170,0,.09) 0deg 4deg,transparent 4deg 12deg),radial-gradient(circle,rgba(32,26,20,.05) 1px,transparent 1px);background-size:100% 100%,7px 7px;}
+  body[data-theme="shonen"] .topbar{background:#FFFFFF;border-bottom:3px solid #201A14;box-shadow:0 4px 0 rgba(255,107,0,.18)}body[data-theme="shonen"] .title-main{font-weight:900;letter-spacing:.04em;text-shadow:2px 2px 0 #FF6B00}body[data-theme="shonen"] .title-sub{color:#8A7358}
+  body[data-theme="shonen"] .btn-ghost{background:#FFFFFF;border:2px solid #201A14;color:#CC5500;border-radius:8px;box-shadow:2px 2px 0 #201A14}
+  body[data-theme="shonen"] .info-bar{background:#FFFCF6;border-bottom:2px solid #201A14;color:#8A7358}body[data-theme="shonen"] .info-date{color:#201A14}body[data-theme="shonen"] .info-stats b{color:#FF6B00}
+  body[data-theme="shonen"] .location-card{background:#FFFFFF;border:2px solid #201A14;border-radius:8px;box-shadow:3px 3px 0 #201A14}body[data-theme="shonen"] .location-card.drag-over{border-color:#FF6B00;box-shadow:0 0 0 2px rgba(255,107,0,.22) inset,3px 3px 0 #201A14}
+  body[data-theme="shonen"] .location-name{color:#201A14}body[data-theme="shonen"] .location-edit-btn{color:#8A7358}body[data-theme="shonen"] .add-location-card{border:2px dashed #201A14;background:#FFFCF6;color:#8A7358}
+  body[data-theme="shonen"] .nameplate-chip{background:#FFFFFF;color:#201A14;border:2px solid #201A14;border-radius:7px;font-weight:800;box-shadow:2px 2px 0 #201A14}body[data-theme="shonen"] .nameplate-chip.plate-red{background:#FDE6E4;border-color:#E63946}body[data-theme="shonen"] .nameplate-chip.plate-blue{background:#E3EBF6;border-color:#1E5FAE}body[data-theme="shonen"] .nameplate-chip.plate-white{background:#FFF6D9;border-color:#FFC400}
+  body[data-theme="shonen"] .pool-bar{background:#FFFCF6;border-top:3px solid #201A14;box-shadow:0 -4px 0 rgba(255,107,0,.15)}body[data-theme="shonen"] .pool-label{color:#8A7358}body[data-theme="shonen"] .pool-label b{color:#FF6B00}body[data-theme="shonen"] .pool-add-btn{border:2px solid #201A14;background:#FFFFFF;color:#CC5500;border-radius:8px;box-shadow:1px 1px 0 #201A14}
+  body[data-theme="shonen"] .overlay{background:rgba(20,15,10,.55)}body[data-theme="shonen"] .modal,body[data-theme="shonen"] .sheet{background:#FFFFFF;border-top:3px solid #FF6B00;box-shadow:0 -10px 0 rgba(32,26,20,.14)}
+
+.theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:8px;}
+  .theme-choice{position:relative;min-height:76px;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:left;background:var(--bg);color:var(--ink);cursor:pointer;overflow:hidden;}
+  .theme-choice:active{transform:scale(.98);}
+  .theme-choice.selected{outline:2px solid var(--accent);outline-offset:1px;}
+  .theme-choice b{display:block;font-size:13px;margin-bottom:5px;}
+  .theme-preview{display:flex;gap:4px;align-items:center;}
+  .theme-preview i{display:block;width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.18);}
+
+/* ===== Theme Upgrade Pack =====
+   Existing moods preserved; only depth, texture, hierarchy and interaction polish upgraded.
+*/
+
+/* --- Cyber: industrial HUD / terminal depth --- */
+body[data-theme="cyber"]{
+  --cyber-cyan:#00e5ff;
+  --cyber-green:#b8ff3d;
+  background-image:
+    linear-gradient(rgba(0,229,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.035) 1px,transparent 1px),
+    radial-gradient(circle at 85% 15%,rgba(0,229,255,.07),transparent 28%);
+  background-size:24px 24px,24px 24px,100% 100%;
+}
+body[data-theme="cyber"] .topbar{
+  border-bottom:1px solid #1d6b80;
+  box-shadow:0 2px 0 rgba(0,229,255,.08),0 8px 28px rgba(0,0,0,.35);
+}
+body[data-theme="cyber"] .topbar::after{
+  content:"";
+  position:absolute;left:0;bottom:-1px;width:28%;height:1px;background:#00e5ff;
+  box-shadow:0 0 12px #00e5ff;
+}
+body[data-theme="cyber"] .title-main{
+  text-transform:uppercase;
+  text-shadow:0 0 8px rgba(0,229,255,.5),2px 0 0 rgba(255,88,116,.12);
+}
+body[data-theme="cyber"] .location-card{
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(145deg,rgba(14,24,34,.98),rgba(9,15,23,.96));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 7px 20px rgba(0,0,0,.34);
+}
+body[data-theme="cyber"] .location-card::before{
+  content:"";position:absolute;left:0;top:0;width:3px;height:100%;
+  background:linear-gradient(#00e5ff,transparent 65%);
+  opacity:.45;
+}
+body[data-theme="cyber"] .nameplate-chip{
+  background:linear-gradient(180deg,#13232e,#0c151e);
+  border-color:#456d7a;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 9px rgba(0,229,255,.09);
+}
+body[data-theme="cyber"] .nameplate-chip.plate-white{
+  border-color:#b8ff3d;color:#d9ff9c;box-shadow:0 0 9px rgba(184,255,61,.12);
+}
+body[data-theme="cyber"] .pool-bar{
+  border-top-color:#1d6b80;
+  box-shadow:0 -6px 24px rgba(0,0,0,.35),0 -1px 0 rgba(0,229,255,.08);
+}
+
+/* --- Apple風: refined glass / native-system feel --- */
+body[data-theme="apple"]{
+  background:
+    radial-gradient(circle at 15% 0%,rgba(0,122,255,.055),transparent 30%),
+    radial-gradient(circle at 90% 100%,rgba(88,86,214,.045),transparent 34%),
+    #f5f5f7;
+}
+body[data-theme="apple"] .topbar,
+body[data-theme="apple"] .info-bar,
+body[data-theme="apple"] .pool-bar{
+  backdrop-filter:saturate(180%) blur(22px);
+  -webkit-backdrop-filter:saturate(180%) blur(22px);
+}
+body[data-theme="apple"] .title-main{font-weight:750;letter-spacing:-.025em;}
+body[data-theme="apple"] .location-card{
+  border-color:rgba(0,0,0,.065);
+  box-shadow:0 1px 2px rgba(0,0,0,.025),0 7px 22px rgba(0,0,0,.055);
+  transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+body[data-theme="apple"] .location-card:active{
+  transform:scale(.995);
+}
+body[data-theme="apple"] .nameplate-chip{
+  background:linear-gradient(180deg,#fff,#fafafa);
+  border-color:#c9c9ce;
+  box-shadow:0 1px 3px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.9);
+}
+body[data-theme="apple"] .nameplate-chip.plate-white{
+  border-color:#a58a35;color:#745f16;
+}
+body[data-theme="apple"] .btn-ghost{
+  box-shadow:0 1px 3px rgba(0,0,0,.05);
+}
+
+/* --- Retro game: CRT / pixel UI --- */
+body[data-theme="retro"]{
+  background:
+    linear-gradient(rgba(255,255,255,.018) 50%,rgba(0,0,0,.035) 50%),
+    radial-gradient(circle at 50% 0%,#39265a 0,#16112a 62%);
+  background-size:100% 4px,100% 100%;
+}
+body[data-theme="retro"] .topbar{
+  border-bottom-color:#72548c;
+  box-shadow:0 4px 0 #0b0714,0 0 22px rgba(255,211,78,.08);
+}
+body[data-theme="retro"] .title-main{
+  text-shadow:2px 2px 0 #0b0714,4px 4px 0 rgba(255,101,122,.18);
+}
+body[data-theme="retro"] .location-card{
+  position:relative;
+  background:linear-gradient(180deg,#241b40,#1e1735);
+  border-color:#59446e;
+  box-shadow:3px 3px 0 #090611,0 0 0 1px rgba(255,255,255,.025) inset;
+}
+body[data-theme="retro"] .location-card::after{
+  content:"";position:absolute;inset:3px;border:1px solid rgba(255,211,78,.035);pointer-events:none;
+}
+body[data-theme="retro"] .nameplate-chip{
+  background:#30234e;
+  border-color:#9a84ae;
+  box-shadow:2px 2px 0 #0b0715,0 0 0 1px rgba(255,255,255,.025) inset;
+  text-shadow:1px 1px 0 #0b0715;
+}
+body[data-theme="retro"] .nameplate-chip.plate-white{
+  border-color:#ffd34e;color:#fff1ad;
+}
+
+/* --- Midnight: luxury night / deep navy --- */
+body[data-theme="midnight"]{
+  background:
+    radial-gradient(circle at 78% 0%,rgba(212,175,55,.09),transparent 27%),
+    radial-gradient(circle at 10% 80%,rgba(76,141,255,.055),transparent 30%),
+    #0D1321;
+}
+body[data-theme="midnight"] .topbar{
+  border-bottom-color:#3a4568;
+  box-shadow:0 2px 22px rgba(0,0,0,.38),0 1px 0 rgba(212,175,55,.06);
+}
+body[data-theme="midnight"] .title-main{
+  font-weight:750;
+  text-shadow:0 0 14px rgba(212,175,55,.28);
+}
+body[data-theme="midnight"] .location-card{
+  background:linear-gradient(145deg,rgba(25,35,59,.98),rgba(17,25,43,.97));
+  border-color:#303b59;
+  box-shadow:0 8px 22px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);
+}
+body[data-theme="midnight"] .nameplate-chip{
+  background:linear-gradient(180deg,#141f35,#0f1829);
+  border-color:#465477;
+  box-shadow:0 2px 9px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.035);
+}
+body[data-theme="midnight"] .nameplate-chip.plate-white{
+  border-color:#d4af37;color:#e8cd72;
+}
+body[data-theme="midnight"] .pool-bar{
+  box-shadow:0 -8px 24px rgba(0,0,0,.3),0 -1px 0 rgba(212,175,55,.05);
+}
+
+/* --- Carbon Racing: motorsport cockpit --- */
+body[data-theme="carbon"]{
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.028) 0 1px,transparent 1px 7px),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.018) 0 1px,transparent 1px 7px),
+    radial-gradient(circle at 90% 0%,rgba(255,30,60,.07),transparent 28%),
+    #0A0A0C;
+}
+body[data-theme="carbon"] .topbar{
+  position:relative;
+  border-bottom:2px solid #ff1e3c;
+  box-shadow:0 3px 0 #070709,0 0 26px rgba(255,30,60,.12);
+}
+body[data-theme="carbon"] .topbar::after{
+  content:"";position:absolute;right:0;bottom:-2px;width:34%;height:2px;
+  background:linear-gradient(90deg,transparent,#00b4ff,#ff1e3c);
+}
+body[data-theme="carbon"] .title-main{
+  font-weight:900;letter-spacing:.08em;
+  transform:skew(-5deg);
+  text-shadow:0 0 12px rgba(255,30,60,.38);
+}
+body[data-theme="carbon"] .location-card{
+  background:linear-gradient(145deg,#171719,#101012);
+  border-color:#323236;
+  box-shadow:0 5px 18px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.025);
+  overflow:hidden;
+}
+body[data-theme="carbon"] .location-card::before{
+  content:"";position:absolute;left:0;top:0;width:100%;height:2px;
+  background:linear-gradient(90deg,#ff1e3c 0 24%,transparent 24% 100%);
+}
+body[data-theme="carbon"] .nameplate-chip{
+  background:linear-gradient(180deg,#202024,#151517);
+  border-color:#454549;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 2px 5px rgba(0,0,0,.3);
+}
+body[data-theme="carbon"] .nameplate-chip.plate-white{
+  border-color:#c7cbd1;color:#e2e4e7;
+}
+body[data-theme="carbon"] .pool-bar{
+  border-top-color:#38383c;
+  box-shadow:0 -7px 22px rgba(0,0,0,.4);
+}
+
+/* --- 墨: Japanese ink / washi refinement --- */
+body[data-theme="ink"]{
+  background:
+    radial-gradient(circle at 20% 10%,rgba(120,100,70,.045),transparent 28%),
+    repeating-linear-gradient(0deg,rgba(80,65,45,.018) 0 1px,transparent 1px 5px),
+    #F7F5F0;
+}
+body[data-theme="ink"] .topbar{
+  border-bottom:3px double #1a1a1a;
+  box-shadow:0 3px 12px rgba(0,0,0,.07);
+}
+body[data-theme="ink"] .title-main{
+  font-weight:800;letter-spacing:.08em;
+}
+body[data-theme="ink"] .location-card{
+  background:rgba(255,255,255,.82);
+  border-color:#2a2a2a;
+  box-shadow:2px 2px 0 rgba(0,0,0,.08),inset 0 0 0 1px rgba(255,255,255,.6);
+}
+body[data-theme="ink"] .location-card::before{
+  content:"";position:absolute;left:0;top:0;width:2px;height:100%;
+  background:#1a1a1a;opacity:.65;
+}
+body[data-theme="ink"] .nameplate-chip{
+  background:#fffefb;
+  border-color:#2a2a2a;
+  box-shadow:1px 1px 0 rgba(0,0,0,.13);
+}
+body[data-theme="ink"] .nameplate-chip.plate-white{
+  border-color:#9b7b20;color:#725b13;
+}
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div>
+      <span class="title-main">配置ボード</span><span class="title-sub" id="templateNameLabel"></span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;"><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
+  </header>
+
+  <div class="info-bar">
+    <span class="info-date" id="dateBar"></span>
+    <span class="info-stats" id="statsBar"></span>
+  </div>
+
+  <main class="board-wrap">
+    <div class="board-grid" id="boardGrid"></div>
+  </main>
+
+  <footer class="pool-bar">
+    <div class="pool-label"><b>未配置</b><span>チップを長押ししたまま配置場所まで動かします</span></div>
+    <div class="pool-row">
+      <button class="pool-add-btn" id="poolAddBtn" type="button">＋</button>
+      <div class="pool-scroller" id="poolScroller"></div>
+    </div>
+  </footer>
+
+  <div class="overlay" id="themeOverlay">
+    <div class="sheet" id="themeSheet">
+      <div class="sheet-header"><span>着せ替え</span><button class="icon-btn" id="closeThemeBtn" type="button">×</button></div>
+      <div class="sheet-section-title">デザインを選択</div>
+      <div class="theme-grid" id="themeGrid"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="modalOverlay">
+    <div class="modal" id="modalBox"></div>
+  </div>
+
+  <div class="overlay" id="templateOverlay">
+    <div class="sheet" id="templateSheet">
+      <div class="sheet-header">
+        <span>メニュー</span>
+        <button class="icon-btn" id="closeTemplateSheetBtn" type="button">×</button>
+      </div>
+
+      <button type="button" class="sheet-section-title sheet-collapse-toggle" id="templateSectionToggle" aria-expanded="false">
+        <span>テンプレート</span><span class="collapse-arrow">▾</span>
+      </button>
+      <div class="sheet-section collapsible" id="templateSectionContent">
+        <div class="collapsible-inner">
+          <div class="sheet-btn-row">
+            <button class="btn-primary" id="saveTemplateBtn" type="button">現在の配置場所を保存</button>
+            <button class="btn-secondary" id="importTemplateBtn" type="button">共有コードから追加</button>
+          </div>
+          <div class="template-list" id="templateList"></div>
+        </div>
+      </div>
+
+      <div class="sheet-divider"></div>
+
+      <button type="button" class="sheet-section-title sheet-collapse-toggle" id="boardSectionToggle" aria-expanded="false">
+        <span>配置の共有</span><span class="collapse-arrow">▾</span>
+      </button>
+      <div class="sheet-section collapsible" id="boardSectionContent">
+        <div class="collapsible-inner">
+          <p class="confirm-msg" style="margin:0 0 8px;">配置場所・名簿に加えて「誰がどこにいるか」もそのまま保存・共有できます。</p>
+          <div class="sheet-btn-row">
+            <button class="btn-primary" id="saveBoardBtn" type="button">今の配置を保存</button>
+            <button class="btn-secondary" id="importBoardBtn" type="button">配置コードから読み込む</button>
+          </div>
+          <div class="template-list" id="boardList"></div>
+        </div>
+      </div>
+
+      <div class="sheet-divider"></div>
+
+      <div class="sheet-section-title">操作</div>
+      <div class="sheet-section">
+        <button class="btn-secondary" id="unassignAllBtn" type="button" style="width:100%;">配置を一括解除</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "placement-board-state-v1";
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default" };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayISO(){
+    var d = new Date();
+    var m = (d.getMonth() + 1).toString().padStart(2, "0");
+    var day = d.getDate().toString().padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+  function formatDateJP(iso){
+    var parts = iso.split("-");
+    var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+    var weekdays = ["日","月","火","水","木","金","土"];
+    var w = weekdays[new Date(y, m - 1, d).getDay()];
+    return m + "月" + d + "日（" + w + "）";
+  }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  // ---------- template share codes ----------
+  var TEMPLATE_CODE_PREFIX = "P3:";
+  var TYPE_CODES = ["2行", "2人", "3人"];
+  var COLOR_CODES = ["white", "red", "blue"];
+  var CATEGORY_LETTERS = ["S", "M", "L"];
+  var SLOT_CODES = ["", "top", "bottom", "left"];
+  function typeToCode(t){ var i = TYPE_CODES.indexOf(t); return i === -1 ? 0 : i; }
+  function codeToType(c){ return TYPE_CODES[c] || "2行"; }
+  function colorToCode(c){ var i = COLOR_CODES.indexOf(c); return i === -1 ? 0 : i; }
+  function codeToColor(c){ return COLOR_CODES[c] || "white"; }
+  // categories are a small set (S/M/L) that can be combined, so we pack them
+  // into a single-digit bitmask instead of one index per record.
+  function categoriesToCode(arr){
+    var list = Array.isArray(arr) ? arr : (arr ? [arr] : []);
+    var code = 0;
+    list.forEach(function(c){
+      var idx = CATEGORY_LETTERS.indexOf(c);
+      if(idx !== -1) code |= (1 << idx);
+    });
+    return code;
+  }
+  function codeToCategories(c){
+    var code = parseInt(c, 10) || 0;
+    var list = [];
+    CATEGORY_LETTERS.forEach(function(letter, idx){
+      if(code & (1 << idx)) list.push(letter);
+    });
+    return list;
+  }
+  function slotToCode(s){ var i = SLOT_CODES.indexOf(s || ""); return i === -1 ? 0 : i; }
+  function codeToSlot(c){ var v = SLOT_CODES[c]; return v ? v : null; }
+
+  // Plain control characters as delimiters: never appear in normal typed
+  // names, so no escaping is needed and no JSON punctuation overhead either.
+  var FS = "\u001F"; // between fields within one record
+  var RS = "\u001E"; // between records in a list
+  var GS = "\u001D"; // between the name / locations / nameplates sections
+
+  async function encodeTemplateCode(tpl){
+    var locStr = tpl.locationNames.map(function(item){
+      var name = (typeof item === "string") ? item : item.name;
+      var type = (typeof item === "string" || !item.type) ? "2行" : item.type;
+      var leftSlot = (typeof item === "string") ? 0 : (item.leftSlot ? 1 : 0);
+      return name + FS + typeToCode(type) + FS + leftSlot;
+    }).join(RS);
+    var npStr = (tpl.nameplates || []).map(function(np){
+      var number = (np.number === null || np.number === undefined) ? "" : np.number;
+      var time = (np.time === null || np.time === undefined) ? "" : np.time;
+      return np.name + FS + number + FS + time + FS + colorToCode(np.color) + FS + categoriesToCode(np.categories);
+    }).join(RS);
+    var payload = tpl.name + GS + locStr + GS + npStr;
+    var bytes = new TextEncoder().encode(payload);
+    if(typeof CompressionStream !== "undefined"){
+      var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+      var compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+      var b64 = btoa(String.fromCharCode.apply(null, compressed));
+      return TEMPLATE_CODE_PREFIX + b64;
+    }
+    // Older browsers: keep the same P3 format without compression.
+    var b64plain = btoa(unescape(encodeURIComponent(payload)));
+    return TEMPLATE_CODE_PREFIX + b64plain;
+  }
+
+  async function decodeTemplateCode(code){
+    var trimmed = (code || "").trim();
+    if(trimmed.indexOf(TEMPLATE_CODE_PREFIX) !== 0){
+      throw new Error("このコードは読み込めませんでした。コピーした共有コード全体を貼り付けてください。");
+    }
+    var b64 = trimmed.slice(TEMPLATE_CODE_PREFIX.length);
+    var payload;
+    try{
+      var binary = atob(b64);
+      var bytes = Uint8Array.from(binary, function(c){ return c.charCodeAt(0); });
+      // P3 compressed format (gzip). If it isn't gzip, accept legacy P3 codes.
+      if(bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b && typeof DecompressionStream !== "undefined"){
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        payload = new TextDecoder().decode(await new Response(stream).arrayBuffer());
+      }else{
+        payload = decodeURIComponent(escape(binary));
+      }
+    }catch(e){
+      throw new Error("コードの形式が正しくありません。");
+    }
+    var sections = payload.split(GS);
+    var name = sections[0];
+    if(!name){
+      throw new Error("コードの中身が正しくありません。");
+    }
+    var locStr = sections[1] || "";
+    var npStr = sections[2] || "";
+    var locationNames = locStr.length === 0 ? [] : locStr.split(RS).map(function(rec){
+      var f = rec.split(FS);
+      return { name: f[0], type: codeToType(parseInt(f[1], 10)), leftSlot: f[2] === "1" };
+    });
+    var nameplates = npStr.length === 0 ? [] : npStr.split(RS).map(function(rec){
+      var f = rec.split(FS);
+      return {
+        name: f[0],
+        number: f[1] === "" ? null : parseInt(f[1], 10),
+        time: f[2] === "" ? null : parseInt(f[2], 10),
+        color: codeToColor(parseInt(f[3], 10)),
+        categories: codeToCategories(parseInt(f[4], 10))
+      };
+    });
+    return { name: name, locationNames: locationNames, nameplates: nameplates };
+  }
+
+  // ---------- board share codes (locations + nameplates + who sits where) ----------
+  var BOARD_CODE_PREFIX = "P4:";
+
+  async function encodeBoardCode(){
+    return encodeBoardPayload(buildBoardPayloadFromState());
+  }
+
+  function buildBoardPayloadFromState(){
+    var locIndex = {};
+    state.locations.forEach(function(l, i){ locIndex[l.id] = i; });
+    var locationNames = state.locations.map(function(l){
+      return { name: l.name, type: l.type || "2行", leftSlot: !!l.leftSlot };
+    });
+    var nameplates = state.nameplates.map(function(np){
+      var li = (np.locationId !== null && np.locationId !== undefined && locIndex.hasOwnProperty(np.locationId)) ? locIndex[np.locationId] : null;
+      return {
+        name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories,
+        locationIndex: li, slot: (li === null) ? null : np.slot
+      };
+    });
+    return { boardDate: state.boardDate || null, locationNames: locationNames, nameplates: nameplates };
+  }
+
+  async function encodeBoardPayload(payload){
+    var locStr = payload.locationNames.map(function(l){
+      var leftSlot = l.leftSlot ? 1 : 0;
+      return l.name + FS + typeToCode(l.type || "2行") + FS + leftSlot;
+    }).join(RS);
+    var npStr = payload.nameplates.map(function(np){
+      var number = (np.number === null || np.number === undefined) ? "" : np.number;
+      var time = (np.time === null || np.time === undefined) ? "" : np.time;
+      var li = (np.locationIndex === null || np.locationIndex === undefined) ? "" : np.locationIndex;
+      var sc = (li === "") ? "" : slotToCode(np.slot);
+      return np.name + FS + number + FS + time + FS + colorToCode(np.color) + FS + categoriesToCode(np.categories) + FS + li + FS + sc;
+    }).join(RS);
+    var payloadStr = (payload.boardDate || "") + GS + locStr + GS + npStr;
+    var bytes = new TextEncoder().encode(payloadStr);
+    if(typeof CompressionStream !== "undefined"){
+      var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"));
+      var compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+      var b64 = btoa(String.fromCharCode.apply(null, compressed));
+      return BOARD_CODE_PREFIX + b64;
+    }
+    var b64plain = btoa(unescape(encodeURIComponent(payloadStr)));
+    return BOARD_CODE_PREFIX + b64plain;
+  }
+
+  async function decodeBoardCode(code){
+    var trimmed = (code || "").trim();
+    if(trimmed.indexOf(BOARD_CODE_PREFIX) !== 0){
+      throw new Error("このコードは読み込めませんでした。コピーした配置コード全体を貼り付けてください。");
+    }
+    var b64 = trimmed.slice(BOARD_CODE_PREFIX.length);
+    var payload;
+    try{
+      var binary = atob(b64);
+      var bytes = Uint8Array.from(binary, function(c){ return c.charCodeAt(0); });
+      if(bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b && typeof DecompressionStream !== "undefined"){
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        payload = new TextDecoder().decode(await new Response(stream).arrayBuffer());
+      }else{
+        payload = decodeURIComponent(escape(binary));
+      }
+    }catch(e){
+      throw new Error("コードの形式が正しくありません。");
+    }
+    var sections = payload.split(GS);
+    var boardDate = sections[0] || null;
+    var locStr = sections[1] || "";
+    var npStr = sections[2] || "";
+    var locationNames = locStr.length === 0 ? [] : locStr.split(RS).map(function(rec){
+      var f = rec.split(FS);
+      return { name: f[0], type: codeToType(parseInt(f[1], 10)), leftSlot: f[2] === "1" };
+    });
+    var nameplates = npStr.length === 0 ? [] : npStr.split(RS).map(function(rec){
+      var f = rec.split(FS);
+      return {
+        name: f[0],
+        number: f[1] === "" ? null : parseInt(f[1], 10),
+        time: f[2] === "" ? null : parseInt(f[2], 10),
+        color: codeToColor(parseInt(f[3], 10)),
+        categories: codeToCategories(parseInt(f[4], 10)),
+        locationIndex: (f[5] === "" || f[5] === undefined) ? null : parseInt(f[5], 10),
+        slot: (f[6] === "" || f[6] === undefined) ? null : codeToSlot(parseInt(f[6], 10))
+      };
+    });
+    return { boardDate: boardDate, locationNames: locationNames, nameplates: nameplates };
+  }
+
+  function applyBoardPayload(payload, opts){
+    opts = opts || {};
+    var newLocations = payload.locationNames.map(function(item){
+      return { id: uid(), name: item.name, type: item.type, leftSlot: !!item.leftSlot };
+    });
+    state.locations = newLocations;
+    state.nameplates = payload.nameplates.map(function(np){
+      var locId = (np.locationIndex !== null && np.locationIndex !== undefined && newLocations[np.locationIndex]) ? newLocations[np.locationIndex].id : null;
+      return {
+        id: uid(), name: np.name, color: np.color || "white",
+        locationId: locId, slot: locId ? np.slot : null,
+        number: np.number, time: np.time, categories: Array.isArray(np.categories) ? np.categories : []
+      };
+    });
+    if(opts.keepDate && payload.boardDate){ state.boardDate = payload.boardDate; renderDateBar(); }
+    state.currentTemplateName = null;
+    updateTemplateLabel();
+    scheduleSave(); renderAll(); closeTemplateSheet();
+  }
+
+  // ---------- persistence ----------
+  // Fully offline: persistence uses localStorage only. No network or cloud
+  // storage of any kind is used by this tool.
+  var saveTimer = null;
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 150);
+  }
+  function saveState(){
+    var json = JSON.stringify(state);
+    try{ localStorage.setItem(STORAGE_KEY, json); }
+    catch(e){ console.error("localStorage save failed", e); }
+  }
+  function loadState(){
+    var raw = null;
+    try{ raw = localStorage.getItem(STORAGE_KEY); }
+    catch(e){ /* localStorage unavailable, ignore */ }
+    if(raw){
+      try{
+        var parsed = JSON.parse(raw);
+        state.locations = parsed.locations || [];
+        state.nameplates = parsed.nameplates || [];
+        state.templates = parsed.templates || [];
+        state.boards = parsed.boards || [];
+        state.currentTemplateName = parsed.currentTemplateName || null;
+        state.boardDate = parsed.boardDate || null;
+        state.theme = parsed.theme || "default";
+      }catch(e){ /* corrupted data, ignore */ }
+    }
+    // migrate legacy single "category" (string, incl. old "W") -> "categories" array
+    function migrateCategory(n){
+      if(Array.isArray(n.categories)) return;
+      var c = n.category;
+      if(c === "W") c = "M";
+      n.categories = c ? [c] : [];
+      delete n.category;
+    }
+    (state.nameplates || []).forEach(migrateCategory);
+    (state.templates || []).forEach(function(t){ (t.nameplates || []).forEach(migrateCategory); });
+    (state.boards || []).forEach(function(b){ (b.nameplates || []).forEach(migrateCategory); });
+    if(!state.boardDate) state.boardDate = todayISO();
+    document.body.dataset.theme = state.theme || "default";
+    updateTemplateLabel();
+    renderDateBar();
+    renderAll();
+  }
+
+  // ---------- DOM refs ----------
+  var boardGrid = document.getElementById("boardGrid");
+  var poolScroller = document.getElementById("poolScroller");
+  var poolBarEl = document.querySelector(".pool-bar");
+  var modalOverlay = document.getElementById("modalOverlay");
+  var modalBox = document.getElementById("modalBox");
+  var templateOverlay = document.getElementById("templateOverlay");
+
+  // ---------- render ----------
+  function renderAll(){ renderBoard(); renderPool(); renderStats(); }
+
+  function renderStats(){
+    var statsBar = document.getElementById("statsBar");
+    var placed = state.nameplates.filter(function(n){ return !!n.locationId; });
+    var counts = { S:0, M:0, L:0 };
+    placed.forEach(function(n){
+      (n.categories || []).forEach(function(c){
+        if(Object.prototype.hasOwnProperty.call(counts, c)) counts[c]++;
+      });
+    });
+    statsBar.innerHTML =
+      'S:<b>' + counts.S + '</b> M:<b>' + counts.M + '</b> L:<b>' + counts.L + '</b>　合計<b>' + placed.length + '</b>人';
+  }
+
+  function colorClass(color){
+    return color === "red" ? "plate-red" : color === "blue" ? "plate-blue" : "plate-white";
+  }
+
+  function sortByNumber(arr){
+    return arr.slice().sort(function(a, b){
+      var an = (a.number === null || a.number === undefined) ? null : a.number;
+      var bn = (b.number === null || b.number === undefined) ? null : b.number;
+      if(an !== null && bn !== null) return an - bn;
+      if(an !== null) return -1;
+      if(bn !== null) return 1;
+      return 0;
+    });
+  }
+
+  function sortByTimeField(arr){
+    return arr.slice().sort(function(a, b){
+      var at = (a.time === null || a.time === undefined) ? null : a.time;
+      var bt = (b.time === null || b.time === undefined) ? null : b.time;
+      if(at !== null && bt !== null) return at - bt;
+      if(at !== null) return -1;
+      if(bt !== null) return 1;
+      return 0;
+    });
+  }
+
+  // If another nameplate already holds `newNumber`, push it (and everything
+  // after it) back by one to make room, so numbers never collide.
+  function insertNumberIfColliding(newNumber, excludeId){
+    if(newNumber === null || newNumber === undefined) return;
+    var collision = state.nameplates.some(function(n){
+      return n.id !== excludeId && n.number === newNumber;
+    });
+    if(!collision) return;
+    state.nameplates.forEach(function(n){
+      if(n.id !== excludeId && n.number !== null && n.number !== undefined && n.number >= newNumber){
+        n.number = n.number + 1;
+      }
+    });
+  }
+
+  function createChip(np){
+    var chip = document.createElement("div");
+    chip.className = "nameplate-chip " + colorClass(np.color);
+    chip.textContent = np.name;
+    chip.dataset.nameplateId = np.id;
+    // タップ編集はclickでも受ける。pointerイベントがOS/ブラウザ側で
+    // キャンセルされた場合でも、通常のタップなら編集を開けるようにする。
+    chip.addEventListener("click", function(e){
+      if(chip.dataset.suppressClick === "1"){
+        chip.dataset.suppressClick = "0";
+        return;
+      }
+      openEditNameplateModal(np.id);
+    });
+    makeDraggable(chip, np.id);
+    return chip;
+  }
+
+  function buildLocationCard(loc){
+    var card = document.createElement("div");
+    card.className = "location-card";
+    card.dataset.locationId = loc.id;
+    var type = loc.type || "2行";
+    card.dataset.locType = type;
+    var hasLeftSlot = !!(loc.leftSlot && type === "2行");
+    card.dataset.leftSlot = hasLeftSlot ? "1" : "0";
+
+    var nameRow = document.createElement("div");
+    nameRow.className = "location-name-row";
+    var nameSpan = document.createElement("span");
+    nameSpan.className = "location-name";
+    nameSpan.textContent = loc.name;
+    var editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "location-edit-btn";
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", function(e){
+      e.stopPropagation();
+      openEditLocationModal(loc.id);
+    });
+    nameRow.appendChild(nameSpan);
+    nameRow.appendChild(editBtn);
+    card.appendChild(nameRow);
+
+    var body = document.createElement("div");
+    body.className = "location-body";
+    var placedAll = state.nameplates.filter(function(n){ return n.locationId === loc.id; });
+
+    if(type === "2人" || type === "3人"){
+      if(placedAll.length === 0){
+        var hint0 = document.createElement("div");
+        hint0.className = "location-empty-hint";
+        hint0.textContent = "ここに配置";
+        body.appendChild(hint0);
+      } else {
+        var singleHalf = document.createElement("div");
+        singleHalf.className = "location-half";
+        singleHalf.dataset.slot = "top";
+        placedAll = sortByTimeField(placedAll);
+        placedAll.forEach(function(np){ singleHalf.appendChild(createChip(np)); });
+        body.appendChild(singleHalf);
+      }
+    } else if(hasLeftSlot){
+      body.classList.add("location-body-split");
+      var leftItems = sortByTimeField(placedAll.filter(function(n){ return n.slot === "left"; }));
+      var rightItems = sortByTimeField(placedAll.filter(function(n){ return n.slot !== "left"; }));
+
+      var leftSlotEl = document.createElement("div");
+      leftSlotEl.className = "location-half location-left-slot";
+      leftSlotEl.dataset.slot = "left";
+      leftItems.forEach(function(np){ leftSlotEl.appendChild(createChip(np)); });
+
+      var leftDivider = document.createElement("div");
+      leftDivider.className = "location-left-divider";
+
+      var rightArea = document.createElement("div");
+      rightArea.className = "location-right-area";
+      if(rightItems.length === 0 && leftItems.length === 0){
+        var hint1 = document.createElement("div");
+        hint1.className = "location-empty-hint";
+        hint1.textContent = "ここに配置";
+        rightArea.appendChild(hint1);
+      } else {
+        var rTop = sortByTimeField(rightItems.filter(function(n){ return (n.slot || "top") === "top"; }));
+        var rBottom = sortByTimeField(rightItems.filter(function(n){ return n.slot === "bottom"; }));
+
+        var rTopHalf = document.createElement("div");
+        rTopHalf.className = "location-half location-row";
+        rTopHalf.dataset.slot = "top";
+        rTop.forEach(function(np){ rTopHalf.appendChild(createChip(np)); });
+
+        var rDivider = document.createElement("div");
+        rDivider.className = "location-divider";
+
+        var rBottomHalf = document.createElement("div");
+        rBottomHalf.className = "location-half location-row";
+        rBottomHalf.dataset.slot = "bottom";
+        rBottom.forEach(function(np){ rBottomHalf.appendChild(createChip(np)); });
+
+        rightArea.appendChild(rTopHalf);
+        rightArea.appendChild(rDivider);
+        rightArea.appendChild(rBottomHalf);
+      }
+
+      body.appendChild(leftSlotEl);
+      body.appendChild(leftDivider);
+      body.appendChild(rightArea);
+    } else {
+      if(placedAll.length === 0){
+        var hint2 = document.createElement("div");
+        hint2.className = "location-empty-hint";
+        hint2.textContent = "ここに配置";
+        body.appendChild(hint2);
+      } else {
+        var topItems = sortByTimeField(placedAll.filter(function(n){ return (n.slot || "top") === "top"; }));
+        var bottomItems = sortByTimeField(placedAll.filter(function(n){ return n.slot === "bottom"; }));
+
+        var topHalf = document.createElement("div");
+        topHalf.className = "location-half location-row";
+        topHalf.dataset.slot = "top";
+        topItems.forEach(function(np){ topHalf.appendChild(createChip(np)); });
+
+        var divider = document.createElement("div");
+        divider.className = "location-divider";
+
+        var bottomHalf = document.createElement("div");
+        bottomHalf.className = "location-half location-row";
+        bottomHalf.dataset.slot = "bottom";
+        bottomItems.forEach(function(np){ bottomHalf.appendChild(createChip(np)); });
+
+        body.appendChild(topHalf);
+        body.appendChild(divider);
+        body.appendChild(bottomHalf);
+      }
+    }
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderBoard(){
+    boardGrid.innerHTML = "";
+    if(state.locations.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "empty-board-msg";
+      empty.textContent = "まだ配置場所がありません。下の「＋ 配置場所を追加」から作成してください。";
+      boardGrid.appendChild(empty);
+    }
+    for(var idx = 0; idx < state.locations.length; idx++){
+      var loc = state.locations[idx];
+      var type = loc.type || "2行";
+      var isSmall = (type === "2人" || type === "3人");
+
+      if(isSmall){
+        var group = [loc];
+        while(group.length < 3){
+          var next = state.locations[idx + group.length];
+          if(!next) break;
+          var nextType = next.type || "2行";
+          if(nextType === "2人" || nextType === "3人"){ group.push(next); }
+          else break;
+        }
+        if(group.length > 1){
+          var pairRow = document.createElement("div");
+          pairRow.className = "location-pair-row";
+          group.forEach(function(g, gi){
+            pairRow.appendChild(buildLocationCard(g));
+            if(gi < group.length - 1){
+              var pairDivider = document.createElement("div");
+              pairDivider.className = "location-pair-divider";
+              pairRow.appendChild(pairDivider);
+            }
+          });
+          boardGrid.appendChild(pairRow);
+          idx += group.length - 1;
+        } else {
+          boardGrid.appendChild(buildLocationCard(loc));
+        }
+      } else {
+        boardGrid.appendChild(buildLocationCard(loc));
+      }
+    }
+
+    var addCard = document.createElement("div");
+    addCard.className = "add-location-card";
+    addCard.textContent = "＋ 配置場所を追加";
+    addCard.addEventListener("click", openAddLocationModal);
+    boardGrid.appendChild(addCard);
+  }
+
+  function renderPool(){
+    poolScroller.innerHTML = "";
+    var unplaced = sortByNumber(state.nameplates.filter(function(n){ return !n.locationId; }));
+    unplaced.forEach(function(np){ poolScroller.appendChild(createChip(np)); });
+  }
+
+  function updateTemplateLabel(){
+    var lbl = document.getElementById("templateNameLabel");
+    lbl.textContent = state.currentTemplateName ? ("／ " + state.currentTemplateName) : "";
+  }
+
+  function renderDateBar(){
+    document.getElementById("dateBar").textContent = formatDateJP(state.boardDate || todayISO());
+  }
+
+  // ---------- drag & drop (long press then move) ----------
+  function findScrollAncestor(el){
+    return el.closest(".pool-scroller, .location-row, .board-wrap");
+  }
+
+  function cancelMomentum(el){
+    if(el._momentumRAF){
+      cancelAnimationFrame(el._momentumRAF);
+      el._momentumRAF = null;
+    }
+  }
+  function startMomentum(el, velX, velY){
+    cancelMomentum(el);
+    if(Math.abs(velX) < 0.03 && Math.abs(velY) < 0.03) return;
+    var lastTime = performance.now();
+    function step(now){
+      var dt = now - lastTime;
+      lastTime = now;
+      if(dt > 100) dt = 100;
+      el.scrollLeft += -velX * dt;
+      el.scrollTop += -velY * dt;
+      var decay = Math.pow(0.94, dt / 16);
+      velX *= decay; velY *= decay;
+      if(Math.abs(velX) > 0.02 || Math.abs(velY) > 0.02){
+        el._momentumRAF = requestAnimationFrame(step);
+      } else {
+        el._momentumRAF = null;
+      }
+    }
+    el._momentumRAF = requestAnimationFrame(step);
+  }
+
+  function makeDraggable(chipEl, nameplateId){
+    chipEl.addEventListener("pointerdown", function(e){
+      if(e.pointerType === "mouse" && e.button !== 0) return;
+
+      var ctx = {
+        id: nameplateId,
+        startX: e.clientX, startY: e.clientY,
+        lastX: e.clientX, lastY: e.clientY,
+        dragging: false,
+        scrolling: false,
+        scrollEl: null,
+        scrollStartLeft: 0,
+        scrollStartTop: 0,
+        history: [{ x:e.clientX, y:e.clientY, t:performance.now() }],
+        pointerId: e.pointerId,
+        origEl: chipEl,
+        ghost: null, ghostW: 0, ghostH: 0,
+        lastTarget: null,
+        dropSlot: null,
+        timer: null
+      };
+
+      chipEl.classList.add("chip-pressing");
+      ctx.timer = setTimeout(function(){ beginDrag(ctx, ctx.lastX, ctx.lastY); }, 220);
+
+      function onMove(ev){
+        if(ev.pointerId !== ctx.pointerId) return;
+        ctx.lastX = ev.clientX; ctx.lastY = ev.clientY;
+        ctx.history.push({x:ev.clientX,y:ev.clientY,t:performance.now()});
+        if(ctx.history.length > 6) ctx.history.shift();
+
+        if(ctx.scrolling){
+          ev.preventDefault();
+          var dxs = ev.clientX - ctx.startX, dys = ev.clientY - ctx.startY;
+          ctx.scrollEl.scrollLeft = ctx.scrollStartLeft - dxs;
+          ctx.scrollEl.scrollTop = ctx.scrollStartTop - dys;
+          return;
+        }
+
+        if(!ctx.dragging){
+          var dx = ev.clientX - ctx.startX, dy = ev.clientY - ctx.startY;
+          // A small finger wobble is still a tap. Only turn it into scrolling/dragging
+          // after a clearly intentional movement.
+          if(Math.abs(dx) > 28 || Math.abs(dy) > 28){
+            clearTimeout(ctx.timer);
+            chipEl.classList.remove("chip-pressing");
+            var scrollEl = findScrollAncestor(chipEl);
+            if(scrollEl){
+              cancelMomentum(scrollEl);
+              ctx.scrolling = true;
+              ctx.scrollEl = scrollEl;
+              ctx.scrollStartLeft = scrollEl.scrollLeft;
+              ctx.scrollStartTop = scrollEl.scrollTop;
+              ev.preventDefault();
+            } else {
+              cleanup();
+            }
+          }
+          return;
+        }
+
+        ev.preventDefault();
+        moveGhost(ctx, ev.clientX, ev.clientY);
+        updateDropTarget(ctx, ev.clientX, ev.clientY);
+      }
+
+      function onUp(ev){
+        if(ev.pointerId !== ctx.pointerId) return;
+        clearTimeout(ctx.timer);
+        chipEl.classList.remove("chip-pressing");
+
+        var totalDx = Math.abs(ctx.lastX - ctx.startX);
+        var totalDy = Math.abs(ctx.lastY - ctx.startY);
+
+        if(ctx.dragging){
+          if(totalDx < 12 && totalDy < 12){
+            cancelDragVisuals(ctx);
+            ev.preventDefault();
+            openEditNameplateModal(nameplateId);
+          } else {
+            chipEl.dataset.suppressClick = "1";
+            finishDrag(ctx);
+          }
+        } else if(ctx.scrolling){
+          if(totalDx < 20 && totalDy < 20){
+            ctx.scrollEl.scrollLeft = ctx.scrollStartLeft;
+            ctx.scrollEl.scrollTop = ctx.scrollStartTop;
+            ev.preventDefault();
+            openEditNameplateModal(nameplateId);
+          } else {
+            chipEl.dataset.suppressClick = "1";
+            var first = ctx.history[0], last = ctx.history[ctx.history.length - 1];
+            var dt = last.t - first.t;
+            if(dt > 0){
+              startMomentum(ctx.scrollEl, (last.x-first.x)/dt, (last.y-first.y)/dt);
+            }
+          }
+        } else {
+          // 普通のタップはclick側で編集を開く。
+          // pointerupでpreventDefaultしないことで、Androidのclickフォールバックを確実に発火させる。
+        }
+        cleanup();
+      }
+
+      function cleanup(){
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
+      }
+
+      document.addEventListener("pointermove", onMove, {passive:false});
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  function cancelDragVisuals(ctx){
+    if(ctx.ghost) ctx.ghost.remove();
+    ctx.origEl.classList.remove("chip-dragging-source");
+    if(ctx.lastTarget){
+      ctx.lastTarget.classList.remove("drag-over");
+      clearHalfHighlight(ctx.lastTarget);
+    }
+    poolBarEl.classList.remove("drag-over-pool");
+  }
+
+  function beginDrag(ctx, clientX, clientY){
+    ctx.dragging = true;
+    ctx.origEl.classList.add("chip-dragging-source");
+    var ghost = ctx.origEl.cloneNode(true);
+    ghost.classList.add("drag-ghost");
+    document.body.appendChild(ghost);
+    ctx.ghost = ghost;
+    ctx.ghostW = ghost.offsetWidth;
+    ctx.ghostH = ghost.offsetHeight;
+    moveGhost(ctx, clientX, clientY);
+    if(navigator.vibrate){ navigator.vibrate(8); }
+  }
+
+
+  function moveGhost(ctx, x, y){
+    if(!ctx.ghost) return;
+    ctx.ghost.style.transform = "translate(" + (x - ctx.ghostW/2) + "px," + (y - ctx.ghostH/2) + "px) scale(1.05)";
+  }
+
+  function clearHalfHighlight(card){
+    if(!card) return;
+    card.querySelectorAll(".location-half").forEach(function(h){ h.classList.remove("drag-over-half"); });
+  }
+  function highlightHalf(card, slot){
+    card.querySelectorAll(".location-half").forEach(function(h){
+      h.classList.toggle("drag-over-half", h.dataset.slot === slot);
+    });
+  }
+
+  function updateDropTarget(ctx, x, y){
+    if(ctx.ghost) ctx.ghost.style.display = "none";
+    var elUnder = document.elementFromPoint(x, y);
+    if(ctx.ghost) ctx.ghost.style.display = "";
+    var card = elUnder ? elUnder.closest(".location-card") : null;
+    var overPool = !!(elUnder && elUnder.closest(".pool-bar"));
+    if(overPool) card = null;
+
+    if(ctx.lastTarget && ctx.lastTarget !== card){
+      ctx.lastTarget.classList.remove("drag-over");
+      clearHalfHighlight(ctx.lastTarget);
+    }
+    if(card){ card.classList.add("drag-over"); }
+    ctx.lastTarget = card;
+    poolBarEl.classList.toggle("drag-over-pool", overPool);
+
+    ctx.dropSlot = null;
+    if(card){
+      if(card.dataset.locType !== "2行"){
+        ctx.dropSlot = "top";
+        highlightHalf(card, "top");
+      } else if(card.dataset.leftSlot === "1"){
+        var bodyElL = card.querySelector(".location-body");
+        var rectL = bodyElL.getBoundingClientRect();
+        var leftBoundary = rectL.left + Math.min(84, rectL.width * 0.4);
+        if(x < leftBoundary){
+          ctx.dropSlot = "left";
+          highlightHalf(card, "left");
+        } else {
+          var midL = rectL.top + rectL.height / 2;
+          ctx.dropSlot = (y < midL) ? "top" : "bottom";
+          highlightHalf(card, ctx.dropSlot);
+        }
+      } else {
+        var bodyEl = card.querySelector(".location-body");
+        var rect = bodyEl.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        ctx.dropSlot = (y < mid) ? "top" : "bottom";
+        highlightHalf(card, ctx.dropSlot);
+      }
+    }
+  }
+
+  function finishDrag(ctx){
+    if(ctx.ghost) ctx.ghost.remove();
+    ctx.origEl.classList.remove("chip-dragging-source");
+    if(ctx.lastTarget){
+      ctx.lastTarget.classList.remove("drag-over");
+      clearHalfHighlight(ctx.lastTarget);
+    }
+    poolBarEl.classList.remove("drag-over-pool");
+
+    var fromIdx = state.nameplates.findIndex(function(n){ return n.id === ctx.id; });
+    if(fromIdx === -1) return;
+    var np = state.nameplates.splice(fromIdx, 1)[0];
+
+    var locId = ctx.lastTarget ? ctx.lastTarget.dataset.locationId : null;
+    np.locationId = locId || null;
+    np.slot = locId ? (ctx.dropSlot || "top") : null;
+
+    var insertIndex = state.nameplates.length;
+    if(locId){
+      var lastIdx = -1;
+      for(var i = 0; i < state.nameplates.length; i++){
+        var n = state.nameplates[i];
+        if(n.locationId === locId && (n.slot || "top") === np.slot) lastIdx = i;
+      }
+      insertIndex = (lastIdx === -1) ? state.nameplates.length : lastIdx + 1;
+    }
+    state.nameplates.splice(insertIndex, 0, np);
+
+    scheduleSave();
+    renderAll();
+  }
+
+  // ---------- generic modal ----------
+  function openModal(builder){
+    modalBox.innerHTML = "";
+    builder(modalBox);
+    modalOverlay.classList.add("open");
+  }
+  function closeModal(){
+    modalOverlay.classList.remove("open");
+    modalBox.innerHTML = "";
+  }
+  modalOverlay.addEventListener("pointerdown", function(e){ if(e.target === modalOverlay) closeModal(); });
+
+  function openConfirmModal(message, onConfirm){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>確認</span></div>' +
+        '<p class="confirm-msg">' + escapeHtml(message) + '</p>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-danger" id="okBtn" type="button">実行</button>' +
+        '</div>';
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", function(){ closeModal(); onConfirm(); });
+    });
+  }
+
+  // ---------- location modals ----------
+  function openAddLocationModal(){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>配置場所を追加</span></div>' +
+        '<label>配置場所名</label>' +
+        '<input type="text" id="locNameInput" placeholder="例：受付、1番窓口" maxlength="20">' +
+        '<label>タイプ</label>' +
+        '<div class="choice-row" id="typeChoice">' +
+        '<div class="choice-btn selected" data-type="2行">2行</div>' +
+        '<div class="choice-btn" data-type="2人">2人</div>' +
+        '<div class="choice-btn" data-type="3人">3人</div>' +
+        '</div>' +
+        '<label class="checkbox-label"><input type="checkbox" id="leftSlotCheckbox"> 左に独立枠を追加（2行タイプのみ有効）</label>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">追加</button>' +
+        '</div>';
+      var selectedType = "2行";
+      box.querySelectorAll("#typeChoice .choice-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          box.querySelectorAll("#typeChoice .choice-btn").forEach(function(b){ b.classList.remove("selected"); });
+          btn.classList.add("selected");
+          selectedType = btn.dataset.type;
+        });
+      });
+      var leftSlotCheckbox = box.querySelector("#leftSlotCheckbox");
+      var input = box.querySelector("#locNameInput");
+      setTimeout(function(){ input.focus(); }, 50);
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      function submit(){
+        var name = input.value.trim();
+        if(!name){ input.focus(); return; }
+        state.locations.push({ id: uid(), name: name, type: selectedType, leftSlot: leftSlotCheckbox.checked });
+        state.currentTemplateName = null;
+        updateTemplateLabel();
+        scheduleSave(); renderAll(); closeModal();
+      }
+      box.querySelector("#okBtn").addEventListener("click", submit);
+      input.addEventListener("keydown", function(e){ if(e.key === "Enter") submit(); });
+    });
+  }
+
+  function openEditLocationModal(locId){
+    var loc = state.locations.find(function(l){ return l.id === locId; });
+    if(!loc) return;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>配置場所を編集</span></div>' +
+        '<label>配置場所名</label>' +
+        '<input type="text" id="locNameInput" maxlength="20">' +
+        '<label>タイプ</label>' +
+        '<div class="choice-row" id="typeChoice">' +
+        '<div class="choice-btn" data-type="2行">2行</div>' +
+        '<div class="choice-btn" data-type="2人">2人</div>' +
+        '<div class="choice-btn" data-type="3人">3人</div>' +
+        '</div>' +
+        '<label class="checkbox-label"><input type="checkbox" id="leftSlotCheckbox"> 左に独立枠を追加（2行タイプのみ有効）</label>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-danger" id="delBtn" type="button">削除</button>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+        '</div>';
+      var selectedType = loc.type || "2行";
+      box.querySelectorAll("#typeChoice .choice-btn").forEach(function(btn){
+        if(btn.dataset.type === selectedType) btn.classList.add("selected");
+        btn.addEventListener("click", function(){
+          box.querySelectorAll("#typeChoice .choice-btn").forEach(function(b){ b.classList.remove("selected"); });
+          btn.classList.add("selected");
+          selectedType = btn.dataset.type;
+        });
+      });
+      var leftSlotCheckbox = box.querySelector("#leftSlotCheckbox");
+      leftSlotCheckbox.checked = !!loc.leftSlot;
+      var input = box.querySelector("#locNameInput");
+      input.value = loc.name;
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", function(){
+        var name = input.value.trim();
+        if(!name){ input.focus(); return; }
+        loc.name = name;
+        loc.type = selectedType;
+        loc.leftSlot = leftSlotCheckbox.checked;
+        state.currentTemplateName = null;
+        updateTemplateLabel();
+        scheduleSave(); renderAll(); closeModal();
+      });
+      box.querySelector("#delBtn").addEventListener("click", function(){
+        closeModal();
+        openConfirmModal('「' + loc.name + '」を削除しますか？配置されているネームプレートは未配置に戻ります。', function(){
+          state.locations = state.locations.filter(function(l){ return l.id !== locId; });
+          state.nameplates.forEach(function(n){ if(n.locationId === locId) n.locationId = null; });
+          state.currentTemplateName = null;
+          updateTemplateLabel();
+          scheduleSave(); renderAll();
+        });
+      });
+    });
+  }
+
+  // ---------- nameplate modals ----------
+  function openAddNameplateModal(){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>ネームプレートを追加</span></div>' +
+        '<label>名前</label>' +
+        '<input type="text" id="npNameInput" placeholder="例：山田" maxlength="16">' +
+        '<label>番号（昇順で並び替え）</label>' +
+        '<input type="number" id="npNumberInput" step="1" placeholder="例：1">' +
+        '<label>出勤時間（時のみ・任意）</label>' +
+        '<input type="number" id="npTimeInput" min="0" max="23" step="1" placeholder="例：9">' +
+        '<label>枠の色</label>' +
+        '<div class="swatch-row">' +
+        '<div class="swatch plate-white-sw selected" data-color="white"></div>' +
+        '<div class="swatch plate-red-sw" data-color="red"></div>' +
+        '<div class="swatch plate-blue-sw" data-color="blue"></div>' +
+        '</div>' +
+        '<label>属性</label>' +
+        '<div class="choice-row" id="categoryChoice">' +
+        '<div class="choice-btn selected" data-cat="">なし</div>' +
+        '<div class="choice-btn" data-cat="S">S</div>' +
+        '<div class="choice-btn" data-cat="M">M</div>' +
+        '<div class="choice-btn" data-cat="L">L</div>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">追加</button>' +
+        '</div>';
+      var selectedColor = "white";
+      var selectedCategories = [];
+      box.querySelectorAll(".swatch").forEach(function(sw){
+        sw.addEventListener("click", function(){
+          box.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("selected"); });
+          sw.classList.add("selected");
+          selectedColor = sw.dataset.color;
+        });
+      });
+      var categoryNoneBtn = box.querySelector('#categoryChoice .choice-btn[data-cat=""]');
+      box.querySelectorAll("#categoryChoice .choice-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          var cat = btn.dataset.cat;
+          if(cat === ""){
+            selectedCategories = [];
+          } else {
+            var idx = selectedCategories.indexOf(cat);
+            if(idx === -1){ selectedCategories.push(cat); } else { selectedCategories.splice(idx, 1); }
+          }
+          box.querySelectorAll("#categoryChoice .choice-btn").forEach(function(b){ b.classList.remove("selected"); });
+          if(selectedCategories.length === 0){
+            categoryNoneBtn.classList.add("selected");
+          } else {
+            selectedCategories.forEach(function(c){
+              var b = box.querySelector('#categoryChoice .choice-btn[data-cat="' + c + '"]');
+              if(b) b.classList.add("selected");
+            });
+          }
+        });
+      });
+      var input = box.querySelector("#npNameInput");
+      var numberInput = box.querySelector("#npNumberInput");
+      var timeInput = box.querySelector("#npTimeInput");
+      setTimeout(function(){ input.focus(); }, 50);
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      function submit(){
+        var name = input.value.trim();
+        if(!name){ input.focus(); return; }
+        var newNumber = numberInput.value !== "" ? parseInt(numberInput.value, 10) : null;
+        insertNumberIfColliding(newNumber, null);
+        state.nameplates.push({
+          id: uid(), name: name, color: selectedColor, locationId: null,
+          number: newNumber,
+          time: timeInput.value !== "" ? parseInt(timeInput.value, 10) : null,
+          categories: selectedCategories.slice()
+        });
+        scheduleSave(); renderAll(); closeModal();
+      }
+      box.querySelector("#okBtn").addEventListener("click", submit);
+      input.addEventListener("keydown", function(e){ if(e.key === "Enter") submit(); });
+    });
+  }
+
+  function openEditNameplateModal(npId){
+    var np = state.nameplates.find(function(n){ return n.id === npId; });
+    if(!np) return;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>ネームプレートを編集</span></div>' +
+        '<label>名前</label>' +
+        '<input type="text" id="npNameInput" maxlength="16">' +
+        '<label>番号（昇順で並び替え）</label>' +
+        '<input type="number" id="npNumberInput" step="1" placeholder="例：1">' +
+        '<label>出勤時間（時のみ・任意）</label>' +
+        '<input type="number" id="npTimeInput" min="0" max="23" step="1" placeholder="例：9">' +
+        '<label>枠の色</label>' +
+        '<div class="swatch-row">' +
+        '<div class="swatch plate-white-sw" data-color="white"></div>' +
+        '<div class="swatch plate-red-sw" data-color="red"></div>' +
+        '<div class="swatch plate-blue-sw" data-color="blue"></div>' +
+        '</div>' +
+        '<label>属性</label>' +
+        '<div class="choice-row" id="categoryChoice">' +
+        '<div class="choice-btn" data-cat="">なし</div>' +
+        '<div class="choice-btn" data-cat="S">S</div>' +
+        '<div class="choice-btn" data-cat="M">M</div>' +
+        '<div class="choice-btn" data-cat="L">L</div>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+        (np.locationId ? '<button class="btn-secondary" id="unassignBtn" type="button">未配置に戻す</button>' : '') +
+        '<button class="btn-danger" id="delBtn" type="button">削除</button>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+        '</div>';
+      var input = box.querySelector("#npNameInput");
+      input.value = np.name;
+      var numberInput = box.querySelector("#npNumberInput");
+      numberInput.value = (np.number === null || np.number === undefined) ? "" : np.number;
+      var timeInput = box.querySelector("#npTimeInput");
+      timeInput.value = (np.time === null || np.time === undefined) ? "" : np.time;
+      var selectedColor = np.color;
+      var selectedCategories = Array.isArray(np.categories) ? np.categories.slice() : [];
+      box.querySelectorAll(".swatch").forEach(function(sw){
+        if(sw.dataset.color === selectedColor) sw.classList.add("selected");
+        sw.addEventListener("click", function(){
+          box.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("selected"); });
+          sw.classList.add("selected");
+          selectedColor = sw.dataset.color;
+        });
+      });
+      var categoryNoneBtn = box.querySelector('#categoryChoice .choice-btn[data-cat=""]');
+      if(selectedCategories.length === 0){
+        categoryNoneBtn.classList.add("selected");
+      } else {
+        selectedCategories.forEach(function(c){
+          var b = box.querySelector('#categoryChoice .choice-btn[data-cat="' + c + '"]');
+          if(b) b.classList.add("selected");
+        });
+      }
+      box.querySelectorAll("#categoryChoice .choice-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          var cat = btn.dataset.cat;
+          if(cat === ""){
+            selectedCategories = [];
+          } else {
+            var idx = selectedCategories.indexOf(cat);
+            if(idx === -1){ selectedCategories.push(cat); } else { selectedCategories.splice(idx, 1); }
+          }
+          box.querySelectorAll("#categoryChoice .choice-btn").forEach(function(b){ b.classList.remove("selected"); });
+          if(selectedCategories.length === 0){
+            categoryNoneBtn.classList.add("selected");
+          } else {
+            selectedCategories.forEach(function(c){
+              var b = box.querySelector('#categoryChoice .choice-btn[data-cat="' + c + '"]');
+              if(b) b.classList.add("selected");
+            });
+          }
+        });
+      });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", function(){
+        var name = input.value.trim();
+        if(!name){ input.focus(); return; }
+        var newNumber = numberInput.value !== "" ? parseInt(numberInput.value, 10) : null;
+        insertNumberIfColliding(newNumber, np.id);
+        np.name = name; np.color = selectedColor; np.time = timeInput.value !== "" ? parseInt(timeInput.value, 10) : null;
+        np.number = newNumber;
+        np.categories = selectedCategories.slice();
+        scheduleSave(); renderAll(); closeModal();
+      });
+      var unassignBtn = box.querySelector("#unassignBtn");
+      if(unassignBtn){
+        unassignBtn.addEventListener("click", function(){
+          np.locationId = null;
+          scheduleSave(); renderAll(); closeModal();
+        });
+      }
+      box.querySelector("#delBtn").addEventListener("click", function(){
+        closeModal();
+        openConfirmModal('「' + np.name + '」を削除しますか？', function(){
+          var deletedNumber = np.number;
+          state.nameplates = state.nameplates.filter(function(n){ return n.id !== npId; });
+          if(deletedNumber !== null && deletedNumber !== undefined){
+            state.nameplates.forEach(function(n){
+              if(n.number !== null && n.number !== undefined && n.number > deletedNumber){
+                n.number = n.number - 1;
+              }
+            });
+          }
+          scheduleSave(); renderAll();
+        });
+      });
+    });
+  }
+
+  // ---------- templates ----------
+  function openTemplateSheet(){ closeModal(); renderTemplateList(); renderBoardList(); templateOverlay.classList.add("open"); }
+  function closeTemplateSheet(){ templateOverlay.classList.remove("open"); }
+
+  function renderTemplateList(){
+    var list = document.getElementById("templateList");
+    list.innerHTML = "";
+    if(state.templates.length === 0){
+      var p = document.createElement("p");
+      p.className = "confirm-msg";
+      p.textContent = "保存されたテンプレートはありません。";
+      list.appendChild(p);
+      return;
+    }
+    state.templates.forEach(function(tpl){
+      var row = document.createElement("div");
+      row.className = "template-row";
+      var name = document.createElement("span");
+      name.className = "template-name";
+      var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
+      name.textContent = tpl.name + "（" + tpl.locationNames.length + "箇所・" + npCount + "人）";
+      var actions = document.createElement("div");
+      actions.className = "template-actions";
+
+      var applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.className = "btn-primary btn-sm";
+      applyBtn.textContent = "適用";
+      applyBtn.addEventListener("click", function(){
+        var hasNameplates = Array.isArray(tpl.nameplates) && tpl.nameplates.length > 0;
+        var msg = hasNameplates
+          ? '「' + tpl.name + '」を適用します。現在の配置場所とネームプレートの一覧は、このテンプレートに保存された内容に置き換わります。よろしいですか？'
+          : '「' + tpl.name + '」を適用します。現在の配置場所は置き換わり、配置中のネームプレートは未配置に戻ります。よろしいですか？';
+        openConfirmModal(msg, function(){
+          state.locations = tpl.locationNames.map(function(item){
+            var name = (typeof item === "string") ? item : item.name;
+            var type = (typeof item === "string" || !item.type) ? "2行" : item.type;
+            var leftSlot = (typeof item === "string") ? false : !!item.leftSlot;
+            return { id: uid(), name: name, type: type, leftSlot: leftSlot };
+          });
+          if(hasNameplates){
+            state.nameplates = tpl.nameplates.map(function(np){
+              return {
+                id: uid(), name: np.name, color: np.color || "white", locationId: null, slot: null,
+                number: (np.number === null || np.number === undefined) ? null : np.number,
+                time: (np.time === null || np.time === undefined) ? null : np.time,
+                categories: Array.isArray(np.categories) ? np.categories : []
+              };
+            });
+          } else {
+            state.nameplates.forEach(function(n){ n.locationId = null; n.slot = null; });
+          }
+          state.currentTemplateName = tpl.name;
+          updateTemplateLabel();
+          scheduleSave(); renderAll(); closeTemplateSheet();
+        });
+      });
+
+      var shareBtn = document.createElement("button");
+      shareBtn.type = "button";
+      shareBtn.className = "btn-secondary btn-sm";
+      shareBtn.textContent = "共有";
+      shareBtn.addEventListener("click", function(){
+        openShareTemplateModal(tpl);
+      });
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-danger btn-sm";
+      delBtn.textContent = "削除";
+      delBtn.addEventListener("click", function(){
+        openConfirmModal('テンプレート「' + tpl.name + '」を削除しますか？', function(){
+          state.templates = state.templates.filter(function(t){ return t.id !== tpl.id; });
+          scheduleSave(); renderTemplateList();
+        });
+      });
+
+      actions.appendChild(applyBtn);
+      actions.appendChild(shareBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(name);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById("poolAddBtn").addEventListener("click", openAddNameplateModal);
+
+  document.getElementById("dateBar").addEventListener("click", function(){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>日付を変更</span></div>' +
+        '<label>日付</label>' +
+        '<input type="date" id="boardDateInput">' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="todayBtn" type="button">今日にする</button>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+        '</div>';
+      var input = box.querySelector("#boardDateInput");
+      input.value = state.boardDate || todayISO();
+      box.querySelector("#todayBtn").addEventListener("click", function(){ input.value = todayISO(); });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", function(){
+        if(!input.value) return;
+        state.boardDate = input.value;
+        renderDateBar();
+        scheduleSave();
+        closeModal();
+      });
+    });
+  });
+
+  document.getElementById("openThemeBtn").addEventListener("click", openThemeSheet);
+  document.getElementById("closeThemeBtn").addEventListener("click", closeThemeSheet);
+  document.getElementById("themeOverlay").addEventListener("pointerdown", function(e){ if(e.target === document.getElementById("themeOverlay")) closeThemeSheet(); });
+
+  document.getElementById("openTemplateSheetBtn").addEventListener("click", openTemplateSheet);
+  document.getElementById("closeTemplateSheetBtn").addEventListener("click", closeTemplateSheet);
+  templateOverlay.addEventListener("pointerdown", function(e){ if(e.target === templateOverlay) closeTemplateSheet(); });
+
+  function setupCollapsible(toggleId, contentId){
+    var toggle = document.getElementById(toggleId);
+    var content = document.getElementById(contentId);
+    toggle.addEventListener("click", function(){
+      var open = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", open ? "false" : "true");
+      content.classList.toggle("open", !open);
+    });
+  }
+  setupCollapsible("templateSectionToggle", "templateSectionContent");
+  setupCollapsible("boardSectionToggle", "boardSectionContent");
+
+  document.getElementById("unassignAllBtn").addEventListener("click", function(){
+    var placedCount = state.nameplates.filter(function(n){ return !!n.locationId; }).length;
+    if(placedCount === 0){
+      openConfirmModal("配置されているネームプレートはありません。", function(){});
+      return;
+    }
+    openConfirmModal("配置されている全てのネームプレートを未配置に戻します。配置場所自体は残ります。よろしいですか？", function(){
+      state.nameplates.forEach(function(n){ n.locationId = null; n.slot = null; });
+      scheduleSave(); renderAll(); closeTemplateSheet();
+    });
+  });
+
+  async function openShareTemplateModal(tpl){
+    var code;
+    try{
+      code = await encodeTemplateCode(tpl);
+    }catch(e){
+      alert("共有コードの作成に失敗しました。");
+      return;
+    }
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>「' + escapeHtml(tpl.name) + '」を共有</span></div>' +
+        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「テンプレート」→「共有コードから追加」に貼り付けると読み込めます。</p>' +
+        '<label>共有コード</label>' +
+        '<textarea id="shareCodeArea" readonly rows="5"></textarea>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="closeBtn" type="button">閉じる</button>' +
+        '<button class="btn-primary" id="copyBtn" type="button">コピー</button>' +
+        '</div>';
+      var area = box.querySelector("#shareCodeArea");
+      area.value = code;
+      var copyBtn = box.querySelector("#copyBtn");
+      box.querySelector("#closeBtn").addEventListener("click", closeModal);
+      copyBtn.addEventListener("click", function(){
+        var done = function(){ copyBtn.textContent = "コピーしました"; setTimeout(function(){ copyBtn.textContent = "コピー"; }, 1500); };
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(code).then(done).catch(function(){
+            area.focus(); area.select();
+            try{ document.execCommand("copy"); done(); }catch(e){}
+          });
+        } else {
+          area.focus(); area.select();
+          try{ document.execCommand("copy"); done(); }catch(e){}
+        }
+      });
+    });
+  }
+
+  function openImportTemplateModal(){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>共有コードから追加</span></div>' +
+        '<label>共有コードを貼り付け</label>' +
+        '<textarea id="importCodeArea" rows="5" placeholder="P3: で始まるコード"></textarea>' +
+        '<p class="confirm-msg" id="importError" style="display:none;color:var(--danger);"></p>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">追加</button>' +
+        '</div>';
+      var area = box.querySelector("#importCodeArea");
+      var errorEl = box.querySelector("#importError");
+      setTimeout(function(){ area.focus(); }, 50);
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", async function(){
+        try{
+          var payload = await decodeTemplateCode(area.value);
+          state.templates.push({ id: uid(), name: payload.name, locationNames: payload.locationNames, nameplates: payload.nameplates || [] });
+          scheduleSave();
+          closeModal();
+          renderTemplateList();
+        }catch(err){
+          errorEl.textContent = err.message || "読み込めませんでした。";
+          errorEl.style.display = "block";
+        }
+      });
+    });
+  }
+
+  document.getElementById("importTemplateBtn").addEventListener("click", openImportTemplateModal);
+  document.getElementById("saveBoardBtn").addEventListener("click", openSaveBoardModal);
+  document.getElementById("importBoardBtn").addEventListener("click", openImportBoardModal);
+
+  function openSaveBoardModal(){
+    if(state.locations.length === 0){
+      openConfirmModal("配置場所がありません。先に配置場所を追加してください。", function(){});
+      return;
+    }
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>配置の名前</span></div>' +
+        '<label>配置の名前</label>' +
+        '<input type="text" id="boardNameInput" placeholder="例：9/17の配置" maxlength="20">' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+        '</div>';
+      var input = box.querySelector("#boardNameInput");
+      input.value = formatDateJP(state.boardDate || todayISO());
+      setTimeout(function(){ input.focus(); input.select(); }, 50);
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      function submit(){
+        var name = input.value.trim();
+        if(!name){ input.focus(); return; }
+        var payload = buildBoardPayloadFromState();
+        state.boards.push({
+          id: uid(), name: name, boardDate: payload.boardDate,
+          locationNames: payload.locationNames, nameplates: payload.nameplates
+        });
+        scheduleSave(); closeModal(); renderBoardList();
+      }
+      box.querySelector("#okBtn").addEventListener("click", submit);
+      input.addEventListener("keydown", function(e){ if(e.key === "Enter") submit(); });
+    });
+  }
+
+  function renderBoardList(){
+    var list = document.getElementById("boardList");
+    list.innerHTML = "";
+    if(state.boards.length === 0){
+      var p = document.createElement("p");
+      p.className = "confirm-msg";
+      p.textContent = "保存された配置はありません。";
+      list.appendChild(p);
+      return;
+    }
+    state.boards.forEach(function(b){
+      var row = document.createElement("div");
+      row.className = "template-row";
+      var name = document.createElement("span");
+      name.className = "template-name";
+      var npCount = Array.isArray(b.nameplates) ? b.nameplates.length : 0;
+      var placedCount = Array.isArray(b.nameplates) ? b.nameplates.filter(function(np){ return np.locationIndex !== null && np.locationIndex !== undefined; }).length : 0;
+      name.textContent = b.name + "（" + b.locationNames.length + "箇所・" + npCount + "人中" + placedCount + "人配置）";
+      var actions = document.createElement("div");
+      actions.className = "template-actions";
+
+      var applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.className = "btn-primary btn-sm";
+      applyBtn.textContent = "適用";
+      applyBtn.addEventListener("click", function(){
+        openConfirmModal('「' + b.name + '」を適用します。現在の配置場所・ネームプレート・配置はすべて置き換わります。よろしいですか？', function(){
+          applyBoardPayload(b, { keepDate: false });
+        });
+      });
+
+      var shareBtn = document.createElement("button");
+      shareBtn.type = "button";
+      shareBtn.className = "btn-secondary btn-sm";
+      shareBtn.textContent = "共有";
+      shareBtn.addEventListener("click", function(){
+        openShareBoardCodeModal(b);
+      });
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-danger btn-sm";
+      delBtn.textContent = "削除";
+      delBtn.addEventListener("click", function(){
+        openConfirmModal('配置「' + b.name + '」を削除しますか？', function(){
+          state.boards = state.boards.filter(function(x){ return x.id !== b.id; });
+          scheduleSave(); renderBoardList();
+        });
+      });
+
+      actions.appendChild(applyBtn);
+      actions.appendChild(shareBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(name);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+
+  async function openShareBoardCodeModal(payload){
+    var code;
+    try{
+      code = await encodeBoardPayload(payload);
+    }catch(e){
+      alert("共有コードの作成に失敗しました。");
+      return;
+    }
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>配置を共有</span></div>' +
+        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「メニュー」→「配置コードから読み込む」に貼り付けると、誰がどこにいるかも含めてそのまま読み込めます。</p>' +
+        '<label>配置コード</label>' +
+        '<textarea id="shareBoardCodeArea" readonly rows="5"></textarea>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="closeBtn" type="button">閉じる</button>' +
+        '<button class="btn-primary" id="copyBtn" type="button">コピー</button>' +
+        '</div>';
+      var area = box.querySelector("#shareBoardCodeArea");
+      area.value = code;
+      var copyBtn = box.querySelector("#copyBtn");
+      box.querySelector("#closeBtn").addEventListener("click", closeModal);
+      copyBtn.addEventListener("click", function(){
+        var done = function(){ copyBtn.textContent = "コピーしました"; setTimeout(function(){ copyBtn.textContent = "コピー"; }, 1500); };
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(code).then(done).catch(function(){
+            area.focus(); area.select();
+            try{ document.execCommand("copy"); done(); }catch(e){}
+          });
+        } else {
+          area.focus(); area.select();
+          try{ document.execCommand("copy"); done(); }catch(e){}
+        }
+      });
+    });
+  }
+
+  function openImportBoardModal(){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>配置コードから読み込む</span></div>' +
+        '<p class="confirm-msg">読み込むと、現在の配置場所・ネームプレート・配置はすべて置き換えられます。</p>' +
+        '<label>配置コードを貼り付け</label>' +
+        '<textarea id="importBoardCodeArea" rows="5" placeholder="P4: で始まるコード"></textarea>' +
+        '<p class="confirm-msg" id="importBoardError" style="display:none;color:var(--danger);"></p>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">読み込む</button>' +
+        '</div>';
+      var area = box.querySelector("#importBoardCodeArea");
+      var errorEl = box.querySelector("#importBoardError");
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", async function(){
+        errorEl.style.display = "none";
+        var payload;
+        try{
+          payload = await decodeBoardCode(area.value);
+        }catch(err){
+          errorEl.textContent = err.message || "読み込めませんでした。";
+          errorEl.style.display = "block";
+          return;
+        }
+        closeModal();
+        openConfirmModal("現在の配置場所・ネームプレート・配置をすべて、受け取ったコードの内容に置き換えます。よろしいですか？", function(){
+          applyBoardPayload(payload, { keepDate: true });
+        });
+      });
+    });
+  }
+
+  document.getElementById("saveTemplateBtn").addEventListener("click", function(){
+    if(state.locations.length === 0){
+      openConfirmModal("配置場所がありません。先に配置場所を追加してください。", function(){});
+      return;
+    }
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>テンプレート名</span></div>' +
+        '<label>テンプレート名</label>' +
+        '<input type="text" id="tplNameInput" placeholder="例：平日レイアウト" maxlength="20">' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+        '</div>';
+      var input = box.querySelector("#tplNameInput");
+      setTimeout(function(){ input.focus(); }, 50);
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      function submit(){
+        var name = input.value.trim();
+        if(!name){ input.focus(); return; }
+        state.templates.push({
+          id: uid(),
+          name: name,
+          locationNames: state.locations.map(function(l){ return { name: l.name, type: l.type || "2行", leftSlot: !!l.leftSlot }; }),
+          nameplates: state.nameplates.map(function(np){
+            return { name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories };
+          })
+        });
+        scheduleSave(); closeModal(); renderTemplateList();
+      }
+      box.querySelector("#okBtn").addEventListener("click", submit);
+      input.addEventListener("keydown", function(e){ if(e.key === "Enter") submit(); });
+    });
+  });
+
+  // ---------- themes ----------
+  var THEMES = [
+    {id:"default", name:"標準", colors:["#EDEBE3","#FFFFFF","#2F6B5E"]},
+    {id:"apple", name:"シンプル", colors:["#F5F5F7","#FFFFFF","#007AFF"]},
+    {id:"play", name:"トイポップ", colors:["#FFF4E8","#FFFFFF","#FF6B9A"]},
+    {id:"mono", name:"モノクロ", colors:["#F2F2F2","#FFFFFF","#222222"]},
+    {id:"neon", name:"ネオン", colors:["#0A0014","#1A0A2E","#FF2EC4"]},
+    {id:"cyber", name:"サイバー", colors:["#101018","#191923","#D7FF00"]},
+    {id:"retro", name:"レトロゲーム", colors:["#1B1B3A","#2B2B55","#FFCC00"]},
+    {id:"sakura", name:"サクラ", colors:["#FFF3F6","#FFFFFF","#E85D8A"]},
+    {id:"midnight", name:"ミッドナイト", colors:["#0D1321","#161F35","#D4AF37"]},
+    {id:"citrus", name:"シトラス", colors:["#FFF7E8","#FFFFFF","#FF8A00"]},
+    {id:"ink", name:"墨", colors:["#F7F5F0","#FFFFFF","#B71C1C"]},
+    {id:"coral", name:"コーラルリーフ", colors:["#EAF7F5","#FFFFFF","#FF6F59"]},
+    {id:"forest", name:"フォレスト", colors:["#E3EDD8","#F7FBF1","#3F6B2E"]},
+    {id:"iceblue", name:"アイスブルー", colors:["#EEF5FB","#FFFFFF","#2E86C1"]},
+    {id:"marble", name:"マーブル", colors:["#F4F3F1","#FFFFFF","#B08D57"]},
+    {id:"carbon", name:"カーボンレーシング", colors:["#0A0A0C","#141416","#FF1E3C"]},
+    {id:"desert", name:"デザート", colors:["#EDDCC0","#FBF2E3","#C1592B"]},
+    {id:"rosegold", name:"ローズゴールド", colors:["#FBF3EF","#FFFFFF","#C98A7D"]},
+    {id:"galaxy", name:"ギャラクシー", colors:["#0B0B24","#171736","#8B5CF6"]},
+    {id:"shonen", name:"バトルオーラ", colors:["#FFF6E9","#FFFFFF","#FF6B00"]},
+  ];
+  function applyTheme(id){
+    state.theme = THEMES.some(function(t){return t.id===id;}) ? id : "default";
+    document.body.dataset.theme = state.theme;
+    scheduleSave();
+    renderThemeChoices();
+  }
+  function openThemeSheet(){ closeModal(); renderThemeChoices(); document.getElementById("themeOverlay").classList.add("open"); }
+  function closeThemeSheet(){ document.getElementById("themeOverlay").classList.remove("open"); }
+  function renderThemeChoices(){
+    var grid=document.getElementById("themeGrid"); if(!grid) return; grid.innerHTML="";
+    THEMES.forEach(function(t){
+      var b=document.createElement("button"); b.type="button"; b.className="theme-choice"+(state.theme===t.id?" selected":"");
+      b.innerHTML="<b>"+escapeHtml(t.name)+"</b><div class=\"theme-preview\"><i style=\"background:"+t.colors[0]+"\"></i><i style=\"background:"+t.colors[1]+"\"></i><i style=\"background:"+t.colors[2]+"\"></i></div>";
+      b.addEventListener("click",function(){ applyTheme(t.id); closeThemeSheet(); }); grid.appendChild(b);
+    });
+  }
+
+  // ---------- hidden command: physics collapse ----------
+  // secret trigger: tap the app title 5 times quickly
+  (function(){
+    var titleEl = document.querySelector(".title-main");
+    if(!titleEl) return;
+    var tapCount = 0;
+    var tapTimer = null;
+    titleEl.addEventListener("click", function(){
+      tapCount++;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(function(){ tapCount = 0; }, 1200);
+      if(tapCount >= 5){
+        tapCount = 0;
+        clearTimeout(tapTimer);
+        triggerPhysicsCollapse();
+      }
+    });
+  })();
+
+  function triggerPhysicsCollapse(){
+    if(document.body.classList.contains("physics-active")) return;
+    if(modalOverlay.classList.contains("open")) return;
+    if(templateOverlay.classList.contains("open")) return;
+    var themeOverlayEl = document.getElementById("themeOverlay");
+    if(themeOverlayEl && themeOverlayEl.classList.contains("open")) return;
+
+    var chips = Array.prototype.slice.call(document.querySelectorAll(".location-card .nameplate-chip"));
+    if(chips.length === 0) return;
+
+    document.body.classList.add("physics-active");
+    document.body.classList.add("physics-shake");
+    setTimeout(function(){ document.body.classList.remove("physics-shake"); }, 350);
+
+    var layer = document.createElement("div");
+    layer.id = "physicsLayer";
+    layer.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;";
+    document.body.appendChild(layer);
+
+    var poolTop = poolBarEl ? poolBarEl.getBoundingClientRect().top : window.innerHeight;
+    var floor = Math.min(poolTop, window.innerHeight) - 6;
+    var wallLeft = 4, wallRight = window.innerWidth - 4;
+    var gravity = 2600;
+    var boardRect = boardGrid.getBoundingClientRect();
+    var centerX = boardRect.left + boardRect.width / 2;
+    var centerY = boardRect.top + boardRect.height / 2;
+    var bodies = chips.map(function(chip){
+      var rect = chip.getBoundingClientRect();
+      chip.style.visibility = "hidden";
+      var clone = document.createElement("div");
+      clone.className = chip.className;
+      clone.textContent = chip.textContent;
+      clone.style.cssText = "position:absolute;left:" + rect.left + "px;top:" + rect.top + "px;width:" + rect.width + "px;height:" + rect.height + "px;margin:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;will-change:transform;";
+      layer.appendChild(clone);
+      var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+      var dx = cx - centerX, dy = cy - centerY;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var dirX = dx / dist, dirY = dy / dist;
+      var burst = 650 + Math.random() * 500;
+      return {
+        el: clone,
+        x: rect.left, y: rect.top, w: rect.width, h: rect.height,
+        vx: dirX * burst + (Math.random() - 0.5) * 220,
+        vy: dirY * burst - 380 - Math.random() * 260,
+        rot: 0,
+        vrot: (Math.random() - 0.5) * 900
+      };
+    });
+
+    var last = null;
+    var startedAt = null;
+    var totalDuration = 3500;
+
+    function step(now){
+      if(last === null){ last = now; startedAt = now; }
+      var dt = Math.min((now - last) / 1000, 0.032);
+      last = now;
+      bodies.forEach(function(b){
+        b.vy += gravity * dt;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.rot += b.vrot * dt;
+
+        var restY = floor - b.h;
+        if(b.y > restY){
+          b.y = restY;
+          b.vy = -b.vy * 0.42;
+          b.vx *= 0.68;
+          b.vrot *= 0.5;
+          if(Math.abs(b.vy) < 45){ b.vy = 0; }
+        }
+        if(b.x < wallLeft){ b.x = wallLeft; b.vx = -b.vx * 0.5; }
+        if(b.x + b.w > wallRight){ b.x = wallRight - b.w; b.vx = -b.vx * 0.5; }
+        b.vx *= (1 - Math.min(dt * 1.4, 1));
+
+        b.el.style.left = b.x + "px";
+        b.el.style.top = b.y + "px";
+        b.el.style.transform = "rotate(" + b.rot.toFixed(1) + "deg)";
+      });
+      if((now - startedAt) < totalDuration){
+        requestAnimationFrame(step);
+      } else {
+        finishPhysicsCollapse(layer, chips);
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function finishPhysicsCollapse(layer, chips){
+    layer.style.transition = "opacity .25s ease";
+    layer.style.opacity = "0";
+    setTimeout(function(){
+      layer.remove();
+      chips.forEach(function(c){ c.style.visibility = ""; });
+      document.body.classList.remove("physics-active");
+    }, 260);
+  }
+
+  // ---------- init ----------
+  window.addEventListener("DOMContentLoaded", loadState);
+})();
+</script>
+</body>
+</html>
