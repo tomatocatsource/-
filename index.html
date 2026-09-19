@@ -2068,9 +2068,24 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 
   document.getElementById("openThemeBtn").addEventListener("click", openThemeSheet);
   document.getElementById("closeThemeBtn").addEventListener("click", closeThemeSheet);
-  document.getElementById("themeOverlay").addEventListener("pointerdown", function(e){ if(e.target === document.getElementById("themeOverlay")) closeThemeSheet(); });
+  document.getElementById("themeOverlay").addEventListener("pointerdown", function(e){
+    var overlay = document.getElementById("themeOverlay");
+    if(e.target !== overlay) return;
+    // 着せ替え画面表示中の🎨ボタン部分は操作対象にしない
+    var btn = document.getElementById("openThemeBtn");
+    var r = btn.getBoundingClientRect();
+    if(e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+    closeThemeSheet();
+  });
 
-  document.getElementById("openTemplateSheetBtn").addEventListener("click", openTemplateSheet);
+  document.getElementById("openTemplateSheetBtn").addEventListener("click", function(){
+    // メニュー表示中にメニューボタンを押したらメニューを閉じる
+    if(templateOverlay.classList.contains("open")){
+      closeTemplateSheet();
+      return;
+    }
+    openTemplateSheet();
+  });
   document.getElementById("closeTemplateSheetBtn").addEventListener("click", closeTemplateSheet);
   templateOverlay.addEventListener("pointerdown", function(e){ if(e.target === templateOverlay) closeTemplateSheet(); });
 
