@@ -2594,6 +2594,19 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 @supports (background:color-mix(in srgb, red 10%, transparent)){
   .shift-table td.shift-cell.on{background:color-mix(in srgb, var(--accent) 16%, transparent);}
 }
+.save-warn{position:relative;z-index:200;display:flex;align-items:flex-start;gap:10px;padding:8px 16px;background:var(--danger);color:#fff;font-size:12px;line-height:1.6;flex-shrink:0;}
+.save-warn[hidden]{display:none;}
+.save-warn span{flex:1;}
+.save-warn button{flex:none;border:0;background:transparent;color:#fff;font-size:18px;line-height:1;padding:0 4px;cursor:pointer;}
+.shift-import-row{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:-2px 0 10px;}
+.imp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.imp-hint{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+.imp-select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:var(--bg);color:var(--ink);}
+.imp-check{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;font-size:13px;color:var(--ink);line-height:1.5;}
+.imp-check input{margin-top:3px;flex:none;}
+.imp-preview{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:12px;line-height:1.7;color:var(--ink-soft);}
+.imp-preview b{color:var(--ink);}
+.imp-preview.err{color:var(--danger);}
 .shift-note{font-size:12px;color:var(--ink-soft);line-height:1.6;margin:10px 0 0;}
 </style>
 </head>
@@ -2605,6 +2618,8 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     </div>
     <div style="display:flex;gap:6px;align-items:center;"><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
   </header>
+
+  <div class="save-warn" id="saveWarn" role="alert" hidden><span id="saveWarnText"></span><button type="button" id="saveWarnClose" aria-label="閉じる">×</button></div>
 
   <div class="info-bar">
     <span class="date-nav"><button class="date-step" id="datePrevBtn" type="button" aria-label="前の日">◀</button><span class="info-date" id="dateBar"></span><button class="date-step" id="dateNextBtn" type="button" aria-label="次の日">▶</button></span>
@@ -2692,7 +2707,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, shiftFilter: false };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, dayPlacements: {}, shiftFilter: false };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -2937,22 +2952,177 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   // Fully offline: persistence uses localStorage only. No network or cloud
   // storage of any kind is used by this tool.
   var saveTimer = null;
+  var loaded = false;          // 読み込みが終わるまで保存しない（空のデータで上書きしないため）
+  var loadProblem = null;      // 読み込めなかった保存データの情報
+  var saveBlocked = false;     // 元データを退避できなかったとき、上書きしないよう保存を止める
+  var storageBroken = false;   // 保存領域が使えない
+  var saveWarnDismissed = false;
+  var sessionDay = null;       // このセッションで「今日」だと思っている日付
+
   function scheduleSave(){
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveState, 150);
   }
-  function saveState(){
-    var json = JSON.stringify(state);
-    try{ localStorage.setItem(STORAGE_KEY, json); }
-    catch(e){ console.error("localStorage save failed", e); }
+  function setSaveWarning(on, message){
+    var el = document.getElementById("saveWarn");
+    if(!el) return;
+    if(on){
+      if(message) document.getElementById("saveWarnText").textContent = message;
+      if(!saveWarnDismissed) el.hidden = false;
+    } else {
+      el.hidden = true; saveWarnDismissed = false;
+    }
   }
+  var SAVE_FAIL_MESSAGE = "⚠ 保存できていません。保存領域がいっぱいか、保存が許可されていない可能性があります。このまま閉じると入力した内容が消えます。";
+  function saveState(){
+    if(!loaded) return;
+    if(saveBlocked){ setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。"); return; }
+    syncPlacementsToDay();
+    var json = JSON.stringify(state);
+    try{
+      localStorage.setItem(STORAGE_KEY, json);
+      setSaveWarning(false);
+    }catch(e){
+      console.error("localStorage save failed", e);
+      setSaveWarning(true, SAVE_FAIL_MESSAGE);
+    }
+  }
+
+  // ---------- 日付ごとの配置 ----------
+  // ネームプレートの locationId / slot は「表示中の日付の配置」。
+  // 日付を切り替えるときに state.dayPlacements[日付] = [[id, 配置場所id, slot], …]（並び順つき）へ
+  // 保存し、切り替え先の配置を復元する。まだ配置していない日付は全員が未配置から始まる。
+  function syncPlacementsToDay(){
+    var iso = state.boardDate;
+    if(!iso) return;
+    var list = [];
+    state.nameplates.forEach(function(n){ if(n.locationId) list.push([n.id, n.locationId, n.slot || null]); });
+    if(list.length) state.dayPlacements[iso] = list; else delete state.dayPlacements[iso];
+    pruneDayPlacements();
+  }
+  function pruneDayPlacements(){
+    var npIds = Object.create(null), locIds = Object.create(null);
+    state.nameplates.forEach(function(n){ npIds[n.id] = true; });
+    state.locations.forEach(function(l){ locIds[l.id] = true; });
+    var limit = dayNumToISO(isoToDayNum(todayISO()) - 370);
+    Object.keys(state.dayPlacements).forEach(function(iso){
+      var list = state.dayPlacements[iso];
+      if(iso < limit || !Array.isArray(list)){ delete state.dayPlacements[iso]; return; }
+      list = list.filter(function(p){ return Array.isArray(p) && npIds[p[0]] && locIds[p[1]]; });
+      if(list.length) state.dayPlacements[iso] = list; else delete state.dayPlacements[iso];
+    });
+  }
+  function loadPlacementsForDay(iso){
+    var list = state.dayPlacements[iso];
+    if(!Array.isArray(list)) list = [];
+    var locIds = Object.create(null), byId = Object.create(null);
+    state.locations.forEach(function(l){ locIds[l.id] = true; });
+    list.forEach(function(p, idx){
+      if(Array.isArray(p) && locIds[p[1]]) byId[p[0]] = { loc: p[1], slot: p[2] || null, idx: idx };
+    });
+    var placed = [], rest = [];
+    state.nameplates.forEach(function(n){
+      var q = byId[n.id];
+      if(q){ n.locationId = q.loc; n.slot = q.slot; placed.push(n); }
+      else { n.locationId = null; n.slot = null; rest.push(n); }
+    });
+    placed.sort(function(a, b){ return byId[a.id].idx - byId[b.id].idx; });   // 同じ場所での並び順を復元
+    state.nameplates = placed.concat(rest);
+    sanitizeOffPlacements();
+  }
+  // 休みの人は配置しない（表示中の日付で休みになっている人を未配置に戻す）
+  function sanitizeOffPlacements(){
+    var iso = state.boardDate;
+    state.nameplates.forEach(function(n){
+      if(n.locationId && isOff(n.name, iso)){ n.locationId = null; n.slot = null; }
+    });
+  }
+  // 指定した日付でその人の配置を外す（休みを入れたとき）
+  function unplaceOnDate(name, iso){
+    var ids = Object.create(null);
+    state.nameplates.forEach(function(n){
+      if(n.name !== name) return;
+      ids[n.id] = true;
+      if(iso === state.boardDate){ n.locationId = null; n.slot = null; }
+    });
+    var list = state.dayPlacements[iso];
+    if(Array.isArray(list)){
+      list = list.filter(function(p){ return !ids[p[0]]; });
+      if(list.length) state.dayPlacements[iso] = list; else delete state.dayPlacements[iso];
+    }
+  }
+  function setBoardDate(iso){
+    if(!iso) return;
+    if(iso !== state.boardDate){
+      syncPlacementsToDay();
+      state.boardDate = iso;
+      loadPlacementsForDay(iso);
+      scheduleSave();
+    }
+    renderDateBar(); renderAll();
+  }
+
+  // ---------- 保存データが壊れていたとき ----------
+  function resetStateToDefaults(){
+    state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
+    state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
+    state.dayoffs = {}; state.dayPlacements = {}; state.shiftFilter = false;
+  }
+  // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
+  function backupCorruptData(raw){
+    var prefix = STORAGE_KEY + "-corrupt-", key = prefix + Date.now();
+    try{
+      localStorage.setItem(key, raw);
+      var olds = [];
+      for(var i = 0; i < localStorage.length; i++){
+        var k = localStorage.key(i);
+        if(k && k.indexOf(prefix) === 0) olds.push(k);
+      }
+      olds.sort();
+      while(olds.length > 2){ localStorage.removeItem(olds.shift()); }
+      return key;
+    }catch(e){ return null; }
+  }
+  function showLoadProblem(){
+    var p = loadProblem;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>保存データを読み込めませんでした</span></div>' +
+        '<p class="confirm-msg">' + (p.backupKey
+          ? '元のデータは端末の中に退避してあり、消してはいません。いまは空の状態で始めます。'
+          : '元のデータを退避できなかったため、上書きしないように保存を止めています。') + '</p>' +
+        '<p class="confirm-msg" style="font-size:12px;color:var(--ink-soft);">「壊れたデータをコピー」でメモアプリなどに控えておくと、あとで復旧する手がかりになります。</p>' +
+        '<textarea id="brokenArea" readonly rows="1" style="position:absolute;left:-9999px;"></textarea>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="copyBrokenBtn" type="button">壊れたデータをコピー</button>' +
+          (p.backupKey ? '<button class="btn-primary" id="closeBtn" type="button">閉じる</button>'
+                       : '<button class="btn-danger" id="discardBtn" type="button">破棄して新しく始める</button>') +
+        '</div>';
+      var area = box.querySelector("#brokenArea"), copyBtn = box.querySelector("#copyBrokenBtn");
+      area.value = p.raw;
+      copyBtn.addEventListener("click", function(){
+        copyToClipboard(p.raw, area, function(){ copyBtn.textContent = "コピーしました"; });
+      });
+      var closeBtn = box.querySelector("#closeBtn");
+      if(closeBtn) closeBtn.addEventListener("click", closeModal);
+      var discardBtn = box.querySelector("#discardBtn");
+      if(discardBtn) discardBtn.addEventListener("click", function(){
+        saveBlocked = false; setSaveWarning(false); scheduleSave(); closeModal();
+      });
+    });
+  }
+
   function loadState(){
     var raw = null;
     try{ raw = localStorage.getItem(STORAGE_KEY); }
-    catch(e){ /* localStorage unavailable, ignore */ }
+    catch(e){ storageBroken = true; }
     if(raw){
       try{
         var parsed = JSON.parse(raw);
+        if(!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid");
+        ["locations", "nameplates", "templates", "boards"].forEach(function(k){
+          if(parsed[k] != null && !Array.isArray(parsed[k])) throw new Error("invalid " + k);
+        });
         state.locations = parsed.locations || [];
         state.nameplates = parsed.nameplates || [];
         state.templates = parsed.templates || [];
@@ -2967,8 +3137,15 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         } else {
           state.dayoffs = {};
         }
+        state.dayPlacements = (parsed.dayPlacements && typeof parsed.dayPlacements === "object" && !Array.isArray(parsed.dayPlacements)) ? parsed.dayPlacements : {};
         state.shiftFilter = parsed.shiftFilter === true;   // 初期状態はオフ
-      }catch(e){ /* corrupted data, ignore */ }
+      }catch(e){
+        // 読めないデータを空の状態で上書きしてしまわないよう、先に退避する
+        resetStateToDefaults();
+        var backupKey = backupCorruptData(raw);
+        loadProblem = { raw: raw, backupKey: backupKey };
+        if(!backupKey) saveBlocked = true;
+      }
     }
     // migrate legacy single "category" (string, incl. old "W") -> "categories" array
     function migrateCategory(n){
@@ -2981,11 +3158,27 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     (state.nameplates || []).forEach(migrateCategory);
     (state.templates || []).forEach(function(t){ (t.nameplates || []).forEach(migrateCategory); });
     (state.boards || []).forEach(function(b){ (b.nameplates || []).forEach(migrateCategory); });
-    if(!state.boardDate) state.boardDate = todayISO();
+
+    // 開くたびに日付を今日に合わせる。前の日付の配置は日付ごとに保存しておく（◀▶や日付指定で見返せる）
+    var today = todayISO();
+    sessionDay = today;
+    if(!state.boardDate) state.boardDate = today;
+    if(state.boardDate !== today){
+      syncPlacementsToDay();
+      state.boardDate = today;
+      loadPlacementsForDay(today);
+      if(!loadProblem) scheduleSave();
+    } else {
+      sanitizeOffPlacements();
+    }
     document.body.dataset.theme = state.theme || "default";
     updateTemplateLabel();
     renderDateBar();
     renderAll();
+    loaded = true;
+    if(storageBroken) setSaveWarning(true, SAVE_FAIL_MESSAGE);
+    else if(saveBlocked) setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。");
+    if(loadProblem) showLoadProblem();
   }
 
   // ---------- DOM refs ----------
@@ -3956,10 +4149,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
       box.querySelector("#okBtn").addEventListener("click", function(){
         if(!input.value) return;
-        state.boardDate = input.value;
-        renderDateBar();
-        scheduleSave();
-        renderAll();
+        setBoardDate(input.value);
         closeModal();
       });
     });
@@ -4300,6 +4490,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     if(on){
       if(!m){ m = {}; state.dayoffs[name] = m; }
       m[iso] = 1;
+      unplaceOnDate(name, iso);   // 休みの人は未配置に戻す
     } else if(m){
       delete m[iso];
       if(Object.keys(m).length === 0) delete state.dayoffs[name];
@@ -4351,8 +4542,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   function stepBoardDate(delta){
     var p = (state.boardDate || todayISO()).split("-");
     var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10) + delta);
-    state.boardDate = isoOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
-    renderDateBar(); scheduleSave(); renderAll();
+    setBoardDate(isoOf(d.getFullYear(), d.getMonth() + 1, d.getDate()));
   }
 
   function openShiftSheet(){
@@ -4389,7 +4579,10 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         '<button type="button" class="date-step lg" id="shiftPrevMonth" aria-label="前の月">◀</button>' +
         '<span class="shift-month">' + y + '年' + m + '月</span>' +
         '<button type="button" class="date-step lg" id="shiftNextMonth" aria-label="次の月">▶</button>' +
-      '</div>';
+      '</div>' +
+      '<div class="shift-import-row"><button type="button" class="btn-secondary btn-sm" id="shiftImportBtn">Excel・CSV読み込み</button>' +
+      '<button type="button" class="btn-secondary btn-sm" id="shiftShareBtn">共有コード作成</button>' +
+      '<button type="button" class="btn-secondary btn-sm" id="shiftReceiveBtn">共有コード読み込み</button></div>';
 
     if(shiftPeople.length === 0){
       html += '<p class="confirm-msg">ネームプレートがありません。先に「＋」から追加してください。</p>';
@@ -4539,8 +4732,581 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     });
   }
 
+  // ---------- Excel / CSV から休みを読み込む ----------
+  // 対応: .xlsx（ライブラリなしでブラウザ内で読む）/ .csv / .tsv / Excelからコピーした貼り付け
+  function normText(v){ return String(v == null ? "" : v).normalize("NFKC").replace(/\s+/g, ""); }
+
+  function decodeText(buf){
+    var text;
+    try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+    catch(e){
+      try { text = new TextDecoder("shift_jis").decode(buf); }   // ExcelのCSVはShift_JISのことが多い
+      catch(e2){ text = new TextDecoder().decode(buf); }
+    }
+    return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+  }
+
+  // CSV / TSV（Excelからのコピーはタブ区切り）を2次元配列にする
+  function parseDelimited(text){
+    var delim = text.indexOf("\t") !== -1 ? "\t" : ",";
+    var rows = [], row = [], cur = "", q = false;
+    for(var i = 0; i < text.length; i++){
+      var ch = text[i];
+      if(q){
+        if(ch === '"'){ if(text[i + 1] === '"'){ cur += '"'; i++; } else { q = false; } }
+        else { cur += ch; }
+      } else if(ch === '"' && cur === ""){ q = true; }
+      else if(ch === delim){ row.push(cur); cur = ""; }
+      else if(ch === "\n" || ch === "\r"){
+        if(ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(cur); cur = ""; rows.push(row); row = [];
+      } else { cur += ch; }
+    }
+    if(cur !== "" || row.length){ row.push(cur); rows.push(row); }
+    return rows;
+  }
+
+  // .xlsx は zip。中身（XML）を DecompressionStream で展開して読む
+  async function openXlsx(buf){
+    if(typeof DecompressionStream !== "function"){
+      throw new Error("この端末のブラウザでは .xlsx を直接読めません。CSVで保存するか、セルをコピーして貼り付けてください。");
+    }
+    var u8 = new Uint8Array(buf), dv = new DataView(buf), dec = new TextDecoder();
+    var eocd = -1;
+    for(var i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--){
+      if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+    }
+    if(eocd < 0) throw new Error("Excelファイルとして読めませんでした。");
+    var count = dv.getUint16(eocd + 10, true), p = dv.getUint32(eocd + 16, true), entries = {};
+    for(var k = 0; k < count && dv.getUint32(p, true) === 0x02014b50; k++){
+      var nlen = dv.getUint16(p + 28, true), elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+      entries[dec.decode(u8.subarray(p + 46, p + 46 + nlen))] = {
+        method: dv.getUint16(p + 10, true), csize: dv.getUint32(p + 20, true), lho: dv.getUint32(p + 42, true)
+      };
+      p += 46 + nlen + elen + clen;
+    }
+    async function readText(name){
+      var e = entries[name];
+      if(!e) return null;
+      var start = e.lho + 30 + dv.getUint16(e.lho + 26, true) + dv.getUint16(e.lho + 28, true);
+      var data = u8.subarray(start, start + e.csize);
+      if(e.method === 0) return dec.decode(data);
+      if(e.method !== 8) throw new Error("未対応の圧縮形式です。");
+      var stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return await new Response(stream).text();
+    }
+    function parseXml(t){ return new DOMParser().parseFromString(t, "application/xml"); }
+    function all(node, name){ return Array.prototype.slice.call(node.getElementsByTagNameNS("*", name)); }
+
+    var wbXml = await readText("xl/workbook.xml");
+    if(!wbXml) throw new Error("Excelファイル（.xlsx）ではないようです。");
+    var relsXml = await readText("xl/_rels/workbook.xml.rels"), relMap = {};
+    if(relsXml){ all(parseXml(relsXml), "Relationship").forEach(function(r){ relMap[r.getAttribute("Id")] = r.getAttribute("Target"); }); }
+    var sheets = all(parseXml(wbXml), "sheet").map(function(sh, idx){
+      var rid = sh.getAttribute("r:id") || sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+      var target = relMap[rid] || ("worksheets/sheet" + (idx + 1) + ".xml");
+      return { name: sh.getAttribute("name") || ("Sheet" + (idx + 1)), path: target.charAt(0) === "/" ? target.slice(1) : "xl/" + target };
+    });
+    if(!sheets.length) throw new Error("シートが見つかりませんでした。");
+
+    var shared = null;
+    async function loadShared(){
+      if(shared) return shared;
+      shared = [];
+      var t = await readText("xl/sharedStrings.xml");
+      if(t){
+        all(parseXml(t), "si").forEach(function(si){
+          var txt = "";
+          Array.prototype.forEach.call(si.children, function(ch){
+            if(ch.localName === "t"){ txt += ch.textContent; }
+            else if(ch.localName === "r"){ all(ch, "t").forEach(function(tt){ txt += tt.textContent; }); }
+          });
+          shared.push(txt);
+        });
+      }
+      return shared;
+    }
+    async function getRows(idx){
+      var xml = await readText(sheets[idx].path);
+      if(!xml) throw new Error("シートを読み込めませんでした。");
+      var ss = await loadShared(), rows = [];
+      all(parseXml(xml), "row").forEach(function(rw, ri){
+        var rIdx = rw.getAttribute("r") ? parseInt(rw.getAttribute("r"), 10) - 1 : ri;
+        if(rIdx > 3000) return;
+        var row = rows[rIdx] = rows[rIdx] || [], seq = 0;
+        Array.prototype.forEach.call(rw.children, function(c){
+          if(c.localName !== "c") return;
+          var ref = c.getAttribute("r"), ci = seq, mm = ref && /^([A-Z]+)/.exec(ref);
+          if(mm){ ci = 0; for(var q = 0; q < mm[1].length; q++){ ci = ci * 26 + (mm[1].charCodeAt(q) - 64); } ci -= 1; }
+          seq = ci + 1;
+          if(ci > 300) return;
+          var type = c.getAttribute("t"), vEl = null, isEl = null, val = "";
+          Array.prototype.forEach.call(c.children, function(ch){ if(ch.localName === "v") vEl = ch; else if(ch.localName === "is") isEl = ch; });
+          if(type === "s" && vEl){ val = ss[parseInt(vEl.textContent, 10)] || ""; }
+          else if(type === "inlineStr" && isEl){ val = all(isEl, "t").map(function(x){ return x.textContent; }).join(""); }
+          else if(vEl){ val = vEl.textContent; }
+          row[ci] = val;
+        });
+      });
+      for(var r = 0; r < rows.length; r++){
+        rows[r] = rows[r] || [];
+        for(var c2 = 0; c2 < rows[r].length; c2++){ if(rows[r][c2] === undefined) rows[r][c2] = ""; }
+      }
+      return rows;
+    }
+    return { names: sheets.map(function(s){ return s.name; }), getRows: getRows };
+  }
+
+  function excelSerialToYMD(n){
+    var d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n) * 86400000);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+  }
+  // 見出しのセルを日付として読む。1〜31 / 1日 / 1(月) / 9/1 / 9月1日 / 2026/9/1 / Excelの日付
+  function parseHeaderCell(v){
+    var t = normText(String(v == null ? "" : v).split(/[\r\n]/)[0]), mm;
+    if(t === "") return null;
+    if(/^\d+(\.\d+)?$/.test(t)){
+      var num = parseFloat(t);
+      if(num >= 1 && num <= 31 && Math.floor(num) === num) return { d: num };
+      if(num >= 30000 && num < 80000) return excelSerialToYMD(num);
+      return null;
+    }
+    if((mm = t.match(/^(\d{4})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})/))){
+      return (+mm[2] >= 1 && +mm[2] <= 12 && +mm[3] >= 1 && +mm[3] <= 31) ? { y: +mm[1], m: +mm[2], d: +mm[3] } : null;
+    }
+    if((mm = t.match(/^(\d{1,2})[\/月](\d{1,2})日?/))){
+      return (+mm[1] >= 1 && +mm[1] <= 12 && +mm[2] >= 1 && +mm[2] <= 31) ? { m: +mm[1], d: +mm[2] } : null;
+    }
+    if((mm = t.match(/^(\d{1,2})日?(?:[\(（][日月火水木金土][\)）])?$/))){
+      return (+mm[1] >= 1 && +mm[1] <= 31) ? { d: +mm[1] } : null;
+    }
+    return null;
+  }
+  // 日付の並びを年月日にする。日だけの見出しは指定の年月から始め、日が戻ったら翌月（21日〜翌20日のような表にも対応）
+  function resolveDateColumns(headerRow, ctxY, ctxM){
+    var cy = ctxY, cm = ctxM, prevD = 0, prevM = 0, cols = [];
+    headerRow.forEach(function(v, c){
+      var p = parseHeaderCell(v);
+      if(!p) return;
+      var y, m;
+      if(p.y){ cy = p.y; cm = p.m; y = cy; m = cm; }
+      else if(p.m){ if(prevM && p.m < prevM) cy++; y = cy; m = p.m; cm = m; }
+      else { if(prevD && p.d < prevD){ cm++; if(cm > 12){ cm = 1; cy++; } } y = cy; m = cm; }
+      prevD = p.d; prevM = m;
+      if(p.d > daysInMonth(y, m)) return;
+      cols.push({ c: c, iso: isoOf(y, m, p.d) });
+    });
+    return cols;
+  }
+  // 表の名前をボードの名前に合わせる（空白を除いて一致。なければ前方一致が1人だけのときに採用）
+  function buildNameMatcher(){
+    var names = [], seen = Object.create(null);
+    state.nameplates.forEach(function(np){
+      var k = normText(np.name);
+      if(k && !seen[k]){ seen[k] = np.name; names.push(k); }
+    });
+    return function(sheetName){
+      var k = normText(sheetName);
+      if(!k) return null;
+      if(seen[k]) return { name: seen[k], fuzzy: false };
+      var hits = names.filter(function(n){ return n.length >= 2 && k.length >= 2 && (k.indexOf(n) === 0 || n.indexOf(k) === 0); });
+      return hits.length === 1 ? { name: seen[hits[0]], fuzzy: true } : null;
+    };
+  }
+  function transposeRows(rows){
+    var w = 0;
+    rows.forEach(function(r){ if(r && r.length > w) w = r.length; });
+    var out = [];
+    for(var c = 0; c < w; c++){
+      var line = [];
+      for(var r = 0; r < rows.length; r++){ line.push((rows[r] && rows[r][c] != null) ? rows[r][c] : ""); }
+      out.push(line);
+    }
+    return out;
+  }
+  function analyzeShiftRows(rows, opts, match){
+    var hdr = -1, best = 0;
+    for(var r = 0; r < Math.min(rows.length, 20); r++){
+      var cnt = 0;
+      (rows[r] || []).forEach(function(v){ if(parseHeaderCell(v)) cnt++; });
+      if(cnt > best){ best = cnt; hdr = r; }
+    }
+    if(best < 5) return null;
+    var cols = resolveDateColumns(rows[hdr], opts.y, opts.m);
+    if(cols.length < 5 || cols[0].c < 1) return null;
+
+    // 名前の列: 日付列より左で、ボードの名前と一致が最も多い列
+    var nameCol = -1, bestScore = -1;
+    for(var c = 0; c < cols[0].c; c++){
+      var score = 0;
+      for(var r2 = hdr + 1; r2 < rows.length; r2++){
+        var cell = rows[r2] && rows[r2][c], nt = normText(cell);
+        if(nt === "") continue;
+        if(match(cell)) score += 1000;
+        else if(!/^\d+$/.test(nt)) score += 1;
+      }
+      if(score > bestScore){ bestScore = score; nameCol = c; }
+    }
+    if(nameCol < 0) return null;
+
+    var people = [], unmatched = [], fuzzy = [], offCount = 0;
+    for(var r3 = hdr + 1; r3 < rows.length; r3++){
+      var row = rows[r3] || [], raw = row[nameCol];
+      if(normText(raw) === "") continue;
+      var label = String(raw).trim(), hit = match(raw);
+      if(!hit){ if(unmatched.indexOf(label) === -1) unmatched.push(label); continue; }
+      if(hit.fuzzy) fuzzy.push(label + "→" + hit.name);
+      var offs = Object.create(null);
+      cols.forEach(function(dc){
+        var val = normText(row[dc.c]).toLowerCase(), off;
+        if(val === ""){ off = opts.blank; }
+        else { off = opts.tokens.some(function(t){ return val.indexOf(t) !== -1; }); }
+        if(off){ offs[dc.iso] = true; offCount++; }
+      });
+      people.push({ name: hit.name, offs: offs });
+    }
+    return { cols: cols, people: people, unmatched: unmatched, fuzzy: fuzzy, offCount: offCount };
+  }
+
+  // 読み込んだ休み（Excel/CSV・共有コード共通）をシフト表に反映する。反映直後の画面から元に戻せる。
+  // res = { cols:[{iso}], people:[{name, offs:{iso:true}}], offCount }
+  function applyShiftImport(res){
+    syncPlacementsToDay();
+    var backup = JSON.parse(JSON.stringify(state.dayoffs)), backupPl = JSON.parse(JSON.stringify(state.dayPlacements));
+    res.people.forEach(function(pp){
+      res.cols.forEach(function(dc){ setOff(pp.name, dc.iso, !!pp.offs[dc.iso]); });
+    });
+    var first = res.cols[0].iso;
+    shiftMonth = { y: parseInt(first.slice(0, 4), 10), m: parseInt(first.slice(5, 7), 10) };
+    shiftSelRows = Object.create(null); shiftSelCols = Object.create(null);
+    scheduleSave(); renderShiftSheet(false); renderAll();
+    closeModal();
+    openModal(function(b2){
+      b2.innerHTML =
+        '<div class="sheet-header"><span>読み込みました</span></div>' +
+        '<p class="confirm-msg">' + res.people.length + '人・' + res.cols.length + '日分の休み（' + res.offCount + 'マス）を反映しました。</p>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="undoBtn" type="button">元に戻す</button>' +
+          '<button class="btn-primary" id="doneBtn" type="button">閉じる</button>' +
+        '</div>';
+      b2.querySelector("#doneBtn").addEventListener("click", closeModal);
+      b2.querySelector("#undoBtn").addEventListener("click", function(){
+        state.dayoffs = backup; state.dayPlacements = backupPl;
+        loadPlacementsForDay(state.boardDate);
+        scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
+      });
+    });
+  }
+
+  // ---------- シフト（休み）の共有コード ----------
+  // 形式: "P5:" + base64(gzip( 開始日 FS 終了日 GS 名前 FS 休み(開始日からの日数,…) RS … ))
+  // 読み込むと、コードに含まれる人の「その期間」の休みが置き換わる（期間の外・コードにない人はそのまま）。
+  var SHIFT_CODE_PREFIX = "P5:";
+  function isoToDayNum(iso){ var p = iso.split("-"); return Math.round(Date.UTC(+p[0], +p[1] - 1, +p[2]) / 86400000); }
+  function dayNumToISO(n){ var d = new Date(n * 86400000); return isoOf(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); }
+
+  function allDayoffRange(){
+    var min = null, max = null, names = Object.create(null);
+    state.nameplates.forEach(function(np){ names[np.name] = true; });
+    Object.keys(state.dayoffs).forEach(function(name){
+      if(!names[name]) return;
+      Object.keys(state.dayoffs[name]).forEach(function(iso){
+        if(min === null || iso < min) min = iso;
+        if(max === null || iso > max) max = iso;
+      });
+    });
+    return min ? { start: min, end: max } : null;
+  }
+
+  async function encodeShiftCode(startISO, endISO){
+    var s = isoToDayNum(startISO), e = isoToDayNum(endISO), seen = Object.create(null), recs = [];
+    sortByNumber(state.nameplates).forEach(function(np){
+      if(seen[np.name]) return;
+      seen[np.name] = true;
+      var m = getDayoffs(np.name), offs = [];
+      if(m){ Object.keys(m).forEach(function(iso){ var n = isoToDayNum(iso); if(n >= s && n <= e) offs.push(n - s); }); }
+      offs.sort(function(a, b){ return a - b; });
+      recs.push(np.name + FS + offs.join(","));
+    });
+    var payload = startISO + FS + endISO + GS + recs.join(RS);
+    if(typeof CompressionStream !== "undefined"){
+      var stream = new Blob([new TextEncoder().encode(payload)]).stream().pipeThrough(new CompressionStream("gzip"));
+      var compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+      return SHIFT_CODE_PREFIX + btoa(String.fromCharCode.apply(null, compressed));
+    }
+    return SHIFT_CODE_PREFIX + btoa(unescape(encodeURIComponent(payload)));
+  }
+
+  async function decodeShiftCode(code){
+    var trimmed = (code || "").replace(/\s+/g, "");   // チャットで折り返されていても読めるように
+    if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0){
+      throw new Error("これはテンプレート／配置のコードです。シフトの共有コード（P5: で始まる）を貼り付けてください。");
+    }
+    if(trimmed.indexOf(SHIFT_CODE_PREFIX) !== 0){
+      throw new Error("シフトの共有コード（P5: で始まる）を全体貼り付けてください。");
+    }
+    var payload;
+    try{
+      var binary = atob(trimmed.slice(SHIFT_CODE_PREFIX.length));
+      var bytes = Uint8Array.from(binary, function(c){ return c.charCodeAt(0); });
+      if(bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b && typeof DecompressionStream !== "undefined"){
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        payload = new TextDecoder().decode(await new Response(stream).arrayBuffer());
+      } else {
+        payload = decodeURIComponent(escape(binary));
+      }
+    }catch(e){
+      throw new Error("コードの形式が正しくありません。コピーし直してください。");
+    }
+    var sections = payload.split(GS), head = sections[0].split(FS);
+    var iso = /^\d{4}-\d{2}-\d{2}$/;
+    if(head.length < 2 || !iso.test(head[0]) || !iso.test(head[1])) throw new Error("コードの中身が正しくありません。");
+    var s = isoToDayNum(head[0]), e = isoToDayNum(head[1]);
+    if(!(e >= s) || e - s > 800) throw new Error("コードの中身が正しくありません。");
+    var people = (sections[1] || "").length === 0 ? [] : sections[1].split(RS).map(function(rec){
+      var f = rec.split(FS), offs = Object.create(null);
+      (f[1] || "").split(",").forEach(function(x){
+        if(x === "") return;
+        var n = parseInt(x, 10);
+        if(n >= 0 && s + n <= e) offs[dayNumToISO(s + n)] = true;
+      });
+      return { name: f[0], offs: offs };
+    }).filter(function(pp){ return pp.name; });
+    return { start: head[0], end: head[1], people: people };
+  }
+
+  function copyToClipboard(text, area, done){
+    function fallback(){ area.focus(); area.select(); try{ document.execCommand("copy"); done(); }catch(e){} }
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(fallback); }
+    else { fallback(); }
+  }
+  function mdOfISO(iso){ return parseInt(iso.slice(5, 7), 10) + "/" + parseInt(iso.slice(8), 10); }
+
+  function openShiftShareModal(){
+    var y = shiftMonth.y, m = shiftMonth.m, scope = "month", code = "", token = 0;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>シフトの共有コードを作る</span></div>' +
+        '<p class="confirm-msg">休みの入力内容をコードにします。相手に送り、相手が「共有コード読み込み」に貼り付けると取り込めます。</p>' +
+        '<label>共有する期間</label>' +
+        '<div class="choice-row" id="scopeChoice">' +
+          '<div class="choice-btn selected" data-scope="month">表示中の月（' + y + '年' + m + '月）</div>' +
+          '<div class="choice-btn" data-scope="all">入力済みのすべて</div>' +
+        '</div>' +
+        '<label>共有コード</label>' +
+        '<textarea id="shiftShareArea" readonly rows="5"></textarea>' +
+        '<div class="imp-hint" id="shiftShareInfo"></div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="closeBtn" type="button">閉じる</button>' +
+          (navigator.share ? '<button class="btn-secondary" id="sendBtn" type="button">共有…</button>' : '') +
+          '<button class="btn-primary" id="copyBtn" type="button">コピー</button>' +
+        '</div>';
+      var area = box.querySelector("#shiftShareArea"), info = box.querySelector("#shiftShareInfo"),
+          copyBtn = box.querySelector("#copyBtn"), sendBtn = box.querySelector("#sendBtn");
+
+      async function refresh(){
+        var my = ++token, range = scope === "month" ? { start: isoOf(y, m, 1), end: isoOf(y, m, daysInMonth(y, m)) } : allDayoffRange();
+        copyBtn.disabled = true; if(sendBtn) sendBtn.disabled = true;
+        if(!range){ code = ""; area.value = ""; info.textContent = "共有できる休みの入力がまだありません。"; return; }
+        try{ var c = await encodeShiftCode(range.start, range.end); }
+        catch(err){ if(my === token){ code = ""; area.value = ""; info.textContent = "共有コードの作成に失敗しました。"; } return; }
+        if(my !== token) return;
+        code = c; area.value = c;
+        var names = Object.create(null), n = 0;
+        state.nameplates.forEach(function(np){ if(!names[np.name]){ names[np.name] = true; n++; } });
+        info.textContent = n + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "（コードの長さ " + c.length + "文字）";
+        copyBtn.disabled = false; if(sendBtn) sendBtn.disabled = false;
+      }
+      box.querySelectorAll("#scopeChoice .choice-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          scope = btn.dataset.scope;
+          box.querySelectorAll("#scopeChoice .choice-btn").forEach(function(b){ b.classList.toggle("selected", b === btn); });
+          refresh();
+        });
+      });
+      box.querySelector("#closeBtn").addEventListener("click", closeModal);
+      copyBtn.addEventListener("click", function(){
+        if(!code) return;
+        copyToClipboard(code, area, function(){ copyBtn.textContent = "コピーしました"; setTimeout(function(){ copyBtn.textContent = "コピー"; }, 1500); });
+      });
+      if(sendBtn){
+        sendBtn.addEventListener("click", function(){
+          if(!code) return;
+          navigator.share({ title: "シフトの共有コード", text: code }).catch(function(){ /* キャンセルなど */ });
+        });
+      }
+      refresh();
+    });
+  }
+
+  function openShiftReceiveModal(){
+    var decoded = null, token = 0;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>共有コードから休みを読み込む</span></div>' +
+        '<label>共有コードを貼り付け</label>' +
+        '<textarea id="shiftCodeArea" rows="5" placeholder="P5: で始まるコード"></textarea>' +
+        '<div class="imp-preview" id="shiftCodePreview">シフトの共有コードを貼り付けてください。</div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+          '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
+        '</div>';
+      var area = box.querySelector("#shiftCodeArea"), pv = box.querySelector("#shiftCodePreview"), okBtn = box.querySelector("#okBtn");
+      function setPreview(html, isErr){ pv.innerHTML = html; pv.classList.toggle("err", !!isErr); }
+      function limited(list, max){ return list.length <= max ? list.join("、") : list.slice(0, max).join("、") + " ほか" + (list.length - max); }
+
+      area.addEventListener("input", async function(){
+        var my = ++token;
+        decoded = null; okBtn.disabled = true;
+        if(!area.value.trim()){ setPreview("シフトの共有コードを貼り付けてください。"); return; }
+        var code;
+        try{ code = await decodeShiftCode(area.value); }
+        catch(err){ if(my === token) setPreview(escapeHtml(err.message), true); return; }
+        if(my !== token) return;
+        var match = buildNameMatcher(), people = [], unmatched = [], fuzzy = [], offCount = 0;
+        code.people.forEach(function(pp){
+          var hit = match(pp.name);
+          if(!hit){ unmatched.push(pp.name); return; }
+          if(hit.fuzzy) fuzzy.push(pp.name + "→" + hit.name);
+          offCount += Object.keys(pp.offs).length;
+          people.push({ name: hit.name, offs: pp.offs });
+        });
+        if(!people.length){
+          setPreview("ボードの名前と一致する人がいませんでした。" + (unmatched.length ? "<br>コードの名前: <b>" + escapeHtml(limited(unmatched, 6)) + "</b>" : ""), true);
+          return;
+        }
+        var cols = [], s = isoToDayNum(code.start), e = isoToDayNum(code.end);
+        for(var n = s; n <= e; n++){ cols.push({ iso: dayNumToISO(n) }); }
+        decoded = { cols: cols, people: people, offCount: offCount };
+        okBtn.disabled = false;
+        var html = '<b>' + people.length + '人</b> × <b>' + cols.length + '日</b>（' + mdOfISO(code.start) + '〜' + mdOfISO(code.end) + '）／休み <b>' + offCount + '</b>マス';
+        if(fuzzy.length) html += '<br>近い名前で照合: ' + escapeHtml(limited(fuzzy, 3));
+        if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + escapeHtml(limited(unmatched, 6));
+        html += '<br>読み込んだ人の、この期間の休みが置き換わります。';
+        setPreview(html, false);
+      });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      okBtn.addEventListener("click", function(){ if(decoded) applyShiftImport(decoded); });
+      setTimeout(function(){ area.focus(); }, 50);
+    });
+  }
+
+  function openShiftImportModal(){
+    var y0 = shiftMonth.y, m0 = shiftMonth.m;
+    var workbook = null, rows = null, result = null;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>Excel・CSVから休みを読み込む</span></div>' +
+        '<label>ファイル（.xlsx / .csv）</label>' +
+        '<input type="file" id="impFile" accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt" style="width:100%;font-size:13px;">' +
+        '<div id="impSheetRow" style="display:none;"><label>シート</label><select id="impSheet" class="imp-select"></select></div>' +
+        '<label>またはExcelでコピーしたセルを貼り付け</label>' +
+        '<textarea id="impPaste" rows="3" placeholder="名前と日付の見出しを含めてコピーして貼り付け"></textarea>' +
+        '<div class="imp-row"><div><label>年</label><input type="text" id="impYear" inputmode="numeric" value="' + y0 + '"></div>' +
+        '<div><label>月</label><input type="text" id="impMonth" inputmode="numeric" value="' + m0 + '"></div></div>' +
+        '<div class="imp-hint">見出しの日付が「1, 2, 3…」だけのときに、この年月として読みます。</div>' +
+        '<label>休みとして読む記号（カンマ区切り）</label>' +
+        '<input type="text" id="impTokens" value="休,公,×,有,希">' +
+        '<label class="imp-check"><input type="checkbox" id="impBlank"><span>空欄も休みにする（出勤日に「○」「早」「遅」などを入れている表）</span></label>' +
+        '<div class="imp-preview" id="impPreview"></div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+          '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
+        '</div>';
+      var elFile = box.querySelector("#impFile"), elPaste = box.querySelector("#impPaste"),
+          elSheetRow = box.querySelector("#impSheetRow"), elSheet = box.querySelector("#impSheet"),
+          elYear = box.querySelector("#impYear"), elMonth = box.querySelector("#impMonth"),
+          elTokens = box.querySelector("#impTokens"), elBlank = box.querySelector("#impBlank"),
+          elPreview = box.querySelector("#impPreview"), okBtn = box.querySelector("#okBtn");
+
+      function setPreview(html, isErr){ elPreview.innerHTML = html; elPreview.classList.toggle("err", !!isErr); }
+      function getOpts(){
+        var y = parseInt(normText(elYear.value), 10), m = parseInt(normText(elMonth.value), 10);
+        return {
+          y: (y >= 2000 && y <= 2100) ? y : y0,
+          m: (m >= 1 && m <= 12) ? m : m0,
+          tokens: elTokens.value.split(/[,、，\s]+/).map(function(t){ return normText(t).toLowerCase(); }).filter(Boolean),
+          blank: elBlank.checked
+        };
+      }
+      function md(iso){ return parseInt(iso.slice(5, 7), 10) + "/" + parseInt(iso.slice(8), 10); }
+      function limited(list, max){ return list.length <= max ? list.join("、") : list.slice(0, max).join("、") + " ほか" + (list.length - max); }
+
+      function recompute(){
+        result = null; okBtn.disabled = true;
+        if(!rows){ setPreview("ファイルを選ぶか、Excelでコピーしたセルを貼り付けてください。"); return; }
+        var opts = getOpts(), match = buildNameMatcher();
+        var res = analyzeShiftRows(rows, opts, match), swapped = false;
+        if(!res){ res = analyzeShiftRows(transposeRows(rows), opts, match); swapped = !!res; }
+        if(!res){
+          setPreview("日付の並び（1, 2, 3… や 9/1 など）が5日分以上ある行が見つかりませんでした。日付の見出しを含めてください。", true);
+          return;
+        }
+        if(!res.people.length){
+          setPreview("ボードの名前と一致する行がありませんでした。" +
+            (res.unmatched.length ? "<br>表の名前: <b>" + escapeHtml(limited(res.unmatched, 6)) + "</b>" : ""), true);
+          return;
+        }
+        result = res; okBtn.disabled = false;
+        var html = '<b>' + res.people.length + '人</b> × <b>' + res.cols.length + '日</b>（' + md(res.cols[0].iso) + '〜' + md(res.cols[res.cols.length - 1].iso) +
+          '）／休み <b>' + res.offCount + '</b>マス' + (swapped ? '<br>縦横を入れ替えて読みました。' : '');
+        if(res.fuzzy.length) html += '<br>近い名前で照合: ' + escapeHtml(limited(res.fuzzy, 3));
+        if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない行: ' + escapeHtml(limited(res.unmatched, 6));
+        html += '<br>読み込んだ人の、この日付の範囲の休みが置き換わります。';
+        setPreview(html, false);
+      }
+
+      elFile.addEventListener("change", async function(){
+        var f = elFile.files && elFile.files[0];
+        if(!f) return;
+        setPreview("読み込み中…"); okBtn.disabled = true;
+        try{
+          var buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 4));
+          if(head[0] === 0x50 && head[1] === 0x4B){                       // zip = xlsx
+            workbook = await openXlsx(buf);
+            elSheet.innerHTML = workbook.names.map(function(n, i){ return '<option value="' + i + '">' + escapeHtml(n) + '</option>'; }).join("");
+            var pick = 0;                                                  // 「9月」を含む名前のシートを優先
+            workbook.names.some(function(n, i){ if(normText(n).indexOf(m0 + "月") !== -1){ pick = i; return true; } return false; });
+            elSheet.value = String(pick);
+            elSheetRow.style.display = workbook.names.length > 1 ? "block" : "none";
+            rows = await workbook.getRows(pick);
+          } else if(head[0] === 0xD0 && head[1] === 0xCF){                // 旧 .xls
+            throw new Error("古い形式（.xls）は読めません。Excelで「.xlsx」か「CSV」で保存し直してください。");
+          } else {
+            workbook = null; elSheetRow.style.display = "none";
+            rows = parseDelimited(decodeText(buf));
+          }
+          elPaste.value = "";
+        }catch(err){
+          rows = null; workbook = null; setPreview(escapeHtml(err.message || "読み込めませんでした。"), true);
+          return;
+        }
+        recompute();
+      });
+      elSheet.addEventListener("change", async function(){
+        try{ rows = await workbook.getRows(parseInt(elSheet.value, 10)); }
+        catch(err){ rows = null; setPreview(escapeHtml(err.message), true); return; }
+        recompute();
+      });
+      elPaste.addEventListener("input", function(){
+        workbook = null; elSheetRow.style.display = "none"; elFile.value = "";
+        rows = elPaste.value.trim() ? parseDelimited(elPaste.value) : null;
+        recompute();
+      });
+      [elYear, elMonth, elTokens].forEach(function(el){ el.addEventListener("input", recompute); });
+      elBlank.addEventListener("change", recompute);
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+
+      okBtn.addEventListener("click", function(){ if(result) applyShiftImport(result); });
+      recompute();
+    });
+  }
+
   shiftBody.addEventListener("click", function(e){
     var t = e.target;
+    if(t.closest("#shiftImportBtn")){ openShiftImportModal(); return; }
+    if(t.closest("#shiftShareBtn")){ openShiftShareModal(); return; }
+    if(t.closest("#shiftReceiveBtn")){ openShiftReceiveModal(); return; }
     var cell = t.closest(".shift-cell");
     if(cell){
       if(cell.classList.contains("locked")){          // 入力範囲の外は変更しない
@@ -4585,6 +5351,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     if(t.closest("#shiftPatternBtn")){ openShiftPatternModal(selectedShiftNames()); return; }
     if(t.closest("#shiftFilterSwitch")){
       state.shiftFilter = !state.shiftFilter;
+      if(state.shiftFilter) sanitizeOffPlacements();
       t.closest("#shiftFilterSwitch").setAttribute("aria-checked", state.shiftFilter ? "true" : "false");
       scheduleSave(); renderAll();
       return;
@@ -4792,6 +5559,19 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 
   // ---------- init ----------
   window.addEventListener("DOMContentLoaded", loadState);
+  document.getElementById("saveWarnClose").addEventListener("click", function(){
+    document.getElementById("saveWarn").hidden = true; saveWarnDismissed = true;
+  });
+  document.addEventListener("visibilitychange", function(){
+    if(!loaded) return;
+    if(document.visibilityState === "hidden"){ clearTimeout(saveTimer); saveState(); return; }
+    var today = todayISO();
+    if(today !== sessionDay){
+      sessionDay = today;
+      if(state.boardDate !== today) setBoardDate(today);
+    }
+  });
+  window.addEventListener("pagehide", function(){ if(loaded){ clearTimeout(saveTimer); saveState(); } });
 })();
 </script>
 </body>
