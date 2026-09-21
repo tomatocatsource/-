@@ -2578,7 +2578,6 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 .shift-table .name-col .nm-row{display:flex;align-items:baseline;gap:6px;min-width:0;}
 .shift-table .name-col .nm{min-width:0;flex:0 1 auto;}
 .shift-table .name-col .off{flex:none;margin-left:auto;font-size:10px;font-weight:600;color:var(--ink-soft);}
-.shift-table .name-col .off.unset{font-weight:500;}
 .shift-range{transition:color .2s ease;}
 .shift-range.flash,.shift-range.flash b{color:var(--accent);}
 .shift-table th.sel{background:var(--bg);color:var(--accent);}
@@ -2591,7 +2590,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   .shift-table td.shift-cell.in-range{background:color-mix(in srgb, var(--accent) 8%, var(--surface));}
   .shift-table th.sel{background:color-mix(in srgb, var(--accent) 18%, var(--surface));}
 }
-.shift-table td.shift-cell.on{background:rgba(127,127,127,.18);}
+.shift-table td.shift-cell.on{background:rgba(127,127,127,.18);font-size:12px;font-weight:700;}
 @supports (background:color-mix(in srgb, red 10%, transparent)){
   .shift-table td.shift-cell.on{background:color-mix(in srgb, var(--accent) 16%, transparent);}
 }
@@ -2693,7 +2692,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", shifts: {}, shiftFilter: false };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, shiftFilter: false };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -2961,7 +2960,13 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         state.currentTemplateName = parsed.currentTemplateName || null;
         state.boardDate = parsed.boardDate || null;
         state.theme = parsed.theme || "default";
-        state.shifts = (parsed.shifts && typeof parsed.shifts === "object") ? parsed.shifts : {};
+        if(parsed.dayoffs && typeof parsed.dayoffs === "object"){
+          state.dayoffs = parsed.dayoffs;
+        } else if(parsed.shifts && typeof parsed.shifts === "object"){
+          state.dayoffs = convertWorkdaysToDayoffs(parsed.shifts);   // 旧形式（出勤日を入力）から変換
+        } else {
+          state.dayoffs = {};
+        }
         state.shiftFilter = parsed.shiftFilter === true;   // 初期状態はオフ
       }catch(e){ /* corrupted data, ignore */ }
     }
@@ -3009,7 +3014,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       '<span class="stat-cat" data-cat="M">M:<b>' + counts.M + '</b></span>' +
       '<span class="stat-cat" data-cat="L">L:<b>' + counts.L + '</b></span>' +
       '<span class="stat-sep">合計<b>' + placed.length + '</b>人</span>' +
-      (hiddenCount > 0 ? '<span class="stat-sep">非表示<b>' + hiddenCount + '</b>人</span>' : '');
+      (hiddenCount > 0 ? '<span class="stat-sep">休み<b>' + hiddenCount + '</b>人</span>' : '');
   }
 
   function colorClass(color){
@@ -3721,8 +3726,6 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
           time: timeInput.value !== "" ? parseInt(timeInput.value, 10) : null,
           categories: selectedCategories.slice()
         });
-        // 絞り込み中に追加した人が、追加した瞬間に消えないよう、表示中の日を出勤にしておく
-        if(state.shiftFilter && getShift(name) === null) setWorking(name, state.boardDate || todayISO(), true);
         scheduleSave(); renderAll(); closeModal();
       }
       box.querySelector("#okBtn").addEventListener("click", submit);
@@ -4279,34 +4282,60 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     });
   });
 
-  // ---------- shift (出勤シフト) ----------
-  // state.shifts = { "<名前>": { "YYYY-MM-DD": 1, ... } }
+  // ---------- shift (休みシフト) ----------
+  // state.dayoffs = { "<名前>": { "YYYY-MM-DD": 1, ... } }   ← 休みの日を入力する
   // 名前をキーにしているので、テンプレート適用や配置コードの読み込みで
-  // ネームプレートが作り直されても、シフトはそのまま残る。
-  // 絞り込みがオンのときは、ボードの日付に出勤として入力された人だけが
-  // ボード・未配置の両方に表示される（シフト未入力の人も表示されない）。
-  function getShift(name){
-    return Object.prototype.hasOwnProperty.call(state.shifts, name) ? state.shifts[name] : null;
+  // ネームプレートが作り直されても、休みはそのまま残る。
+  // 絞り込みがオンのときは、ボードの日付が休みになっている人が
+  // ボード・未配置の両方から外れる（休みを入力していない日は出勤扱い）。
+  function getDayoffs(name){
+    return Object.prototype.hasOwnProperty.call(state.dayoffs, name) ? state.dayoffs[name] : null;
   }
-  function isWorking(name, iso){
-    var m = getShift(name);
+  function isOff(name, iso){
+    var m = getDayoffs(name);
     return !!(m && m[iso]);
   }
-  function setWorking(name, iso, on){
-    var m = getShift(name);
-    if(!m){ m = {}; state.shifts[name] = m; }
-    if(on){ m[iso] = 1; } else { delete m[iso]; }
+  function setOff(name, iso, on){
+    var m = getDayoffs(name);
+    if(on){
+      if(!m){ m = {}; state.dayoffs[name] = m; }
+      m[iso] = 1;
+    } else if(m){
+      delete m[iso];
+      if(Object.keys(m).length === 0) delete state.dayoffs[name];
+    }
   }
   function isVisibleOnBoard(np){
     if(!state.shiftFilter) return true;
-    return isWorking(np.name, state.boardDate || todayISO());
+    return !isOff(np.name, state.boardDate || todayISO());
   }
   function migrateShiftName(oldName, newName){
-    var m = getShift(oldName);
+    var m = getDayoffs(oldName);
     if(!m) return;
-    if(getShift(newName) === null) state.shifts[newName] = JSON.parse(JSON.stringify(m));
+    if(getDayoffs(newName) === null) state.dayoffs[newName] = JSON.parse(JSON.stringify(m));
     var stillUsed = state.nameplates.some(function(n){ return n.name === oldName; });
-    if(!stillUsed) delete state.shifts[oldName];
+    if(!stillUsed) delete state.dayoffs[oldName];
+  }
+  // 旧バージョン（出勤日を入力）のデータを休みの形式に変換する。
+  // 出勤日が1日でも入力されていた月は、その月の出勤日以外を休みとして引き継ぐ。
+  function convertWorkdaysToDayoffs(old){
+    var out = {};
+    Object.keys(old).forEach(function(name){
+      var m = old[name];
+      if(!m || typeof m !== "object") return;
+      var months = {};
+      Object.keys(m).forEach(function(iso){ if(m[iso]) months[iso.slice(0, 7)] = true; });
+      var off = {}, any = false;
+      Object.keys(months).forEach(function(ym){
+        var y = parseInt(ym.slice(0, 4), 10), mo = parseInt(ym.slice(5, 7), 10);
+        for(var d = 1, n = daysInMonth(y, mo); d <= n; d++){
+          var iso = isoOf(y, mo, d);
+          if(!m[iso]){ off[iso] = 1; any = true; }
+        }
+      });
+      if(any) out[name] = off;
+    });
+    return out;
   }
 
   var WEEKDAYS = ["日","月","火","水","木","金","土"];
@@ -4353,7 +4382,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var html =
       '<div class="shift-toggle-row">' +
         '<div><div class="shift-toggle-title">出勤者だけをボードに表示</div>' +
-        '<div class="shift-toggle-sub">ボードの日付に出勤で入力した人だけが、ボードと未配置に表示されます。</div></div>' +
+        '<div class="shift-toggle-sub">ボードの日付に休みを入力した人は、ボードと未配置に表示されません。</div></div>' +
         '<button type="button" class="switch-btn" id="shiftFilterSwitch" role="switch" aria-checked="' + (state.shiftFilter ? "true" : "false") + '"><i></i></button>' +
       '</div>' +
       '<div class="shift-toolbar">' +
@@ -4380,16 +4409,16 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       t += '<tr><th class="name-col" scope="row" data-i="' + i + '"><div class="nm-row"><span class="nm">' + escapeHtml(name) + '</span><span class="off"></span></div></th>';
       for(var dd = 1; dd <= n; dd++){
         var isoD = isoOf(y, m, dd);
-        var on = isWorking(name, isoD);
+        var on = isOff(name, isoD);   // on = 休みのマス
         t += '<td class="shift-cell' + (on ? ' on' : '') + (isoD === boardIso ? ' board-col' : '') +
-             '" data-i="' + i + '" data-d="' + isoD + '">' + (on ? '●' : '') + '</td>';
+             '" data-i="' + i + '" data-d="' + isoD + '">' + (on ? '休' : '') + '</td>';
       }
       t += '</tr>';
     });
     t += '</tbody><tfoot><tr><th class="name-col">出勤</th>';
     for(var c = 1; c <= n; c++){ t += '<td class="cnt" data-d="' + isoOf(y, m, c) + '"></td>'; }
     t += '</tr></tfoot></table></div>' +
-         '<p class="shift-note">誤操作を防ぐため、名前（行）と日付（列）を1つずつ選んだ範囲のマスだけ入力できます。別の名前・日付をタップすると選択が移り、同じものをもう一度タップすると解除されます。● をタップで出勤／休みを切り替え、名前の横の数字はその月の休みの日数です（出勤が1日もない月は「未入力」）。</p>';
+         '<p class="shift-note">誤操作を防ぐため、名前（行）と日付（列）を1つずつ選んだ範囲のマスだけ入力できます。別の名前・日付をタップすると選択が移り、同じものをもう一度タップすると解除されます。「休」のマスが休みの日です。タップで休みを入れたり外したりでき、名前の横の数字はその月の休みの日数です。</p>';
 
     shiftBody.innerHTML = html + t;
     refreshShiftCounts();
@@ -4407,23 +4436,18 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   function refreshShiftCounts(){
     shiftBody.querySelectorAll("td.cnt").forEach(function(cell){
       var iso = cell.dataset.d, c = 0;
-      shiftPeople.forEach(function(name){ if(isWorking(name, iso)) c++; });
+      shiftPeople.forEach(function(name){ if(!isOff(name, iso)) c++; });   // 出勤 = 全員 − 休み
       cell.textContent = c;
     });
-    // 名前の横：その月の休みの日数（シフト未入力の人は「未入力」）
+    // 名前の横：その月の休みの日数
     var y = shiftMonth.y, m = shiftMonth.m, n = daysInMonth(y, m);
     shiftBody.querySelectorAll("tbody th.name-col").forEach(function(th){
       var off = th.querySelector(".off");
       if(!off) return;
       var name = shiftPeople[parseInt(th.dataset.i, 10)];
-      var work = 0;
-      for(var d = 1; d <= n; d++){ if(isWorking(name, isoOf(y, m, d))) work++; }
-      if(work === 0){                       // 表示中の月に出勤が1日もない
-        off.textContent = "未入力"; off.classList.add("unset");
-      } else {
-        off.textContent = "休" + (n - work);
-        off.classList.remove("unset");
-      }
+      var cnt = 0;
+      for(var d = 1; d <= n; d++){ if(isOff(name, isoOf(y, m, d))) cnt++; }
+      off.textContent = "休" + cnt;
     });
   }
 
@@ -4478,12 +4502,12 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       box.innerHTML =
         '<div class="sheet-header"><span>' + escapeHtml(title) + 'のシフト</span></div>' +
         (names.length > 1 ? '<p class="confirm-msg" style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">' + escapeHtml(limitedJoin(names, 6)) + '</p>' : '') +
-        '<label>' + m + '月に出勤する曜日</label>' +
+        '<label>' + m + '月に休みの曜日</label>' +
         '<div class="choice-row" id="wdChoice">' +
           WEEKDAYS.map(function(w, i){ return '<div class="choice-btn" style="min-width:0;padding:10px 0;" data-wd="' + i + '">' + w + '</div>'; }).join("") +
         '</div>' +
-        '<p class="confirm-msg" style="font-size:12px;color:var(--ink-soft);">選んだ曜日で' + m + '月の出勤日を入れ替えます。何も選ばずに適用すると、' + m + '月はすべて休みになります。</p>' +
-        '<div class="modal-actions"><button class="btn-danger" id="delShiftBtn" type="button">シフトを全削除</button></div>' +
+        '<p class="confirm-msg" style="font-size:12px;color:var(--ink-soft);">選んだ曜日で' + m + '月の休みを入れ替えます。何も選ばずに適用すると、' + m + '月の休みがすべて消えます。</p>' +
+        '<div class="modal-actions"><button class="btn-danger" id="delShiftBtn" type="button">休みを全削除</button></div>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
           '<button class="btn-primary" id="okBtn" type="button">適用</button>' +
@@ -4500,15 +4524,15 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       box.querySelector("#okBtn").addEventListener("click", function(){
         names.forEach(function(name){
           for(var d = 1; d <= n; d++){
-            setWorking(name, isoOf(y, m, d), !!chosen[new Date(y, m - 1, d).getDay()]);
+            setOff(name, isoOf(y, m, d), !!chosen[new Date(y, m - 1, d).getDay()]);
           }
         });
         scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
       });
       box.querySelector("#delShiftBtn").addEventListener("click", function(){
         closeModal();
-        openConfirmModal('「' + limitedJoin(names, 3) + '」のシフトをすべて削除します。絞り込みがオンの間は、ボードに表示されなくなります。', function(){
-          names.forEach(function(name){ delete state.shifts[name]; });
+        openConfirmModal('「' + limitedJoin(names, 3) + '」の休みをすべて削除します（全期間）。', function(){
+          names.forEach(function(name){ delete state.dayoffs[name]; });
           scheduleSave(); renderShiftSheet(true); renderAll();
         });
       });
@@ -4525,10 +4549,10 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         return;
       }
       var name = shiftPeople[parseInt(cell.dataset.i, 10)];
-      var on = !isWorking(name, cell.dataset.d);
-      setWorking(name, cell.dataset.d, on);
+      var on = !isOff(name, cell.dataset.d);
+      setOff(name, cell.dataset.d, on);
       cell.classList.toggle("on", on);
-      cell.textContent = on ? "●" : "";
+      cell.textContent = on ? "休" : "";
       refreshShiftCounts();
       scheduleSave(); renderAll();
       return;
