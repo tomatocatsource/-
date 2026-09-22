@@ -4898,17 +4898,43 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     });
     return cols;
   }
-  // 表の名前をボードの名前に合わせる（空白を除いて一致。なければ前方一致が1人だけのときに採用）
+  // 「山田(太)」のように、同姓の人を 姓(名の頭文字) で作ったネームプレートを、
+  // 表の「山田太郎」のようなフルネームと照合するための分解。
+  function parsePlateName(name){
+    var m = /^(.+?)[（(]\s*([^)）]+?)\s*[)）]$/.exec(name);
+    return m ? { surname: m[1], initial: m[2] } : null;
+  }
+  // 表の名前をボードの名前に合わせる（空白を除いて一致。
+  // 姓(頭文字) 形式のネームプレートは、姓が一致しフルネームがその頭文字で始まる表の名前と照合する。
+  // どちらでも決まらなければ、前方一致が1人だけのときに採用する）
   function buildNameMatcher(){
-    var names = [], seen = Object.create(null);
+    var names = [], seen = Object.create(null), parenList = [];
     state.nameplates.forEach(function(np){
       var k = normText(np.name);
       if(k && !seen[k]){ seen[k] = np.name; names.push(k); }
+      var pm = parsePlateName(np.name);
+      if(pm){
+        var surname = normText(pm.surname), initial = normText(pm.initial);
+        if(surname && initial) parenList.push({ surname: surname, initial: initial, name: np.name });
+      }
     });
     return function(sheetName){
       var k = normText(sheetName);
       if(!k) return null;
       if(seen[k]) return { name: seen[k], fuzzy: false };
+      if(parenList.length){
+        var cands = parenList.filter(function(pl){
+          return k.indexOf(pl.surname) === 0 && k.slice(pl.surname.length).indexOf(pl.initial) === 0;
+        });
+        if(cands.length){
+          var maxLen = Math.max.apply(null, cands.map(function(c){ return c.initial.length; }));
+          var uniqueNames = Object.create(null);
+          cands.forEach(function(c){ if(c.initial.length === maxLen) uniqueNames[c.name] = true; });
+          var uniqueKeys = Object.keys(uniqueNames);
+          if(uniqueKeys.length === 1) return { name: uniqueKeys[0], fuzzy: true };
+          return null;   // 同じ頭文字の人が複数いて決められない
+        }
+      }
       var hits = names.filter(function(n){ return n.length >= 2 && k.length >= 2 && (k.indexOf(n) === 0 || n.indexOf(k) === 0); });
       return hits.length === 1 ? { name: seen[hits[0]], fuzzy: true } : null;
     };
