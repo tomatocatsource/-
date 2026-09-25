@@ -4538,53 +4538,77 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var m = /^(.+?)[（(]\s*([^)）]+?)\s*[)）]$/.exec(name);
     return m ? { surname: m[1], initial: m[2] } : null;
   }
-  // 表の名前をボードの名前に合わせる（空白を除いて一致。
-  // 姓(頭文字) 形式のネームプレートは、姓が一致しフルネームがその頭文字で始まる表の名前と照合する。
-  // どちらでも決まらなければ、前方一致が1人だけのときに採用する）
+  // 名前を照合するためのキー。全角半角・空白・「・」の違いに加えて、ひらがなとカタカナの違いも無視する
+  function nameKey(v){
+    return normText(v).replace(/・/g, "").replace(/[\u3041-\u3096]/g, function(c){
+      return String.fromCharCode(c.charCodeAt(0) + 0x60);
+    });
+  }
+  // 表の名前を「名字」「名前」などの部分に分ける（空白と「・」が区切り）
+  function nameParts(v){
+    return String(v == null ? "" : v).normalize("NFKC").split(/[\s・]+/).map(nameKey).filter(Boolean);
+  }
+  // 表の名前（「名字 名前」のフルネームなど）をボードの名前に合わせる。上から順に試す:
+  //  1. 完全一致（空白・全角半角・ひらがな/カタカナの違いは無視）
+  //  2. 「山田(太)」のような 名字(名前の頭文字) 形式のネームプレート
+  //  3. 表の名前を空白や「・」で分けた部分（名字・名前）と一致。名前だけで登録した人、1文字の名前、
+  //     カタカナ名（「スミス マイケル」）もここで決まる
+  //  4. 表の名前の先頭か末尾がボードの名前と一致（空白なしの「山田花子」など、2文字以上）
+  // どの段階でも候補が2人以上に分かれたら決めずに「照合できない」とする（取り違えを防ぐため）
   function buildNameMatcher(){
-    var names = [], seen = Object.create(null), parenList = [];
+    var byKey = Object.create(null), keys = [], parenList = [];
     state.nameplates.forEach(function(np){
-      var k = normText(np.name);
-      if(k && !seen[k]){ seen[k] = np.name; names.push(k); }
+      var k = nameKey(np.name);
+      if(k && !byKey[k]){ byKey[k] = np.name; keys.push(k); }
       var pm = parsePlateName(np.name);
       if(pm){
-        var surname = normText(pm.surname), initial = normText(pm.initial);
+        var surname = nameKey(pm.surname), initial = nameKey(pm.initial);
         if(surname && initial) parenList.push({ surname: surname, initial: initial, name: np.name });
       }
     });
+    // 候補が1人に決まればその名前、決まらなければ null
+    function onlyOne(names){
+      var u = Object.create(null);
+      names.forEach(function(n){ u[n] = true; });
+      var list = Object.keys(u);
+      return list.length === 1 ? list[0] : null;
+    }
+    function fuzzy(name){ return name ? { name: name, fuzzy: true } : null; }
+
     return function(sheetName){
-      var k = normText(sheetName);
+      var k = nameKey(sheetName);
       if(!k) return null;
-      if(seen[k]) return { name: seen[k], fuzzy: false };
-      // 表の名前が「姓 名」のように空白で区切られていれば、その区切りで姓・名を判断する（1文字の姓にも対応）
-      var parts = String(sheetName == null ? "" : sheetName).normalize("NFKC").trim().split(/\s+/);
-      if(parts.length >= 2){
-        var sur = normText(parts[0]), given = normText(parts.slice(1).join(""));
-        var pc = parenList.filter(function(pl){ return pl.surname === sur && given.indexOf(pl.initial) === 0; });
-        if(pc.length){
-          var ml = Math.max.apply(null, pc.map(function(c){ return c.initial.length; }));
-          var un = Object.create(null);
-          pc.forEach(function(c){ if(c.initial.length === ml) un[c.name] = true; });
-          var uk = Object.keys(un);
-          return uk.length === 1 ? { name: uk[0], fuzzy: true } : null;
-        }
-        if(seen[sur]) return { name: seen[sur], fuzzy: true };
-      }
+      if(byKey[k]) return { name: byKey[k], fuzzy: false };
+      var parts = nameParts(sheetName);
+
       if(parenList.length){
-        var cands = parenList.filter(function(pl){
-          return k.indexOf(pl.surname) === 0 && k.slice(pl.surname.length).indexOf(pl.initial) === 0;
-        });
-        if(cands.length){
-          var maxLen = Math.max.apply(null, cands.map(function(c){ return c.initial.length; }));
-          var uniqueNames = Object.create(null);
-          cands.forEach(function(c){ if(c.initial.length === maxLen) uniqueNames[c.name] = true; });
-          var uniqueKeys = Object.keys(uniqueNames);
-          if(uniqueKeys.length === 1) return { name: uniqueKeys[0], fuzzy: true };
-          return null;   // 同じ頭文字の人が複数いて決められない
+        var pc;
+        if(parts.length >= 2){
+          var sur = parts[0], given = parts.slice(1).join("");
+          pc = parenList.filter(function(pl){ return pl.surname === sur && given.indexOf(pl.initial) === 0; });
+        } else {
+          pc = parenList.filter(function(pl){
+            return k.indexOf(pl.surname) === 0 && k.slice(pl.surname.length).indexOf(pl.initial) === 0;
+          });
+        }
+        if(pc.length){
+          // 頭文字が長いほうを優先（「山田(太)」と「山田(太郎)」なら後者）
+          var maxLen = Math.max.apply(null, pc.map(function(c){ return c.initial.length; }));
+          return fuzzy(onlyOne(pc.filter(function(c){ return c.initial.length === maxLen; }).map(function(c){ return c.name; })));
         }
       }
-      var hits = names.filter(function(n){ return n.length >= 2 && k.length >= 2 && (k.indexOf(n) === 0 || n.indexOf(k) === 0); });
-      return hits.length === 1 ? { name: seen[hits[0]], fuzzy: true } : null;
+
+      if(parts.length >= 2){
+        var partHits = [];
+        parts.forEach(function(pt){ if(byKey[pt]) partHits.push(byKey[pt]); });
+        if(partHits.length) return fuzzy(onlyOne(partHits));
+      }
+
+      var hits = keys.filter(function(n){
+        if(n.length < 2 || k.length < 2) return false;
+        return k.indexOf(n) === 0 || n.indexOf(k) === 0 || (k.length > n.length && k.slice(-n.length) === n);
+      });
+      return fuzzy(onlyOne(hits.map(function(n){ return byKey[n]; })));
     };
   }
   function colLetter(c){
