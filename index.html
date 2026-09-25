@@ -2544,7 +2544,11 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 .imp-preview{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:12px;line-height:1.7;color:var(--ink-soft);}
 .imp-preview b{color:var(--ink);}
 .imp-preview.err{color:var(--danger);}
+.imp-more{background:none;border:none;padding:0 2px;margin:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer;}
 .shift-note{font-size:12px;color:var(--ink-soft);line-height:1.6;margin:10px 0 0;}
+/* 読み込んだ「有」「指」の色（休はテーマの色のまま）。テーマ別の指定より優先させるため html body を付ける */
+html body .shift-table td.shift-cell.on.k-yu{color:#4F8FE8;background:rgba(79,143,232,.18);}
+html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,146,156,.22);}
 </style>
 </head>
 <body>
@@ -4094,7 +4098,8 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   });
 
   // ---------- shift (休みシフト) ----------
-  // state.dayoffs = { "<名前>": { "YYYY-MM-DD": 1, ... } }   ← 休みの日を入力する
+  // state.dayoffs = { "<名前>": { "YYYY-MM-DD": 1 | "有" | "指", ... } }   ← 休みの日を入力する
+  //   1 = 休（手入力はこれだけ）、"有" = 有給、"指" = 指定休（Excel・共有コードから読み込んだとき）
   // 名前をキーにしているので、テンプレート適用や配置コードの読み込みで
   // ネームプレートが作り直されても、休みはそのまま残る。
   // 絞り込みがオンのときは、ボードの日付が休みになっている人が
@@ -4106,11 +4111,20 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var m = getDayoffs(name);
     return !!(m && m[iso]);
   }
-  function setOff(name, iso, on){
+  // 休みの種類: "休" / "有" / "指"。休みでなければ null
+  function offKind(name, iso){
+    var m = getDayoffs(name), v = m && m[iso];
+    if(!v) return null;
+    return (v === "有" || v === "指") ? v : "休";
+  }
+  function normalizeOffKind(k){ return (k === "有" || k === "指") ? k : "休"; }
+  // kind を省くと、すでに休みの日は種類をそのまま残す（週の休みパターンで「有」を「休」に変えないため）
+  function setOff(name, iso, on, kind){
     var m = getDayoffs(name);
     if(on){
       if(!m){ m = {}; state.dayoffs[name] = m; }
-      m[iso] = 1;
+      if(kind !== undefined) m[iso] = normalizeOffKind(kind) === "休" ? 1 : kind;
+      else if(!m[iso]) m[iso] = 1;
       unplaceOnDate(name, iso);   // 休みの人は未配置に戻す
     } else if(m){
       delete m[iso];
@@ -4222,9 +4236,9 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       t += '<tr><th class="name-col" scope="row" data-i="' + i + '"><div class="nm-row"><span class="nm">' + escapeHtml(name) + '</span><span class="off"></span></div></th>';
       for(var dd = 1; dd <= n; dd++){
         var isoD = isoOf(y, m, dd);
-        var on = isOff(name, isoD);   // on = 休みのマス
-        t += '<td class="shift-cell' + (on ? ' on' : '') + (isoD === boardIso ? ' board-col' : '') +
-             '" data-i="' + i + '" data-d="' + isoD + '">' + (on ? '休' : '') + '</td>';
+        var kind = offKind(name, isoD);   // 休みのマスなら "休" / "有" / "指"
+        t += '<td class="shift-cell' + (kind ? ' on' + kindClass(kind) : '') + (isoD === boardIso ? ' board-col' : '') +
+             '" data-i="' + i + '" data-d="' + isoD + '">' + (kind || '') + '</td>';
       }
       t += '</tr>';
     });
@@ -4244,6 +4258,8 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       scroller.scrollLeft = target ? Math.max(0, target.offsetLeft - 165) : 0;
     }
   }
+
+  function kindClass(kind){ return kind === "有" ? " k-yu" : kind === "指" ? " k-shi" : ""; }
 
   function refreshShiftCounts(){
     shiftBody.querySelectorAll("td.cnt").forEach(function(cell){
@@ -4269,6 +4285,19 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   function selectedShiftNames(){
     return shiftPeople.filter(function(name){ return !!shiftSelRows[name]; });
   }
+  // プレビュー用: 長い一覧は先頭だけ出し、「ほか○件を表示」を押すと全部を表示する（HTMLを返す）
+  function expandableList(arr, max, sep){
+    sep = sep || "、";
+    if(arr.length <= max) return escapeHtml(arr.join(sep));
+    return '<span class="imp-list">' + escapeHtml(arr.slice(0, max).join(sep)) +
+      ' <button type="button" class="imp-more" data-full="' + escapeHtml(arr.join(sep)) + '">ほか' + (arr.length - max) + '件を表示</button></span>';
+  }
+  document.addEventListener("click", function(e){
+    var btn = e.target && e.target.closest ? e.target.closest(".imp-more") : null;
+    if(!btn) return;
+    btn.parentNode.textContent = btn.getAttribute("data-full");
+  });
+
   function limitedJoin(arr, max, sep){
     sep = sep || "・";
     if(arr.length <= max) return arr.join(sep);
@@ -4401,6 +4430,12 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   }
 
   // .xlsx は zip。中身（XML）を DecompressionStream で展開して読む
+  // 列の記号（A, B, …, AJ）を0始まりの番号にする
+  function colIndexOf(letters){
+    var n = 0;
+    for(var q = 0; q < letters.length; q++){ n = n * 26 + (letters.charCodeAt(q) - 64); }
+    return n - 1;
+  }
   async function openXlsx(buf){
     if(typeof DecompressionStream !== "function"){
       throw new Error("この端末のブラウザでは .xlsx を直接読めません。CSVで保存するか、セルをコピーして貼り付けてください。");
@@ -4439,8 +4474,13 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var sheets = all(parseXml(wbXml), "sheet").map(function(sh, idx){
       var rid = sh.getAttribute("r:id") || sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
       var target = relMap[rid] || ("worksheets/sheet" + (idx + 1) + ".xml");
-      return { name: sh.getAttribute("name") || ("Sheet" + (idx + 1)), path: target.charAt(0) === "/" ? target.slice(1) : "xl/" + target };
+      var state = sh.getAttribute("state");
+      return { name: sh.getAttribute("name") || ("Sheet" + (idx + 1)), path: target.charAt(0) === "/" ? target.slice(1) : "xl/" + target,
+               hidden: state === "hidden" || state === "veryHidden" };
     });
+    // Excelで「非表示」にしたシート（古い版の控えなど）は選択肢に出さない。全部が非表示なら全部出す
+    var shown = sheets.filter(function(sh){ return !sh.hidden; });
+    if(shown.length) sheets = shown;
     if(!sheets.length) throw new Error("シートが見つかりませんでした。");
 
     var shared = null;
@@ -4463,15 +4503,15 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     async function getRows(idx){
       var xml = await readText(sheets[idx].path);
       if(!xml) throw new Error("シートを読み込めませんでした。");
-      var ss = await loadShared(), rows = [];
-      all(parseXml(xml), "row").forEach(function(rw, ri){
+      var ss = await loadShared(), rows = [], doc = parseXml(xml);
+      all(doc, "row").forEach(function(rw, ri){
         var rIdx = rw.getAttribute("r") ? parseInt(rw.getAttribute("r"), 10) - 1 : ri;
         if(rIdx > 3000) return;
         var row = rows[rIdx] = rows[rIdx] || [], seq = 0;
         Array.prototype.forEach.call(rw.children, function(c){
           if(c.localName !== "c") return;
           var ref = c.getAttribute("r"), ci = seq, mm = ref && /^([A-Z]+)/.exec(ref);
-          if(mm){ ci = 0; for(var q = 0; q < mm[1].length; q++){ ci = ci * 26 + (mm[1].charCodeAt(q) - 64); } ci -= 1; }
+          if(mm) ci = colIndexOf(mm[1]);
           seq = ci + 1;
           if(ci > 300) return;
           var type = c.getAttribute("t"), vEl = null, isEl = null, val = "";
@@ -4481,6 +4521,21 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
           else if(vEl){ val = vEl.textContent; }
           row[ci] = val;
         });
+      });
+      // 縦に結合したセル（例: 名前が上下2行ぶん結合）は、結合した全部の行に同じ値を入れる。
+      // Excelは結合セルの値を左上にしか持たないため、下の行が「名前なし」として読み飛ばされるのを防ぐ。
+      // 横だけの結合（タイトルなど）はそのまま。
+      all(doc, "mergeCell").forEach(function(mc){
+        var mr = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(mc.getAttribute("ref") || "");
+        if(!mr) return;
+        var c1 = colIndexOf(mr[1]), r1 = +mr[2] - 1, c2 = Math.min(colIndexOf(mr[3]), 300), r2 = Math.min(+mr[4] - 1, 3000);
+        if(r2 <= r1) return;
+        var v = (rows[r1] && rows[r1][c1]) || "";
+        if(v === "") return;
+        for(var rr = r1; rr <= r2; rr++){
+          rows[rr] = rows[rr] || [];
+          for(var cc = c1; cc <= c2; cc++){ if(!rows[rr][cc]) rows[rr][cc] = v; }
+        }
       });
       for(var r = 0; r < rows.length; r++){
         rows[r] = rows[r] || [];
@@ -4538,11 +4593,12 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var m = /^(.+?)[（(]\s*([^)）]+?)\s*[)）]$/.exec(name);
     return m ? { surname: m[1], initial: m[2] } : null;
   }
-  // 名前を照合するためのキー。全角半角・空白・「・」の違いに加えて、ひらがなとカタカナの違いも無視する
+  // 名前を照合するためのキー。全角半角・空白・「・」の違いに加えて、ひらがなとカタカナの違い、
+  // 「とみ子／とみこ／トミコ」のような「子」と「こ」の違いも無視する
   function nameKey(v){
     return normText(v).replace(/・/g, "").replace(/[\u3041-\u3096]/g, function(c){
       return String.fromCharCode(c.charCodeAt(0) + 0x60);
-    });
+    }).replace(/子/g, "コ");
   }
   // 表の名前を「名字」「名前」などの部分に分ける（空白と「・」が区切り）
   function nameParts(v){
@@ -4554,7 +4610,8 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
   //  3. 表の名前を空白や「・」で分けた部分（名字・名前）と一致。名前だけで登録した人、1文字の名前、
   //     カタカナ名（「スミス マイケル」）もここで決まる
   //  4. 表の名前の先頭か末尾がボードの名前と一致（空白なしの「山田花子」など、2文字以上）
-  // どの段階でも候補が2人以上に分かれたら決めずに「照合できない」とする（取り違えを防ぐため）
+  // 名字と名前で別の人に当たったときは名前のほうを選ぶ（名字が同じ人を区別するため、名前で登録していることが多い）。
+  // それ以外で候補が2人以上に分かれたら決めずに「照合できない」とする（取り違えを防ぐため）
   function buildNameMatcher(){
     var byKey = Object.create(null), keys = [], parenList = [];
     state.nameplates.forEach(function(np){
@@ -4599,16 +4656,21 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       }
 
       if(parts.length >= 2){
-        var partHits = [];
-        parts.forEach(function(pt){ if(byKey[pt]) partHits.push(byKey[pt]); });
-        if(partHits.length) return fuzzy(onlyOne(partHits));
+        var surHits = [], givenHits = [];
+        parts.forEach(function(pt, i){ if(byKey[pt]) (i === 0 ? surHits : givenHits).push(byKey[pt]); });
+        if(givenHits.length) return fuzzy(onlyOne(givenHits));
+        if(surHits.length) return fuzzy(onlyOne(surHits));
       }
 
-      var hits = keys.filter(function(n){
-        if(n.length < 2 || k.length < 2) return false;
-        return k.indexOf(n) === 0 || n.indexOf(k) === 0 || (k.length > n.length && k.slice(-n.length) === n);
+      // 空白なし（「佐藤とみ子」など）: 末尾（名前）の一致を先頭（名字）の一致より優先
+      var tailHits = [], headHits = [];
+      keys.forEach(function(n){
+        if(n.length < 2 || k.length < 2) return;
+        if(k.length > n.length && k.slice(-n.length) === n) tailHits.push(byKey[n]);
+        else if(k.indexOf(n) === 0 || n.indexOf(k) === 0) headHits.push(byKey[n]);
       });
-      return fuzzy(onlyOne(hits.map(function(n){ return byKey[n]; })));
+      if(tailHits.length) return fuzzy(onlyOne(tailHits));
+      return fuzzy(onlyOne(headHits));
     };
   }
   function colLetter(c){
@@ -4627,6 +4689,11 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       out.push(line);
     }
     return out;
+  }
+  // 休みとして読んだ記号の種類。「有」「指」で始まる記号はそのまま、ほかは「休」
+  function tokenKind(tk){
+    var c = String(tk || "").charAt(0);
+    return (c === "有" || c === "指") ? c : "休";
   }
   function analyzeShiftRows(rows, opts, match){
     var hdr = -1, best = 0;
@@ -4663,47 +4730,85 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var baseY = opts.y, baseM = opts.m;
     if(sheetMonth){ baseM = sheetMonth.m; if(sheetMonth.y) baseY = sheetMonth.y; }
     var cols = resolveDateColumns(rows[hdr], baseY, baseM);
+    // 表の月がわかっていて1日から始まる表なら、翌月にはみ出した列（31日まで枠がある表の「10/1」など）は読まない。
+    // はみ出した列まで読むと、その日の休みが消えてしまうため。
+    if(sheetMonth && cols.length && +cols[0].iso.slice(5, 7) === sheetMonth.m && +cols[0].iso.slice(8) === 1){
+      cols = cols.filter(function(dc){ return +dc.iso.slice(5, 7) === sheetMonth.m; });
+    }
     if(cols.length < 5 || cols[0].c < 1) return null;
 
-    // 名前の列: 日付列より左で、ボードの名前と一致が最も多い列
-    var nameCol = -1, bestScore = -1;
+    // 名前の列の候補: 日付列より左で、ボードの名前と一致するセルがある列。
+    // 同じシートの下のほうに勤務時間の表など別の表があり、そこでは名前が別の列にあることがあるので、
+    // 候補の列それぞれで実際に読んでみて、休みが最も多く読めた列を使う（同数なら一致した人数が多い列）。
+    var candidates = [], fallbackCol = -1, fallbackScore = -1;
     for(var c = 0; c < cols[0].c; c++){
-      var score = 0;
+      var hits = 0, score = 0;
       for(var r2 = hdr + 1; r2 < rows.length; r2++){
         var cell = rows[r2] && rows[r2][c], nt = normText(cell);
         if(nt === "") continue;
-        if(match(cell)) score += 1000;
+        if(match(cell)){ hits++; score += 1000; }
         else if(!/^\d+$/.test(nt)) score += 1;
       }
-      if(score > bestScore){ bestScore = score; nameCol = c; }
+      if(hits) candidates.push(c);
+      if(score > fallbackScore){ fallbackScore = score; fallbackCol = c; }
     }
-    if(nameCol < 0) return null;
+    if(!candidates.length){
+      if(fallbackCol < 0) return null;
+      candidates = [fallbackCol];   // 一致なし: 「読み込まない行」を見せるために、名前らしい列で読む
+    }
 
-    var people = [], unmatched = [], fuzzy = [], offCount = 0, firstDataRow = -1;
-    var tokenHits = Object.create(null), otherMarks = Object.create(null);
-    for(var r3 = hdr + 1; r3 < rows.length; r3++){
-      var row = rows[r3] || [], raw = row[nameCol];
-      if(normText(raw) === "") continue;
-      var label = String(raw).trim(), hit = match(raw);
-      if(firstDataRow < 0) firstDataRow = r3;
-      if(!hit){ if(unmatched.indexOf(label) === -1) unmatched.push(label); continue; }
-      if(hit.fuzzy) fuzzy.push(label + "→" + hit.name);
-      var offs = Object.create(null);
-      cols.forEach(function(dc){
-        var val = normText(row[dc.c]).toLowerCase(), off = false, tk = null;
-        if(val === ""){ off = opts.blank; if(off) tk = "空欄"; }
-        else {
-          opts.tokens.some(function(t){ if(val.indexOf(t) !== -1){ tk = t; return true; } return false; });
-          off = !!tk;
-          if(!off){ var key = String(row[dc.c]).trim().slice(0, 4); otherMarks[key] = (otherMarks[key] || 0) + 1; }
+    function readWithNameCol(nameCol){
+      // 同じ人に複数の行が当たったとき（「予定」「実績」の2段や、同じ名字の別人など）は、
+      // 後の行で前の行の休みを消さないよう、休みを合わせる
+      var people = [], byName = Object.create(null), dupNames = [];
+      var unmatched = [], fuzzy = [], offCount = 0, firstDataRow = -1;
+      var tokenHits = Object.create(null), otherMarks = Object.create(null);
+      for(var r3 = hdr + 1; r3 < rows.length; r3++){
+        var row = rows[r3] || [], raw = row[nameCol];
+        if(normText(raw) === "") continue;
+        var label = String(raw).trim(), hit = match(raw);
+        if(firstDataRow < 0) firstDataRow = r3;
+        if(!hit){ if(unmatched.indexOf(label) === -1) unmatched.push(label); continue; }
+        var person = byName[hit.name];
+        if(!person){
+          person = byName[hit.name] = { name: hit.name, offs: Object.create(null), labels: [] };
+          people.push(person);
         }
-        if(off){ offs[dc.iso] = true; offCount++; tokenHits[tk] = (tokenHits[tk] || 0) + 1; }
-      });
-      people.push({ name: hit.name, offs: offs });
+        // 同じ表記の行が続くのは結合セル（1人2行など）なので正常。表記の違う行が同じ人に当たったときだけ知らせる
+        if(person.labels.indexOf(label) === -1){
+          person.labels.push(label);
+          if(hit.fuzzy) fuzzy.push(label + "→" + hit.name);
+          if(person.labels.length === 2) dupNames.push(hit.name + "（" + person.labels.join("・") + "）");
+        }
+        var offs = person.offs;
+        cols.forEach(function(dc){
+          var val = normText(row[dc.c]).toLowerCase(), off = false, tk = null;
+          if(val === ""){ off = opts.blank; if(off) tk = "空欄"; }
+          else {
+            opts.tokens.some(function(t){ if(val.indexOf(t) !== -1){ tk = t; return true; } return false; });
+            off = !!tk;
+            if(!off){ var key = String(row[dc.c]).trim().slice(0, 4); otherMarks[key] = (otherMarks[key] || 0) + 1; }
+          }
+          if(off){
+            tokenHits[tk] = (tokenHits[tk] || 0) + 1;
+            var kind = tokenKind(tk);
+            if(!offs[dc.iso]){ offs[dc.iso] = kind; offCount++; }
+            else if(offs[dc.iso] === "休" && kind !== "休") offs[dc.iso] = kind;   // 2段の表などでは有・指を優先
+          }
+        });
+      }
+      return { cols: cols, people: people, unmatched: unmatched, fuzzy: fuzzy, offCount: offCount,
+               hdr: hdr, nameCol: nameCol, firstDataRow: firstDataRow, sheetMonth: sheetMonth,
+               tokenHits: tokenHits, otherMarks: otherMarks, dupNames: dupNames };
     }
-    return { cols: cols, people: people, unmatched: unmatched, fuzzy: fuzzy, offCount: offCount,
-             hdr: hdr, nameCol: nameCol, firstDataRow: firstDataRow, sheetMonth: sheetMonth,
-             tokenHits: tokenHits, otherMarks: otherMarks };
+
+    var best = null;
+    candidates.forEach(function(nc){
+      var res = readWithNameCol(nc);
+      if(!best || res.offCount > best.offCount ||
+         (res.offCount === best.offCount && res.people.length > best.people.length)) best = res;
+    });
+    return best;
   }
 
   // 読み込んだ休み（Excel/CSV・共有コード共通）をシフト表に反映する。反映直後の画面から元に戻せる。
@@ -4712,7 +4817,10 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     syncPlacementsToDay();
     var backup = JSON.parse(JSON.stringify(state.dayoffs)), backupPl = JSON.parse(JSON.stringify(state.dayPlacements));
     res.people.forEach(function(pp){
-      res.cols.forEach(function(dc){ setOff(pp.name, dc.iso, !!pp.offs[dc.iso]); });
+      res.cols.forEach(function(dc){
+        var v = pp.offs[dc.iso];
+        setOff(pp.name, dc.iso, !!v, v ? normalizeOffKind(v) : undefined);
+      });
     });
     var first = res.cols[0].iso;
     shiftMonth = { y: parseInt(first.slice(0, 4), 10), m: parseInt(first.slice(5, 7), 10) };
@@ -4768,9 +4876,15 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var s = isoToDayNum(startISO), e = isoToDayNum(endISO), recs = [];
     (people || distinctShiftNames()).forEach(function(name){
       var m = getDayoffs(name), offs = [];
-      if(m){ Object.keys(m).forEach(function(iso){ var n = isoToDayNum(iso); if(n >= s && n <= e) offs.push(n - s); }); }
-      offs.sort(function(a, b){ return a - b; });
-      recs.push(name + FS + offs.join(","));
+      if(m){
+        Object.keys(m).forEach(function(iso){
+          var n = isoToDayNum(iso);
+          if(n >= s && n <= e) offs.push({ n: n - s, k: offKind(name, iso) });
+        });
+      }
+      offs.sort(function(a, b){ return a.n - b.n; });
+      // 休は日数だけ、有・指は「3有」のように種類を後ろに付ける（古い版は数字だけ読むので「休」として取り込める）
+      recs.push(name + FS + offs.map(function(o){ return o.n + (o.k === "休" ? "" : o.k); }).join(","));
     });
     var payload = startISO + FS + endISO + GS + recs.join(RS);
     if(typeof CompressionStream !== "undefined"){
@@ -4810,9 +4924,10 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
     var people = (sections[1] || "").length === 0 ? [] : sections[1].split(RS).map(function(rec){
       var f = rec.split(FS), offs = Object.create(null);
       (f[1] || "").split(",").forEach(function(x){
-        if(x === "") return;
-        var n = parseInt(x, 10);
-        if(n >= 0 && s + n <= e) offs[dayNumToISO(s + n)] = true;
+        var mt = /^(\d+)(有|指)?$/.exec(x);
+        if(!mt) return;
+        var n = parseInt(mt[1], 10);
+        if(n >= 0 && s + n <= e) offs[dayNumToISO(s + n)] = mt[2] || "休";
       });
       return { name: f[0], offs: offs };
     }).filter(function(pp){ return pp.name; });
@@ -5055,7 +5170,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
           people.push({ name: hit.name, offs: pp.offs });
         });
         if(!people.length){
-          setPreview("ボードの名前と一致する人がいませんでした。" + (unmatched.length ? "<br>コードの名前: <b>" + escapeHtml(limitedJoin(unmatched, 6, "、")) + "</b>" : ""), true);
+          setPreview("ボードの名前と一致する人がいませんでした。" + (unmatched.length ? "<br>コードの名前: <b>" + expandableList(unmatched, 6) + "</b>" : ""), true);
           return;
         }
         var cols = [], s = isoToDayNum(code.start), e = isoToDayNum(code.end);
@@ -5063,8 +5178,8 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         decoded = { cols: cols, people: people, offCount: offCount };
         okBtn.disabled = false;
         var html = '<b>' + people.length + '人</b> × <b>' + cols.length + '日</b>（' + mdOfISO(code.start) + '〜' + mdOfISO(code.end) + '）／休み <b>' + offCount + '</b>マス';
-        if(fuzzy.length) html += '<br>近い名前で照合: ' + escapeHtml(limitedJoin(fuzzy, 3, "、"));
-        if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + escapeHtml(limitedJoin(unmatched, 6, "、"));
+        if(fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(fuzzy, 3);
+        if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + expandableList(unmatched, 6);
         html += '<br>読み込んだ人の、この期間の休みが置き換わります。';
         setPreview(html, false);
       });
@@ -5072,6 +5187,26 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
       okBtn.addEventListener("click", function(){ if(decoded) applyShiftImport(decoded); });
       setTimeout(function(){ area.focus(); }, 50);
     });
+  }
+
+  // スマホでクラウド上のファイル（Googleドライブ、メールやLINEの添付など）を選ぶと、
+  // 端末へのダウンロードが終わる前や、読む権限が切れたときに読み取りに失敗することがあるので、少し待って1回だけ読み直す
+  async function readFileBuffer(f){
+    try{ return await f.arrayBuffer(); }
+    catch(err){
+      if(err && err.name === "NotReadableError"){
+        await new Promise(function(r){ setTimeout(r, 800); });
+        return await f.arrayBuffer();
+      }
+      throw err;
+    }
+  }
+  function fileReadErrorMessage(err){
+    if(err && err.name === "NotReadableError"){
+      return "ファイルを読み取れませんでした。Googleドライブやメール・LINEなどから直接選ぶと起きることがあります。" +
+        "一度スマホに保存（ダウンロード）してから「ファイル」アプリの中から選び直すか、Excelでセルをコピーして下の欄に貼り付けてください。";
+    }
+    return (err && err.message) || "読み込めませんでした。";
   }
 
   function openShiftImportModal(){
@@ -5108,6 +5243,30 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         };
       }
 
+      // シートが複数あるときは、全部を試しに読んで、休みが最も多く読めたシートを選ぶ
+      // （勤務時間の計算用など、同じ形の別シートを間違えて読まないように）。
+      // 休みの数が同じなら、ボードの名前と一致した人数 → シート名に「9月」を含む → 左にあるシートの順。
+      async function pickShiftSheet(wb){
+        var opts = getOpts(), match = buildNameMatcher(), best = null;
+        for(var i = 0; i < wb.names.length && i < 40; i++){
+          var r;
+          try{ r = await wb.getRows(i); }catch(e){ continue; }
+          var res = analyzeShiftRows(r, opts, match) || analyzeShiftRows(transposeRows(r), opts, match);
+          var score = [
+            res ? res.offCount : -1,
+            res ? res.people.length : -1,
+            normText(wb.names[i]).indexOf(m0 + "月") !== -1 ? 1 : 0
+          ];
+          var better = !best;
+          for(var k = 0; !better && k < score.length; k++){
+            if(score[k] !== best.score[k]){ better = score[k] > best.score[k]; break; }
+          }
+          if(better) best = { index: i, rows: r, score: score };
+        }
+        if(!best) throw new Error("シートを読み込めませんでした。");
+        return best;
+      }
+
       function recompute(){
         result = null; okBtn.disabled = true;
         if(!rows){ setPreview("ファイルを選ぶか、Excelでコピーしたセルを貼り付けてください。"); return; }
@@ -5121,11 +5280,15 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         if(!res.people.length){
           setPreview("ボードの名前と一致する行がありませんでした。" +
             "<br>名前は " + colLetter(res.nameCol) + "列から読みました。" +
-            (res.unmatched.length ? "<br>表の名前: <b>" + escapeHtml(limitedJoin(res.unmatched, 6, "、")) + "</b>" : ""), true);
+            (res.unmatched.length ? "<br>表の名前: <b>" + expandableList(res.unmatched, 6) + "</b>" : ""), true);
           return;
         }
         result = res; okBtn.disabled = false;
-        var html = '<b>' + res.people.length + '人</b> × <b>' + res.cols.length + '日</b>（' + mdOfISO(res.cols[0].iso) + '〜' + mdOfISO(res.cols[res.cols.length - 1].iso) +
+        var html = '';
+        if(workbook && workbook.names.length > 1){
+          html += 'シート「' + escapeHtml(workbook.names[parseInt(elSheet.value, 10)] || "") + '」を読みました（違うときは上で選び直し）<br>';
+        }
+        html += '<b>' + res.people.length + '人</b> × <b>' + res.cols.length + '日</b>（' + mdOfISO(res.cols[0].iso) + '〜' + mdOfISO(res.cols[res.cols.length - 1].iso) +
           '）／休み <b>' + res.offCount + '</b>マス' + (swapped ? '<br>縦横を入れ替えて読みました。' : '');
         if(!swapped){
           html += '<br>読み取り位置: 日付 ' + (res.hdr + 1) + '行目（' + colLetter(res.cols[0].c) + '〜' + colLetter(res.cols[res.cols.length - 1].c) + '列）・名前 ' +
@@ -5135,10 +5298,12 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         var hitKeys = Object.keys(res.tokenHits);
         html += '<br>休みとして読んだ記号: ' + (hitKeys.length ? escapeHtml(hitKeys.map(function(k){ return k + ' ' + res.tokenHits[k]; }).join('・')) : '<b>なし</b>');
         var otherKeys = Object.keys(res.otherMarks).sort(function(a, b){ return res.otherMarks[b] - res.otherMarks[a]; });
-        if(otherKeys.length) html += '<br>休みにしなかった記号: ' + escapeHtml(otherKeys.slice(0, 6).map(function(k){ return k + ' ' + res.otherMarks[k]; }).join('・')) +
+        if(otherKeys.length) html += '<br>休みにしなかった記号: ' + expandableList(otherKeys.map(function(k){ return k + ' ' + res.otherMarks[k]; }), 6, '・') +
           '（休みにするなら下の記号欄に追加）';
-        if(res.fuzzy.length) html += '<br>近い名前で照合: ' + escapeHtml(limitedJoin(res.fuzzy, 3, "、"));
-        if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない行: ' + escapeHtml(limitedJoin(res.unmatched, 6, "、"));
+        if(res.fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(res.fuzzy, 3);
+        if(res.dupNames.length) html += '<br><b>別々の名前の行が同じ人に当たりました（休みを合わせて読みます）:</b> ' + expandableList(res.dupNames, 6) +
+          '（別の人が混ざっていないか確認してください）';
+        if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない行: ' + expandableList(res.unmatched, 6);
         html += '<br>読み込んだ人の、この日付の範囲の休みが置き換わります。';
         setPreview(html, false);
       }
@@ -5148,15 +5313,15 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         if(!f) return;
         setPreview("読み込み中…"); okBtn.disabled = true;
         try{
-          var buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 4));
+          var buf = await readFileBuffer(f), head = new Uint8Array(buf.slice(0, 4));
           if(head[0] === 0x50 && head[1] === 0x4B){                       // zip = xlsx
             workbook = await openXlsx(buf);
             elSheet.innerHTML = workbook.names.map(function(n, i){ return '<option value="' + i + '">' + escapeHtml(n) + '</option>'; }).join("");
-            var pick = 0;                                                  // 「9月」を含む名前のシートを優先
-            workbook.names.some(function(n, i){ if(normText(n).indexOf(m0 + "月") !== -1){ pick = i; return true; } return false; });
-            elSheet.value = String(pick);
+            setPreview("シートを確認中…");
+            var best = await pickShiftSheet(workbook);
+            elSheet.value = String(best.index);
             elSheetRow.style.display = workbook.names.length > 1 ? "block" : "none";
-            rows = await workbook.getRows(pick);
+            rows = best.rows;
           } else if(head[0] === 0xD0 && head[1] === 0xCF){                // 旧 .xls
             throw new Error("古い形式（.xls）は読めません。Excelで「.xlsx」か「CSV」で保存し直してください。");
           } else {
@@ -5165,7 +5330,9 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
           }
           elPaste.value = "";
         }catch(err){
-          rows = null; workbook = null; setPreview(escapeHtml(err.message || "読み込めませんでした。"), true);
+          rows = null; workbook = null;
+          elFile.value = "";   // 同じファイルを選び直しても反応するように
+          setPreview(escapeHtml(fileReadErrorMessage(err)), true);
           return;
         }
         recompute();
@@ -5201,9 +5368,10 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
         return;
       }
       var name = shiftPeople[parseInt(cell.dataset.i, 10)];
-      var on = !isOff(name, cell.dataset.d);
-      setOff(name, cell.dataset.d, on);
+      var on = !isOff(name, cell.dataset.d);   // 手入力は「休」だけ。有・指のマスをタップすると空に戻る
+      setOff(name, cell.dataset.d, on, "休");
       cell.classList.toggle("on", on);
+      cell.classList.remove("k-yu", "k-shi");
       cell.textContent = on ? "休" : "";
       refreshShiftCounts();
       scheduleSave(); renderAll();
