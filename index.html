@@ -2549,6 +2549,9 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 /* 読み込んだ「有」「指」の色（休はテーマの色のまま）。テーマ別の指定より優先させるため html body を付ける */
 html body .shift-table td.shift-cell.on.k-yu{color:#4F8FE8;background:rgba(79,143,232,.18);}
 html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,146,156,.22);}
+html body .shift-table td.shift-cell.on.k-ketsu{color:#E0564B;background:rgba(224,86,75,.16);}
+html body .shift-table td.shift-cell.on.k-ken{color:#3FA36B;background:rgba(63,163,107,.16);}
+html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,146,156,.10);}
 </style>
 </head>
 <body>
@@ -4098,8 +4101,9 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
   });
 
   // ---------- shift (休みシフト) ----------
-  // state.dayoffs = { "<名前>": { "YYYY-MM-DD": 1 | "有" | "指", ... } }   ← 休みの日を入力する
-  //   1 = 休（手入力はこれだけ）、"有" = 有給、"指" = 指定休（Excel・共有コードから読み込んだとき）
+  // state.dayoffs = { "<名前>": { "YYYY-MM-DD": 1 | "有" | "指" | "欠" | "健" | "*", ... } }   ← 休みの日を入力する
+  //   1 = 休（手入力はこれだけ）。ほかは Excel・共有コードから読み込んだときの種類
+  //   （有 = 有給、指 = 指定休、欠 = 欠勤、健 = 健診、* = 表で「*」）
   // 名前をキーにしているので、テンプレート適用や配置コードの読み込みで
   // ネームプレートが作り直されても、休みはそのまま残る。
   // 絞り込みがオンのときは、ボードの日付が休みになっている人が
@@ -4111,13 +4115,17 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
     var m = getDayoffs(name);
     return !!(m && m[iso]);
   }
-  // 休みの種類: "休" / "有" / "指"。休みでなければ null
+  // 休みの種類（「休」以外）と、シフト表での色分けのクラス
+  var OFF_KIND_CLASS = { "有": " k-yu", "指": " k-shi", "欠": " k-ketsu", "健": " k-ken", "*": " k-ast" };
+  function normalizeOffKind(k){
+    return Object.prototype.hasOwnProperty.call(OFF_KIND_CLASS, k) ? k : "休";
+  }
+  // 休みの種類: "休" / "有" / "指" / "欠" / "健" / "*"。休みでなければ null
   function offKind(name, iso){
     var m = getDayoffs(name), v = m && m[iso];
     if(!v) return null;
-    return (v === "有" || v === "指") ? v : "休";
+    return normalizeOffKind(v);
   }
-  function normalizeOffKind(k){ return (k === "有" || k === "指") ? k : "休"; }
   // kind を省くと、すでに休みの日は種類をそのまま残す（週の休みパターンで「有」を「休」に変えないため）
   function setOff(name, iso, on, kind){
     var m = getDayoffs(name);
@@ -4259,7 +4267,7 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
     }
   }
 
-  function kindClass(kind){ return kind === "有" ? " k-yu" : kind === "指" ? " k-shi" : ""; }
+  function kindClass(kind){ return OFF_KIND_CLASS[kind] || ""; }
 
   function refreshShiftCounts(){
     shiftBody.querySelectorAll("td.cnt").forEach(function(cell){
@@ -4690,10 +4698,9 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
     }
     return out;
   }
-  // 休みとして読んだ記号の種類。「有」「指」で始まる記号はそのまま、ほかは「休」
+  // 休みとして読んだ記号の種類。先頭の1文字で決める（「健診」→ 健、「欠勤」→ 欠、「*」→ *）。当てはまらなければ「休」
   function tokenKind(tk){
-    var c = String(tk || "").charAt(0);
-    return (c === "有" || c === "指") ? c : "休";
+    return normalizeOffKind(String(tk || "").charAt(0));
   }
   function analyzeShiftRows(rows, opts, match){
     var hdr = -1, best = 0;
@@ -4883,7 +4890,7 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
         });
       }
       offs.sort(function(a, b){ return a.n - b.n; });
-      // 休は日数だけ、有・指は「3有」のように種類を後ろに付ける（古い版は数字だけ読むので「休」として取り込める）
+      // 休は日数だけ、ほかの種類は「3有」「5*」のように後ろに付ける（古い版は数字だけ読むので「休」として取り込める）
       recs.push(name + FS + offs.map(function(o){ return o.n + (o.k === "休" ? "" : o.k); }).join(","));
     });
     var payload = startISO + FS + endISO + GS + recs.join(RS);
@@ -4924,7 +4931,7 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
     var people = (sections[1] || "").length === 0 ? [] : sections[1].split(RS).map(function(rec){
       var f = rec.split(FS), offs = Object.create(null);
       (f[1] || "").split(",").forEach(function(x){
-        var mt = /^(\d+)(有|指)?$/.exec(x);
+        var mt = /^(\d+)(有|指|欠|健|\*)?$/.exec(x);
         if(!mt) return;
         var n = parseInt(mt[1], 10);
         if(n >= 0 && s + n <= e) offs[dayNumToISO(s + n)] = mt[2] || "休";
@@ -5221,7 +5228,7 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
         '<label>またはExcelでコピーしたセルを貼り付け</label>' +
         '<textarea id="impPaste" rows="3" placeholder="名前と日付の見出しを含めてコピーして貼り付け"></textarea>' +
         '<label>休みとして読む記号（カンマ区切り）</label>' +
-        '<input type="text" id="impTokens" value="休,公,×,有,希,指">' +
+        '<input type="text" id="impTokens" value="休,有,指,*,健診,欠">' +
         '<div class="imp-preview" id="impPreview"></div>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
@@ -5371,7 +5378,7 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
       var on = !isOff(name, cell.dataset.d);   // 手入力は「休」だけ。有・指のマスをタップすると空に戻る
       setOff(name, cell.dataset.d, on, "休");
       cell.classList.toggle("on", on);
-      cell.classList.remove("k-yu", "k-shi");
+      cell.classList.remove("k-yu", "k-shi", "k-ketsu", "k-ken", "k-ast");
       cell.textContent = on ? "休" : "";
       refreshShiftCounts();
       scheduleSave(); renderAll();
