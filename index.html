@@ -2682,6 +2682,22 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     });
   }
 
+  // ---------- 値のチェック（保存データ・共有コードの読み込み用） ----------
+  // 入力欄の maxlength と同じ値。コード経由でも長すぎる名前が入らないようにする
+  var LIMITS = { locationName: 20, nameplateName: 16, templateName: 20, locations: 200, nameplates: 500 };
+  function isObj(v){ return !!v && typeof v === "object" && !Array.isArray(v); }
+  function cleanText(v, max){ return (typeof v === "string" ? v : "").trim().slice(0, max); }
+  // 整数でなければ null（NaN が入ると並べ替えが壊れるため）
+  function toIntOrNull(v){
+    if(v === null || v === undefined || v === "") return null;
+    var n = typeof v === "number" ? v : parseInt(v, 10);
+    return (typeof n === "number" && isFinite(n)) ? Math.trunc(n) : null;
+  }
+  function toHourOrNull(v){
+    var n = toIntOrNull(v);
+    return (n !== null && n >= 0 && n <= 23) ? n : null;
+  }
+
   // ---------- template share codes ----------
   var TEMPLATE_CODE_PREFIX = "P3:";
   var TYPE_CODES = ["2行", "2人", "3人"];
@@ -2770,31 +2786,36 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     }
     var sections = payload.split(GS);
     var name = sections[0];
-    if(!name){
+    if(!name || !name.trim()){
       throw new Error("コードの中身が正しくありません。");
     }
     var locStr = sections[1] || "";
     var npStr = sections[2] || "";
+    // 外から来たデータなので、入力画面と同じ制限（文字数・数値の範囲）にそろえる
     var locationNames = locStr.length === 0 ? [] : locStr.split(RS).map(function(rec){
       var f = rec.split(FS);
-      return { name: f[0], type: codeToType(parseInt(f[1], 10)), leftSlot: f[2] === "1" };
-    });
+      return { name: cleanText(f[0], LIMITS.locationName), type: codeToType(parseInt(f[1], 10)), leftSlot: f[2] === "1" };
+    }).filter(function(l){ return l.name; });
     var nameplates = npStr.length === 0 ? [] : npStr.split(RS).map(function(rec){
       var f = rec.split(FS);
       return {
-        name: f[0],
-        number: f[1] === "" ? null : parseInt(f[1], 10),
-        time: f[2] === "" ? null : parseInt(f[2], 10),
+        name: cleanText(f[0], LIMITS.nameplateName),
+        number: toIntOrNull(f[1]),
+        time: toHourOrNull(f[2]),
         color: codeToColor(parseInt(f[3], 10)),
         categories: codeToCategories(parseInt(f[4], 10))
       };
-    });
-    return { name: name, locationNames: locationNames, nameplates: nameplates };
+    }).filter(function(n){ return n.name; });
+    if(locationNames.length > LIMITS.locations || nameplates.length > LIMITS.nameplates){
+      throw new Error("コードの中身が多すぎて読み込めません。");
+    }
+    return { name: cleanText(name, LIMITS.templateName) || "テンプレート", locationNames: locationNames, nameplates: nameplates };
   }
 
   // ---------- persistence ----------
   // Fully offline: persistence uses localStorage only. No network or cloud
-  // storage of any kind is used by this tool.
+  // storage of any kind is used by this tool. QRコード用のライブラリ（qrcode.js / jsQR.js）も
+  // index.html と同じ場所に置いたファイルを読み込む。
   var saveTimer = null;
   var loaded = false;          // 読み込みが終わるまで保存しない（空のデータで上書きしないため）
   var loadProblem = null;      // 読み込めなかった保存データの情報
@@ -2802,6 +2823,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   var storageBroken = false;   // 保存領域が使えない
   var saveWarnDismissed = false;
   var sessionDay = null;       // このセッションで「今日」だと思っている日付
+  var changedInOtherTab = false; // ほかのタブ（ホーム画面のアプリとブラウザなど）で保存された
 
   function scheduleSave(){
     clearTimeout(saveTimer);
@@ -2820,6 +2842,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   var SAVE_FAIL_MESSAGE = "⚠ 保存できていません。保存領域がいっぱいか、保存が許可されていない可能性があります。このまま閉じると入力した内容が消えます。";
   function saveState(){
     if(!loaded) return;
+    if(changedInOtherTab) return;   // ほかのタブの新しい内容を、この画面の古い内容で上書きしない
     if(saveBlocked){ setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。"); return; }
     syncPlacementsToDay();
     var json = JSON.stringify(state);
@@ -2945,7 +2968,8 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       var area = box.querySelector("#brokenArea"), copyBtn = box.querySelector("#copyBrokenBtn");
       area.value = p.raw;
       copyBtn.addEventListener("click", function(){
-        copyToClipboard(p.raw, area, function(){ copyBtn.textContent = "コピーしました"; });
+        copyToClipboard(p.raw, area, function(){ copyBtn.textContent = "コピーしました"; },
+          function(){ copyBtn.textContent = "コピーできませんでした"; });
       });
       var closeBtn = box.querySelector("#closeBtn");
       if(closeBtn) closeBtn.addEventListener("click", closeModal);
@@ -2954,6 +2978,58 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         saveBlocked = false; setSaveWarning(false); scheduleSave(); closeModal();
       });
     });
+  }
+
+  // ---------- 保存データの要素ごとの確認 ----------
+  var SLOT_VALUES = ["top", "bottom", "left"];
+  function cleanList(arr, fn){
+    if(!Array.isArray(arr)) return [];
+    var out = [];
+    arr.forEach(function(v){ var c = fn(v); if(c) out.push(c); });
+    return out;
+  }
+  function cleanStoredLocation(l){
+    if(!isObj(l) || typeof l.name !== "string") return null;
+    if(typeof l.id !== "string" || !l.id) l.id = uid();
+    if(TYPE_CODES.indexOf(l.type) === -1) l.type = "2行";
+    l.leftSlot = !!l.leftSlot;
+    return l;
+  }
+  function cleanStoredNameplate(n){
+    if(!isObj(n) || typeof n.name !== "string") return null;
+    if(typeof n.id !== "string" || !n.id) n.id = uid();
+    if(COLOR_CODES.indexOf(n.color) === -1) n.color = "white";
+    n.number = toIntOrNull(n.number);
+    n.time = toHourOrNull(n.time);
+    if(typeof n.locationId !== "string" || !n.locationId) n.locationId = null;
+    if(SLOT_VALUES.indexOf(n.slot) === -1) n.slot = null;
+    if(Array.isArray(n.categories)){
+      n.categories = n.categories.filter(function(c){ return CATEGORY_LETTERS.indexOf(c) !== -1; });
+    } else if(n.categories != null){
+      delete n.categories;   // 下の移行処理で category から作り直す
+    }
+    return n;
+  }
+  function cleanStoredTemplate(t){
+    if(!isObj(t) || typeof t.name !== "string") return null;
+    if(typeof t.id !== "string" || !t.id) t.id = uid();
+    t.locationNames = Array.isArray(t.locationNames) ? t.locationNames.filter(function(item){
+      return typeof item === "string" || (isObj(item) && typeof item.name === "string");
+    }) : [];
+    t.nameplates = Array.isArray(t.nameplates) ? t.nameplates.filter(function(np){
+      if(!isObj(np) || typeof np.name !== "string") return false;
+      np.number = toIntOrNull(np.number);
+      np.time = toHourOrNull(np.time);
+      return true;
+    }) : [];
+    return t;
+  }
+  function cleanStoredDayoffs(obj){
+    var out = {};
+    Object.keys(obj).forEach(function(name){
+      if(isObj(obj[name])) out[name] = obj[name];
+    });
+    return out;
   }
 
   function loadState(){
@@ -2967,16 +3043,21 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         ["locations", "nameplates", "templates", "boards"].forEach(function(k){
           if(parsed[k] != null && !Array.isArray(parsed[k])) throw new Error("invalid " + k);
         });
-        state.locations = parsed.locations || [];
-        state.nameplates = parsed.nameplates || [];
-        state.templates = parsed.templates || [];
-        state.boards = parsed.boards || [];
+        // 配列の中身も確認する。おかしな要素（null など）は、全体を捨てずにその要素だけ除く
+        state.locations = cleanList(parsed.locations, cleanStoredLocation);
+        state.nameplates = cleanList(parsed.nameplates, cleanStoredNameplate);
+        state.templates = cleanList(parsed.templates, cleanStoredTemplate);
+        state.boards = cleanList(parsed.boards, function(b){
+          if(!isObj(b)) return null;
+          if(b.nameplates != null) b.nameplates = Array.isArray(b.nameplates) ? b.nameplates.filter(isObj) : [];
+          return b;
+        });
         state.currentTemplateName = parsed.currentTemplateName || null;
         state.boardDate = parsed.boardDate || null;
         state.theme = parsed.theme || "default";
         if(state.theme === "mono") state.theme = "default";   // 削除したテーマ
-        if(parsed.dayoffs && typeof parsed.dayoffs === "object"){
-          state.dayoffs = parsed.dayoffs;
+        if(isObj(parsed.dayoffs)){
+          state.dayoffs = cleanStoredDayoffs(parsed.dayoffs);
         } else if(parsed.shifts && typeof parsed.shifts === "object"){
           state.dayoffs = convertWorkdaysToDayoffs(parsed.shifts);   // 旧形式（出勤日を入力）から変換
         } else {
@@ -3104,10 +3185,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     // タップ編集はclickでも受ける。pointerイベントがOS/ブラウザ側で
     // キャンセルされた場合でも、通常のタップなら編集を開けるようにする。
     chip.addEventListener("click", function(e){
-      if(chip.dataset.suppressClick === "1"){
-        chip.dataset.suppressClick = "0";
-        return;
-      }
+      if(isClickSuppressed(chip)) return;
       openEditNameplateModal(np.id);
     });
     makeDraggable(chip, np.id);
@@ -3208,7 +3286,8 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       if(placedAll.length === 0){
         body.appendChild(createEmptyHint());
       } else {
-        var topItems = sortByTimeField(placedAll.filter(function(n){ return (n.slot || "top") === "top"; }));
+        // 左枠がない場所では、左枠にいた人（左枠をオフにした・タイプを変えた場合）は上段に出す
+        var topItems = sortByTimeField(placedAll.filter(function(n){ return n.slot !== "bottom"; }));
         var bottomItems = sortByTimeField(placedAll.filter(function(n){ return n.slot === "bottom"; }));
 
         var topHalf = document.createElement("div");
@@ -3330,6 +3409,17 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     el._momentumRAF = requestAnimationFrame(step);
   }
 
+  // ドラッグ・スクロールのあとに来るclickを無視する。フラグを立てっぱなしにすると、
+  // clickが来なかったとき（指で大きく動かしたときなど）に次の普通のタップまで無視してしまうので、
+  // 「この時刻までに来たclickだけ無視」という期限つきにする。
+  var CLICK_SUPPRESS_MS = 400;
+  function suppressNextClick(el){ el._suppressClickUntil = performance.now() + CLICK_SUPPRESS_MS; }
+  function isClickSuppressed(el){
+    var until = el._suppressClickUntil || 0;
+    el._suppressClickUntil = 0;
+    return performance.now() < until;
+  }
+
   function makeDraggable(chipEl, nameplateId){
     chipEl.addEventListener("pointerdown", function(e){
       if(e.pointerType === "mouse" && e.button !== 0) return;
@@ -3421,16 +3511,16 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
 
         if(ctx.dragging && isMouse){
           // マウスはクリック（動かさずに離す）で編集が開くので、つかんで離したら必ず移動として扱う
-          chipEl.dataset.suppressClick = "1";
-          setTimeout(function(){ chipEl.dataset.suppressClick = "0"; }, 0);   // 別の場所で離してクリックが来なくても次のクリックを邪魔しない
+          suppressNextClick(chipEl);
           finishDrag(ctx);
         } else if(ctx.dragging){
           if(totalDx < 12 && totalDy < 12){
             cancelDragVisuals(ctx);
             ev.preventDefault();
+            suppressNextClick(chipEl);   // 直後のclickで編集画面をもう一度開かないように
             openEditNameplateModal(nameplateId);
           } else {
-            chipEl.dataset.suppressClick = "1";
+            suppressNextClick(chipEl);
             finishDrag(ctx);
           }
         } else if(ctx.scrolling){
@@ -3438,9 +3528,10 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
             ctx.scrollEl.scrollLeft = ctx.scrollStartLeft;
             ctx.scrollEl.scrollTop = ctx.scrollStartTop;
             ev.preventDefault();
+            suppressNextClick(chipEl);
             openEditNameplateModal(nameplateId);
           } else {
-            chipEl.dataset.suppressClick = "1";
+            suppressNextClick(chipEl);
             var first = ctx.history[0], last = ctx.history[ctx.history.length - 1];
             var dt = last.t - first.t;
             if(dt > 0){
@@ -3665,6 +3756,18 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     });
   }
 
+  // 左枠がなくなった場所の「左枠」の配置を上段へ移す（表示中の日付と、保存済みのほかの日付の両方）
+  function moveLeftSlotToTop(locId){
+    state.nameplates.forEach(function(n){
+      if(n.locationId === locId && n.slot === "left") n.slot = "top";
+    });
+    Object.keys(state.dayPlacements).forEach(function(iso){
+      var list = state.dayPlacements[iso];
+      if(!Array.isArray(list)) return;
+      list.forEach(function(p){ if(Array.isArray(p) && p[1] === locId && p[2] === "left") p[2] = "top"; });
+    });
+  }
+
   function openEditLocationModal(locId){
     var loc = state.locations.find(function(l){ return l.id === locId; });
     if(!loc) return;
@@ -3707,6 +3810,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         loc.name = name;
         loc.type = selectedType;
         loc.leftSlot = leftSlotCheckbox.checked;
+        if(!(selectedType === "2行" && loc.leftSlot)) moveLeftSlotToTop(loc.id);
         state.currentTemplateName = null;
         updateTemplateLabel();
         scheduleSave(); renderAll(); closeModal();
@@ -3715,7 +3819,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         closeModal();
         openConfirmModal('「' + loc.name + '」を削除しますか？配置されているネームプレートは未配置に戻ります。', function(){
           state.locations = state.locations.filter(function(l){ return l.id !== locId; });
-          state.nameplates.forEach(function(n){ if(n.locationId === locId) n.locationId = null; });
+          state.nameplates.forEach(function(n){ if(n.locationId === locId){ n.locationId = null; n.slot = null; } });
           state.currentTemplateName = null;
           updateTemplateLabel();
           scheduleSave(); renderAll();
@@ -3739,9 +3843,9 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         '<label>名前</label>' +
         '<input type="text" id="npNameInput"' + (isEdit ? '' : ' placeholder="例：山田"') + ' maxlength="16">' +
         '<label>番号（昇順で並び替え）</label>' +
-        '<input type="number" id="npNumberInput" step="1" placeholder="例：1">' +
+        '<input type="number" id="npNumberInput" min="0" max="99" step="1" inputmode="numeric" placeholder="例：1">' +
         '<label>出勤時間（時のみ・任意）</label>' +
-        '<input type="number" id="npTimeInput" min="0" max="23" step="1" placeholder="例：9">' +
+        '<input type="number" id="npTimeInput" min="0" max="23" step="1" inputmode="numeric" placeholder="例：9">' +
         '<label>枠の色</label>' +
         '<div class="swatch-row">' +
         '<div class="swatch plate-white-sw" data-color="white"></div>' +
@@ -3761,6 +3865,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
             '<button class="btn-danger" id="delBtn" type="button">削除</button>' +
             '</div>'
           : '') +
+        '<p class="confirm-msg" id="npError" style="display:none;color:var(--danger);"></p>' +
         '<div class="modal-actions">' +
         '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
         '<button class="btn-primary" id="okBtn" type="button">' + (isEdit ? '保存' : '追加') + '</button>' +
@@ -3771,6 +3876,17 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       var timeInput = box.querySelector("#npTimeInput");
       function toField(v){ return (v === null || v === undefined) ? "" : v; }
       function fromField(el){ return el.value !== "" ? parseInt(el.value, 10) : null; }
+      var errorEl = box.querySelector("#npError");
+      function showError(msg, el){ errorEl.textContent = msg; errorEl.style.display = "block"; if(el) el.focus(); }
+      // 空欄はOK。入力があるときは整数か（小数・「1e3」などの変な値は不可）、範囲内かを確認する
+      function isIntField(el, min, max){
+        if(el.validity && el.validity.badInput) return false;   // 数字として読めない文字
+        var v = el.value.trim();
+        if(v === "") return true;
+        if(!/^-?\d+$/.test(v)) return false;
+        var n = parseInt(v, 10);
+        return (min === undefined || n >= min) && (max === undefined || n <= max);
+      }
       if(isEdit){
         input.value = np.name;
         numberInput.value = toField(np.number);
@@ -3811,6 +3927,8 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       function submit(){
         var name = input.value.trim();
         if(!name){ input.focus(); return; }
+        if(!isIntField(numberInput, 0, 99)){ showError("番号は0〜99の整数で入力してください。", numberInput); return; }
+        if(!isIntField(timeInput, 0, 23)){ showError("出勤時間は0〜23の整数（時のみ）で入力してください。", timeInput); return; }
         var newNumber = fromField(numberInput), time = fromField(timeInput);
         insertNumberIfColliding(newNumber, isEdit ? np.id : null);
         if(isEdit){
@@ -3838,7 +3956,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       var unassignBtn = box.querySelector("#unassignBtn");
       if(unassignBtn){
         unassignBtn.addEventListener("click", function(){
-          np.locationId = null;
+          np.locationId = null; np.slot = null;
           scheduleSave(); renderAll(); closeModal();
         });
       }
@@ -4063,7 +4181,10 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       var copyBtn = box.querySelector("#copyBtn");
       box.querySelector("#closeBtn").addEventListener("click", closeModal);
       copyBtn.addEventListener("click", function(){
-        copyToClipboard(code, area, function(){ flashCopied(copyBtn); });
+        copyToClipboard(code, area, function(){ flashCopied(copyBtn); }, function(){
+          copyFailed(copyBtn);
+          area.focus(); area.select();   // 手でコピーできるよう、コードを選んだ状態にする
+        });
       });
     });
   }
@@ -4977,10 +5098,19 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     return { start: head[0], end: head[1], people: people };
   }
 
-  function copyToClipboard(text, area, done){
-    function fallback(){ area.focus(); area.select(); try{ document.execCommand("copy"); done(); }catch(e){} }
+  // コピーできたら done、できなかったら fail（省略時はボタンの近くに案内を出さず何もしない）
+  function copyToClipboard(text, area, done, fail){
+    function fallback(){
+      var ok = false;
+      try{ area.focus(); area.select(); ok = document.execCommand("copy"); }catch(e){ ok = false; }
+      if(ok) done(); else if(fail) fail();
+    }
     if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(fallback); }
     else { fallback(); }
+  }
+  function copyFailed(btn){
+    btn.textContent = "コピーできませんでした";
+    setTimeout(function(){ btn.textContent = "コピー"; }, 2500);
   }
   function flashCopied(btn){
     btn.textContent = "コピーしました";
@@ -5024,8 +5154,11 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   }
 
   // QRの読み取り方法: "native"（ブラウザ内蔵の BarcodeDetector。Android の Chrome など）/
-  // "jsqr"（内蔵がないとき。iPhone の Safari など。読み取り用のライブラリを初回だけネットから読み込む）/ false（読めない）
-  var JSQR_URL = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+  // "jsqr"（内蔵がないとき。iPhone の Safari など。同じ場所に置いた jsQR.js を初回だけ読み込む）/ false（読めない）
+  // 外部のCDNから読み込むと、オフラインで使えないうえ、配信元が改ざんされたときに
+  // 保存データのあるこのページで他人のスクリプトが動いてしまうので、ファイルを同梱する。
+  // jsQR.js がないときは読み取りボタンを出さないだけで、ほかの機能には影響しない。
+  var JSQR_URL = "jsQR.js";
   var qrDetectorSupport = null;
   function loadJsQR(){
     if(typeof window.jsQR === "function") return Promise.resolve(true);
@@ -5214,7 +5347,10 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       box.querySelector("#closeBtn").addEventListener("click", closeModal);
       copyBtn.addEventListener("click", function(){
         if(!code) return;
-        copyToClipboard(code, area, function(){ flashCopied(copyBtn); });
+        copyToClipboard(code, area, function(){ flashCopied(copyBtn); }, function(){
+          copyFailed(copyBtn);
+          area.focus(); area.select();   // 手でコピーできるよう、コードを選んだ状態にする
+        });
       });
       if(sendBtn){
         sendBtn.addEventListener("click", function(){
@@ -5306,7 +5442,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       box.innerHTML =
         '<div class="sheet-header"><span>Excel・CSVから休みを読み込む</span></div>' +
         '<label>ファイル（.xlsx / .csv）</label>' +
-        '<input type="file" id="impFile" accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt" style="width:100%;font-size:13px;">' +
+        '<input type="file" id="impFile" accept=".xlsx,.xlsm,.csv,.tsv,.txt" style="width:100%;font-size:13px;">' +
         '<div id="impSheetRow" style="display:none;"><label>シート</label><select id="impSheet" class="imp-select"></select></div>' +
         '<label>またはExcelでコピーしたセルを貼り付け</label>' +
         '<textarea id="impPaste" rows="3" placeholder="名前と日付の見出しを含めてコピーして貼り付け"></textarea>' +
@@ -5717,13 +5853,47 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   document.addEventListener("visibilitychange", function(){
     if(!loaded) return;
     if(document.visibilityState === "hidden"){ clearTimeout(saveTimer); saveState(); return; }
+    if(changedInOtherTab){ reloadFromStorage(); return; }
+    checkDayChange();
+  });
+  // 日付が変わっていたら今日に切り替える。画面を開いたまま0時を越えたときのため、1分ごとにも確認する
+  function checkDayChange(){
+    if(!loaded || changedInOtherTab) return;
     var today = todayISO();
     if(today !== sessionDay){
       sessionDay = today;
       if(state.boardDate !== today) setBoardDate(today);
     }
-  });
+  }
+  setInterval(function(){
+    if(document.visibilityState === "visible") checkDayChange();
+  }, 60000);
   window.addEventListener("pagehide", function(){ if(loaded){ clearTimeout(saveTimer); saveState(); } });
+
+  // ほかのタブで保存されたら、この画面の保存を止めて読み直してもらう。
+  // （そのまま保存を続けると、後から保存した側が相手の変更を丸ごと消してしまうため）
+  function reloadFromStorage(){
+    loaded = false;   // 読み直す直前の pagehide で古い内容を保存しないように
+    location.reload();
+  }
+  window.addEventListener("storage", function(e){
+    if(e.storageArea !== localStorage) return;
+    if(e.key !== STORAGE_KEY && e.key !== null) return;   // null = 全消去
+    if(!loaded || changedInOtherTab) return;
+    changedInOtherTab = true;
+    clearTimeout(saveTimer);
+    // 見えていない画面は、そのまま読み直せばよい
+    if(document.visibilityState === "hidden"){ reloadFromStorage(); return; }
+    setSaveWarning(true, "⚠ ほかの画面で内容が変更されました。この画面での変更は保存されません。読み直してください。");
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>ほかの画面で変更されました</span></div>' +
+        '<p class="confirm-msg">このボードは別のタブやアプリでも開かれていて、そちらで内容が保存されました。' +
+        '上書きしてしまわないよう、この画面での保存を止めています。読み直すと最新の内容になります。</p>' +
+        '<div class="modal-actions"><button class="btn-primary" id="reloadBtn" type="button">読み直す</button></div>';
+      box.querySelector("#reloadBtn").addEventListener("click", reloadFromStorage);
+    });
+  });
 })();
 </script>
 </body>
