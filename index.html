@@ -147,6 +147,8 @@
   .nameplate-chip.plate-white{border-color:var(--ink);}
   .chip-dragging-source{opacity:.35;}
   .drag-ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:9999;box-shadow:0 8px 20px rgba(0,0,0,.28);}
+  /* チップ本体の transition を引き継ぐと、つかんだ瞬間に画面の左上から指の位置まで飛んでくるように見えるので止める */
+  html body .drag-ghost{transition:none !important;animation:none !important;}
 
   /* ---------- pool bar ---------- */
   .pool-bar{
@@ -2553,6 +2555,11 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
 html body .shift-table td.shift-cell.on.k-ketsu{color:#E0564B;background:rgba(224,86,75,.16);}
 html body .shift-table td.shift-cell.on.k-ken{color:#3FA36B;background:rgba(63,163,107,.16);}
 html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,146,156,.10);}
+/* マウスで使うとき: つかめることがわかるカーソル */
+@media (hover:hover) and (pointer:fine){
+  .nameplate-chip{cursor:grab;}
+  body.mouse-dragging, body.mouse-dragging *{cursor:grabbing !important;}
+}
 </style>
 </head>
 <body>
@@ -3345,8 +3352,15 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         timer: null
       };
 
-      chipEl.classList.add("chip-pressing");
-      ctx.timer = setTimeout(function(){ beginDrag(ctx, ctx.lastX, ctx.lastY); }, 220);
+      // マウスでは長押しを待たず、押したまま少し動かした時点でつかむ（PCではこのほうが自然）。
+      // 指では画面のスクロールと区別するため、これまで通り少し長押ししてからつかむ。
+      var isMouse = e.pointerType === "mouse";
+      if(isMouse){
+        e.preventDefault();   // 文字の選択や画像のドラッグが始まらないように（クリックは発生する）
+      } else {
+        chipEl.classList.add("chip-pressing");
+        ctx.timer = setTimeout(function(){ beginDrag(ctx, ctx.lastX, ctx.lastY); }, 220);
+      }
 
       function onMove(ev){
         if(ev.pointerId !== ctx.pointerId) return;
@@ -3359,6 +3373,14 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
           var dxs = ev.clientX - ctx.startX, dys = ev.clientY - ctx.startY;
           ctx.scrollEl.scrollLeft = ctx.scrollStartLeft - dxs;
           ctx.scrollEl.scrollTop = ctx.scrollStartTop - dys;
+          return;
+        }
+
+        if(!ctx.dragging && isMouse){
+          if(Math.abs(ev.clientX - ctx.startX) > 4 || Math.abs(ev.clientY - ctx.startY) > 4){
+            beginDrag(ctx, ev.clientX, ev.clientY);
+            document.body.classList.add("mouse-dragging");
+          }
           return;
         }
 
@@ -3397,7 +3419,12 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         var totalDx = Math.abs(ctx.lastX - ctx.startX);
         var totalDy = Math.abs(ctx.lastY - ctx.startY);
 
-        if(ctx.dragging){
+        if(ctx.dragging && isMouse){
+          // マウスはクリック（動かさずに離す）で編集が開くので、つかんで離したら必ず移動として扱う
+          chipEl.dataset.suppressClick = "1";
+          setTimeout(function(){ chipEl.dataset.suppressClick = "0"; }, 0);   // 別の場所で離してクリックが来なくても次のクリックを邪魔しない
+          finishDrag(ctx);
+        } else if(ctx.dragging){
           if(totalDx < 12 && totalDy < 12){
             cancelDragVisuals(ctx);
             ev.preventDefault();
@@ -3428,6 +3455,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       }
 
       function cleanup(){
+        document.body.classList.remove("mouse-dragging");
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
         document.removeEventListener("pointercancel", onUp);
@@ -3454,11 +3482,15 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     ctx.origEl.classList.add("chip-dragging-source");
     var ghost = ctx.origEl.cloneNode(true);
     ghost.classList.add("drag-ghost");
+    ghost.classList.remove("chip-pressing");
+    ghost.style.transition = "none";
+    ghost.style.visibility = "hidden";   // 位置を合わせるまで見せない
     document.body.appendChild(ghost);
     ctx.ghost = ghost;
     ctx.ghostW = ghost.offsetWidth;
     ctx.ghostH = ghost.offsetHeight;
     moveGhost(ctx, clientX, clientY);
+    ghost.style.visibility = "";
     if(navigator.vibrate){ navigator.vibrate(8); }
   }
 
