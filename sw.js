@@ -2,7 +2,7 @@
 // 方針: ネットワーク優先。つながるときは常に最新を取得してキャッシュを更新し、
 // つながらないときだけキャッシュから返す（更新後に古い版が出続けることがない）。
 // ファイル構成を変えたときは CACHE_VERSION を上げると、古いキャッシュが削除される。
-var CACHE_VERSION = "v2";   // v2: jsQR.js を外部サイトから同梱ファイルに変更
+var CACHE_VERSION = "v3";   // v3: アイコン画像を追加（v2: jsQR.js を同梱ファイルに変更）
 var CACHE_PREFIX = "placement-board-";
 var CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 
@@ -10,7 +10,7 @@ var CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 var CORE_FILES = ["./", "./index.html", "./qrcode.js"];
 // あれば入れるファイル（なくてもインストールは続ける）
 // jsQR.js は QR読み取り用ライブラリ（iPhone の Safari など、ブラウザにQR読み取り機能がない端末で使う）。
-var OPTIONAL_FILES = ["./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./jsQR.js"];
+var OPTIONAL_FILES = ["./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png", "./icons/apple-touch-icon.png", "./jsQR.js"];
 
 self.addEventListener("install", function(event){
   event.waitUntil(
