@@ -2,23 +2,21 @@
 // 方針: ネットワーク優先。つながるときは常に最新を取得してキャッシュを更新し、
 // つながらないときだけキャッシュから返す（更新後に古い版が出続けることがない）。
 // ファイル構成を変えたときは CACHE_VERSION を上げると、古いキャッシュが削除される。
-var CACHE_VERSION = "v1";
+var CACHE_VERSION = "v2";   // v2: jsQR.js を外部サイトから同梱ファイルに変更
 var CACHE_PREFIX = "placement-board-";
 var CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 
 // 必須ファイル（1つでも取れなければインストール失敗 = 中途半端なキャッシュを作らない）
 var CORE_FILES = ["./", "./index.html", "./qrcode.js"];
 // あれば入れるファイル（なくてもインストールは続ける）
-var OPTIONAL_FILES = ["./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png"];
-// QR読み取り用ライブラリ（iPhone の Safari など、ブラウザにQR読み取り機能がない端末で使う）。
-// 外部のサイトだが、オフラインでも読み取れるようにこれだけはキャッシュする。
-var EXTERNAL_FILES = ["https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"];
+// jsQR.js は QR読み取り用ライブラリ（iPhone の Safari など、ブラウザにQR読み取り機能がない端末で使う）。
+var OPTIONAL_FILES = ["./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./jsQR.js"];
 
 self.addEventListener("install", function(event){
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache){
       return cache.addAll(CORE_FILES).then(function(){
-        return Promise.all(OPTIONAL_FILES.concat(EXTERNAL_FILES).map(function(url){
+        return Promise.all(OPTIONAL_FILES.map(function(url){
           return cache.add(url).catch(function(){});
         }));
       });
@@ -51,15 +49,14 @@ self.addEventListener("fetch", function(event){
   var req = event.request;
   if(req.method !== "GET") return;
   var url = new URL(req.url);
-  var isExternalAllowed = EXTERNAL_FILES.indexOf(req.url) !== -1;
-  if(url.origin !== self.location.origin && !isExternalAllowed) return;   // それ以外の外部へのリクエストには関与しない
+  if(url.origin !== self.location.origin) return;   // 外部へのリクエストには関与しない
 
   var isNavigation = req.mode === "navigate";
   var network = isNavigation ? fetchWithTimeout(req, NAVIGATION_TIMEOUT_MS) : fetch(req);
 
   event.respondWith(
     network.then(function(res){
-      if(res && ((res.ok && (res.type === "basic" || res.type === "cors")) || (isExternalAllowed && res.type === "opaque"))){
+      if(res && res.ok && res.type === "basic"){
         var copy = res.clone();
         caches.open(CACHE_NAME).then(function(cache){ cache.put(req, copy); });
       }
