@@ -2555,6 +2555,27 @@ html body .shift-table td.shift-cell.on.k-shi{color:#8C929C;background:rgba(140,
 html body .shift-table td.shift-cell.on.k-ketsu{color:#E0564B;background:rgba(224,86,75,.16);}
 html body .shift-table td.shift-cell.on.k-ken{color:#3FA36B;background:rgba(63,163,107,.16);}
 html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,146,156,.10);}
+/* ---------- 残業（試作） ---------- */
+html body .nameplate-chip .ot-badge{
+  flex:none;margin-left:4px;padding:0 4px;border-radius:4px;
+  font-size:9.5px;font-weight:700;line-height:1.5;letter-spacing:0;
+  background:#E07A2E;color:#fff;
+}
+html body .location-left-slot .nameplate-chip .ot-badge{margin:3px 0 0;padding:2px 0;}
+.shift-mode-row{display:flex;justify-content:center;gap:6px;margin:0 0 10px;}
+.ot-choice-row{gap:6px;}
+.ot-choice-row .choice-btn{min-width:0;padding:9px 0;text-align:center;}
+#otHour{display:grid;grid-template-columns:repeat(7, 1fr);}
+#otFrac{display:grid;grid-template-columns:repeat(4, 1fr);}
+.ot-total{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:14px;color:var(--ink-soft);text-align:center;}
+.ot-total b{color:var(--ink);font-size:18px;}
+.shift-mode-btn{
+  padding:7px 22px;border:1px solid var(--line);border-radius:999px;background:transparent;
+  color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer;
+}
+.shift-mode-btn.selected{background:var(--accent);border-color:var(--accent);color:#fff;}
+html body .shift-table td.shift-cell.on.ot-on{color:#C2561A;background:rgba(224,122,46,.16);font-size:13px;font-weight:700;}
+.shift-table td.shift-cell.ot-offday{color:var(--ink-soft);font-size:11px;font-weight:500;opacity:.55;}
 /* マウスで使うとき: つかめることがわかるカーソル */
 @media (hover:hover) and (pointer:fine){
   .nameplate-chip{cursor:grab;}
@@ -2645,7 +2666,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, dayPlacements: {}, shiftFilter: false };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, overtime: {}, dayPlacements: {}, shiftFilter: false };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -2933,7 +2954,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.dayPlacements = {}; state.shiftFilter = false;
+    state.dayoffs = {}; state.overtime = {}; state.dayPlacements = {}; state.shiftFilter = false;
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -3024,6 +3045,21 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     }) : [];
     return t;
   }
+  // 残業: { 名前: { "YYYY-MM-DD": 時間(0より大きい数) } }
+  function cleanStoredOvertime(obj){
+    var out = {};
+    Object.keys(obj).forEach(function(name){
+      var m = obj[name];
+      if(!isObj(m)) return;
+      var inner = {}, any = false;
+      Object.keys(m).forEach(function(iso){
+        var v = m[iso];
+        if(/^\d{4}-\d{2}-\d{2}$/.test(iso) && typeof v === "number" && isFinite(v) && v > 0 && v <= OT_MAX){ inner[iso] = v; any = true; }
+      });
+      if(any) out[name] = inner;
+    });
+    return out;
+  }
   function cleanStoredDayoffs(obj){
     var out = {};
     Object.keys(obj).forEach(function(name){
@@ -3065,6 +3101,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         }
         state.dayPlacements = (parsed.dayPlacements && typeof parsed.dayPlacements === "object" && !Array.isArray(parsed.dayPlacements)) ? parsed.dayPlacements : {};
         state.shiftFilter = parsed.shiftFilter === true;   // 初期状態はオフ
+        state.overtime = isObj(parsed.overtime) ? cleanStoredOvertime(parsed.overtime) : {};
       }catch(e){
         // 読めないデータを空の状態で上書きしてしまわないよう、先に退避する
         resetStateToDefaults();
@@ -3181,6 +3218,14 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     var chip = document.createElement("div");
     chip.className = "nameplate-chip " + colorClass(np.color);
     chip.textContent = np.name;
+    var otH = otHours(np.name, state.boardDate || todayISO());
+    if(otH){
+      var badge = document.createElement("span");
+      badge.className = "ot-badge";
+      badge.textContent = "+" + fmtHours(otH);
+      badge.setAttribute("aria-label", "残業" + fmtHours(otH) + "時間");
+      chip.appendChild(badge);
+    }
     chip.dataset.nameplateId = np.id;
     // タップ編集はclickでも受ける。pointerイベントがOS/ブラウザ側で
     // キャンセルされた場合でも、通常のタップなら編集を開けるようにする。
@@ -4301,6 +4346,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     return !isOff(np.name, state.boardDate || todayISO());
   }
   function migrateShiftName(oldName, newName){
+    migrateOvertimeName(oldName, newName);
     var m = getDayoffs(oldName);
     if(!m) return;
     if(getDayoffs(newName) === null) state.dayoffs[newName] = JSON.parse(JSON.stringify(m));
@@ -4329,6 +4375,101 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     return out;
   }
 
+  // ---------- 残業（試作） ----------
+  // state.overtime = { "<名前>": { "YYYY-MM-DD": 時間 } }。休みと同じく名前で持つ（Excelと名前で照合するため）。
+  // 時間は 0.25（15分）単位。
+  var OT_MAX = 12.75, OT_STEP = 0.25;
+  function getOvertimeMap(name){
+    return Object.prototype.hasOwnProperty.call(state.overtime, name) ? state.overtime[name] : null;
+  }
+  function otHours(name, iso){
+    var m = getOvertimeMap(name), v = m && m[iso];
+    return (typeof v === "number" && v > 0) ? v : 0;
+  }
+  function setOvertime(name, iso, hours){
+    var m = getOvertimeMap(name);
+    if(hours > 0){
+      if(!m){ m = {}; state.overtime[name] = m; }
+      m[iso] = hours;
+    } else if(m){
+      delete m[iso];
+      if(Object.keys(m).length === 0) delete state.overtime[name];
+    }
+  }
+  function otMonthTotal(name, y, m){
+    var sum = 0;
+    for(var d = 1, n = daysInMonth(y, m); d <= n; d++) sum += otHours(name, isoOf(y, m, d));
+    return sum;
+  }
+  // 1.50 → "1.5"、2.00 → "2"
+  function fmtHours(h){ return String(Math.round(h * 100) / 100); }
+  function migrateOvertimeName(oldName, newName){
+    var m = getOvertimeMap(oldName);
+    if(!m) return;
+    if(getOvertimeMap(newName) === null) state.overtime[newName] = JSON.parse(JSON.stringify(m));
+    var stillUsed = state.nameplates.some(function(n){ return n.name === oldName; });
+    if(!stillUsed) delete state.overtime[oldName];
+  }
+
+  var OT_HOUR_CHOICES = 12;             // 時間は 0〜12
+  var OT_FRACS = [0, 0.25, 0.5, 0.75];  // 小数点以下
+  function fracLabel(f){ return f === 0 ? ".0" : String(f).replace(/^0/, ""); }   // 0.25 → ".25"
+  function hoursToJP(h){
+    var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    return (hh ? hh + "時間" : "") + (mm ? mm + "分" : "") || "0分";
+  }
+  function openOvertimeModal(name, iso){
+    var cur = otHours(name, iso);
+    var offK = offKind(name, iso);
+    var selH = Math.floor(cur), selF = Math.round((cur - selH) * 4) / 4;
+    if(OT_FRACS.indexOf(selF) === -1) selF = 0;
+    openModal(function(box){
+      var hourBtns = "";
+      for(var h = 0; h <= OT_HOUR_CHOICES; h++){
+        hourBtns += '<div class="choice-btn ot-num-btn" data-h="' + h + '">' + h + '</div>';
+      }
+      box.innerHTML =
+        '<div class="sheet-header"><span>' + escapeHtml(name) + '　' + mdOfISO(iso) + 'の残業</span></div>' +
+        (offK ? '<p class="confirm-msg" style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;">この日は「' + escapeHtml(offK) + '」になっています。</p>' : '') +
+        '<label>時間</label>' +
+        '<div class="choice-row ot-choice-row" id="otHour">' + hourBtns + '</div>' +
+        '<label>小数点以下</label>' +
+        '<div class="choice-row ot-choice-row" id="otFrac">' +
+          OT_FRACS.map(function(f){ return '<div class="choice-btn ot-frac-btn" data-f="' + f + '">' + fracLabel(f) + '</div>'; }).join("") +
+        '</div>' +
+        '<div class="ot-total" id="otTotal"></div>' +
+        (cur ? '<div class="modal-actions"><button class="btn-danger" id="otClearBtn" type="button">残業なしにする</button></div>' : '') +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+          '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+        '</div>';
+      var totalEl = box.querySelector("#otTotal");
+      function refresh(){
+        box.querySelectorAll("#otHour .choice-btn").forEach(function(b){ b.classList.toggle("selected", +b.dataset.h === selH); });
+        box.querySelectorAll("#otFrac .choice-btn").forEach(function(b){ b.classList.toggle("selected", +b.dataset.f === selF); });
+        var total = selH + selF;
+        totalEl.innerHTML = total
+          ? '残業 <b>' + fmtHours(total) + '</b> 時間（' + hoursToJP(total) + '）'
+          : '残業なし';
+      }
+      box.querySelectorAll("#otHour .choice-btn").forEach(function(b){
+        b.addEventListener("click", function(){ selH = +b.dataset.h; refresh(); });
+      });
+      box.querySelectorAll("#otFrac .choice-btn").forEach(function(b){
+        b.addEventListener("click", function(){ selF = +b.dataset.f; refresh(); });
+      });
+      function commit(h){
+        setOvertime(name, iso, h);
+        scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
+      }
+      var clearBtn = box.querySelector("#otClearBtn");
+      if(clearBtn) clearBtn.addEventListener("click", function(){ commit(0); });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#okBtn").addEventListener("click", function(){ commit(selH + selF); });
+      refresh();
+    });
+  }
+
   var WEEKDAYS = ["日","月","火","水","木","金","土"];
   var shiftOverlay = document.getElementById("shiftOverlay");
   var shiftBody = document.getElementById("shiftBody");
@@ -4338,6 +4479,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   // 何も選んでいないときは全マス入力可能。
   var shiftSelRows = Object.create(null);  // { 名前: true }
   var shiftSelCols = Object.create(null);  // { "YYYY-MM-DD": true }
+  var shiftMode = "off";   // シフト表の表示: "off" = 休み / "ot" = 残業
 
   function stepBoardDate(delta){
     var p = (state.boardDate || todayISO()).split("-");
@@ -4379,9 +4521,17 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         '<span class="shift-month">' + y + '年' + m + '月</span>' +
         '<button type="button" class="date-step lg" id="shiftNextMonth" aria-label="次の月">▶</button>' +
       '</div>' +
-      '<div class="shift-import-row"><button type="button" class="btn-secondary btn-sm" id="shiftImportBtn">Excel・CSV読み込み</button>' +
-      '<button type="button" class="btn-secondary btn-sm" id="shiftShareBtn">共有コード作成</button>' +
-      '<button type="button" class="btn-secondary btn-sm" id="shiftReceiveBtn">共有コード読み込み</button></div>';
+      '<div class="shift-mode-row" role="tablist">' +
+        '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "off" ? ' selected' : '') + '" data-mode="off" aria-selected="' + (shiftMode === "off") + '">シフト</button>' +
+        '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "ot" ? ' selected' : '') + '" data-mode="ot" aria-selected="' + (shiftMode === "ot") + '">残業</button>' +
+      '</div>' +
+      (shiftMode === "off"
+        ? '<div class="shift-import-row"><button type="button" class="btn-secondary btn-sm" id="shiftImportBtn">Excel・CSV読み込み</button>' +
+          '<button type="button" class="btn-secondary btn-sm" id="shiftShareBtn">共有コード作成</button>' +
+          '<button type="button" class="btn-secondary btn-sm" id="shiftReceiveBtn">共有コード読み込み</button></div>'
+        : '<div class="shift-import-row"><button type="button" class="btn-secondary btn-sm" id="shiftOtImportBtn">Excel・CSV読み込み</button>' +
+          '<button type="button" class="btn-secondary btn-sm" id="shiftShareBtn">共有コード作成</button>' +
+          '<button type="button" class="btn-secondary btn-sm" id="shiftReceiveBtn">共有コード読み込み</button></div>');
 
     if(shiftPeople.length === 0){
       html += '<p class="confirm-msg">ネームプレートがありません。先に「＋」から追加してください。</p>';
@@ -4402,12 +4552,19 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       for(var dd = 1; dd <= n; dd++){
         var isoD = isoOf(y, m, dd);
         var kind = offKind(name, isoD);   // 休みのマスなら "休" / "有" / "指"
+        if(shiftMode === "ot"){
+          // 残業の表示: 時間があれば数字、休みの日は薄く休みの種類を出す
+          var oh = otHours(name, isoD);
+          t += '<td class="shift-cell' + (oh ? ' on ot-on' : (kind ? ' ot-offday' : '')) + (isoD === boardIso ? ' board-col' : '') +
+               '" data-i="' + i + '" data-d="' + isoD + '">' + (oh ? fmtHours(oh) : (kind || '')) + '</td>';
+          continue;
+        }
         t += '<td class="shift-cell' + (kind ? ' on' + kindClass(kind) : '') + (isoD === boardIso ? ' board-col' : '') +
              '" data-i="' + i + '" data-d="' + isoD + '">' + (kind || '') + '</td>';
       }
       t += '</tr>';
     });
-    t += '</tbody><tfoot><tr><th class="name-col">出勤</th>';
+    t += '</tbody><tfoot><tr><th class="name-col">' + (shiftMode === "ot" ? '残業計' : '出勤') + '</th>';
     for(var c = 1; c <= n; c++){ t += '<td class="cnt" data-d="' + isoOf(y, m, c) + '"></td>'; }
     t += '</tr></tfoot></table></div>';
 
@@ -4427,6 +4584,21 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   function kindClass(kind){ return OFF_KIND_CLASS[kind] || ""; }
 
   function refreshShiftCounts(){
+    if(shiftMode === "ot"){
+      // 下の行：その日の残業の合計 / 名前の横：その月の残業の合計
+      shiftBody.querySelectorAll("td.cnt").forEach(function(cell){
+        var sum = 0;
+        shiftPeople.forEach(function(name){ sum += otHours(name, cell.dataset.d); });
+        cell.textContent = sum ? fmtHours(sum) : "";
+      });
+      shiftBody.querySelectorAll("tbody th.name-col").forEach(function(th){
+        var off = th.querySelector(".off");
+        if(!off) return;
+        var total = otMonthTotal(shiftPeople[parseInt(th.dataset.i, 10)], shiftMonth.y, shiftMonth.m);
+        off.textContent = "残" + fmtHours(total) + "h";
+      });
+      return;
+    }
     shiftBody.querySelectorAll("td.cnt").forEach(function(cell){
       var iso = cell.dataset.d, c = 0;
       shiftPeople.forEach(function(name){ if(!isOff(name, iso)) c++; });   // 出勤 = 全員 − 休み
@@ -4488,7 +4660,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     var bar = document.getElementById("shiftRange");
     if(!bar) return;
     if(!has){
-      bar.innerHTML = '<span>いまは閲覧のみ。名前か日付をタップすると、その行・列に入力できます。</span>';
+      bar.innerHTML = '<span>いまは閲覧のみ。名前か日付をタップすると、その行・列の' + (shiftMode === "ot" ? '残業' : '休み') + 'を入力できます。</span>';
       return;
     }
     var names = selectedShiftNames();
@@ -4498,7 +4670,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     if(days.length) parts.push('列 <b>' + limitedJoin(days, 4) + '</b>');
     bar.innerHTML = '<span>入力範囲：' + parts.join('') + '</span>' +
       '<button type="button" class="btn-secondary btn-sm" id="shiftClearRange">解除</button>' +
-      (names.length ? '<button type="button" class="btn-secondary btn-sm" id="shiftPatternBtn">曜日でまとめて入力</button>' : '');
+      (names.length && shiftMode === "off" ? '<button type="button" class="btn-secondary btn-sm" id="shiftPatternBtn">曜日でまとめて入力</button>' : '');
   }
 
   function openShiftPatternModal(names){
@@ -4926,7 +5098,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       // 後の行で前の行の休みを消さないよう、休みを合わせる
       var people = [], byName = Object.create(null), dupNames = [];
       var unmatched = [], fuzzy = [], offCount = 0, firstDataRow = -1;
-      var tokenHits = Object.create(null), otherMarks = Object.create(null);
+      var tokenHits = Object.create(null), otherMarks = Object.create(null), workHits = Object.create(null);
       for(var r3 = hdr + 1; r3 < rows.length; r3++){
         var row = rows[r3] || [], raw = row[nameCol];
         if(normText(raw) === "") continue;
@@ -4946,12 +5118,27 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         }
         var offs = person.offs;
         cols.forEach(function(dc){
+          // 残業の読み込み: マスの値を時間として読む（休みの記号の代わり）
+          if(opts.readValue){
+            var rawV = row[dc.c];
+            if(normText(rawV) === "") return;
+            var hv = opts.readValue(rawV);
+            if(hv === null){ var key0 = String(rawV).trim().slice(0, 6); otherMarks[key0] = (otherMarks[key0] || 0) + 1; return; }
+            if(hv > 0 && !(dc.iso in offs)){ offs[dc.iso] = hv; offCount++; }
+            return;
+          }
           var val = normText(row[dc.c]).toLowerCase(), off = false, tk = null;
           if(val === ""){ off = opts.blank; if(off) tk = "空欄"; }
           else {
             opts.tokens.some(function(t){ if(val.indexOf(t) !== -1){ tk = t; return true; } return false; });
             off = !!tk;
-            if(!off){ var key = String(row[dc.c]).trim().slice(0, 4); otherMarks[key] = (otherMarks[key] || 0) + 1; }
+            if(!off){
+              // 出勤として読む記号（「冷」など）。休みの記号も一緒に書いてあるマスは休みを優先する
+              var wk = null;
+              (opts.workTokens || []).some(function(t){ if(val.indexOf(t) !== -1){ wk = t; return true; } return false; });
+              if(wk) workHits[wk] = (workHits[wk] || 0) + 1;
+              else { var key = String(row[dc.c]).trim().slice(0, 4); otherMarks[key] = (otherMarks[key] || 0) + 1; }
+            }
           }
           if(off){
             tokenHits[tk] = (tokenHits[tk] || 0) + 1;
@@ -4963,7 +5150,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       }
       return { cols: cols, people: people, unmatched: unmatched, fuzzy: fuzzy, offCount: offCount,
                hdr: hdr, nameCol: nameCol, firstDataRow: firstDataRow, sheetMonth: sheetMonth,
-               tokenHits: tokenHits, otherMarks: otherMarks, dupNames: dupNames };
+               tokenHits: tokenHits, otherMarks: otherMarks, workHits: workHits, dupNames: dupNames };
     }
 
     var best = null;
@@ -4977,6 +5164,67 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
 
   // 読み込んだ休み（Excel/CSV・共有コード共通）をシフト表に反映する。反映直後の画面から元に戻せる。
   // res = { cols:[{iso}], people:[{name, offs:{iso:true}}], offCount }
+  // ---------- 残業の表を読む ----------
+  // マスの値を時間にする。読めなければ null、0や「-」は 0。
+  // 対応: 2 / 1.5 / 1:30 / 1時間30分 / 90分 / 1.5h / Excelの時刻（1日=1の小数。あとでまとめて判定）
+  function readOvertimeCell(v){
+    var t = normText(v).toLowerCase().replace(/[hｈ]$/, "");
+    if(t === "" || t === "-" || t === "ー" || t === "―") return 0;
+    var mm;
+    if((mm = t.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/))) return +mm[1] + (+mm[2]) / 60;
+    if((mm = t.match(/^(\d+(?:\.\d+)?)時間(?:(\d{1,2})分)?$/))) return +mm[1] + (mm[2] ? +mm[2] / 60 : 0);
+    if((mm = t.match(/^(\d{1,3})分$/))) return +mm[1] / 60;
+    if(/^\d*\.?\d+$/.test(t)) return parseFloat(t);
+    return null;
+  }
+  // 読んだ値の仕上げ。すべて1未満で15分単位にならない値があれば「Excelの時刻（1日=1）」とみなして24倍する。
+  // そのあと15分単位にそろえ、上限を超える値は読み込まない。
+  function finalizeOvertimeResult(res){
+    var vals = [];
+    res.people.forEach(function(pp){ Object.keys(pp.offs).forEach(function(iso){ vals.push(pp.offs[iso]); }); });
+    var serial = vals.length > 0 && vals.every(function(v){ return v < 1; }) &&
+      vals.some(function(v){ return Math.abs(v * 4 - Math.round(v * 4)) > 0.01; });
+    var count = 0, total = 0, over = 0;
+    res.people.forEach(function(pp){
+      Object.keys(pp.offs).forEach(function(iso){
+        var h = pp.offs[iso] * (serial ? 24 : 1);
+        h = Math.round(h / OT_STEP) * OT_STEP;
+        if(h > OT_MAX){ over++; delete pp.offs[iso]; return; }
+        if(h <= 0){ delete pp.offs[iso]; return; }
+        pp.offs[iso] = h; count++; total += h;
+      });
+    });
+    res.offCount = count; res.otTotal = total; res.otSerial = serial; res.otOver = over;
+    return res;
+  }
+  // 読み込んだ残業を反映する。読み込んだ人の、表の日付の範囲は置き換え（表で空のマスは残業なしになる）
+  function applyOvertimeImport(res){
+    var backup = JSON.parse(JSON.stringify(state.overtime));
+    res.people.forEach(function(pp){
+      res.cols.forEach(function(dc){ setOvertime(pp.name, dc.iso, pp.offs[dc.iso] || 0); });
+    });
+    var first = res.cols[0].iso;
+    shiftMonth = { y: parseInt(first.slice(0, 4), 10), m: parseInt(first.slice(5, 7), 10) };
+    shiftMode = "ot";
+    shiftSelRows = Object.create(null); shiftSelCols = Object.create(null);
+    scheduleSave(); renderShiftSheet(false); renderAll();
+    closeModal();
+    openModal(function(b2){
+      b2.innerHTML =
+        '<div class="sheet-header"><span>読み込みました</span></div>' +
+        '<p class="confirm-msg">' + res.people.length + '人・' + res.cols.length + '日分の残業（' + res.offCount + 'マス・合計' + fmtHours(res.otTotal) + '時間）を反映しました。</p>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="undoBtn" type="button">元に戻す</button>' +
+          '<button class="btn-primary" id="doneBtn" type="button">閉じる</button>' +
+        '</div>';
+      b2.querySelector("#doneBtn").addEventListener("click", closeModal);
+      b2.querySelector("#undoBtn").addEventListener("click", function(){
+        state.overtime = backup;
+        scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
+      });
+    });
+  }
+
   function applyShiftImport(res){
     syncPlacementsToDay();
     var backup = JSON.parse(JSON.stringify(state.dayoffs)), backupPl = JSON.parse(JSON.stringify(state.dayPlacements));
@@ -5064,6 +5312,9 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0){
       throw new Error("これはテンプレート／配置のコードです。シフトの共有コード（P5: で始まる）を貼り付けてください。");
     }
+    if(trimmed.indexOf("P6:") === 0){
+      throw new Error("これは残業の共有コードです。「残業」に切り替えてから読み込んでください。");
+    }
     if(trimmed.indexOf(SHIFT_CODE_PREFIX) !== 0){
       throw new Error("シフトの共有コード（P5: で始まる）を全体貼り付けてください。");
     }
@@ -5099,6 +5350,86 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   }
 
   // コピーできたら done、できなかったら fail（省略時はボタンの近くに案内を出さず何もしない）
+  // ---------- 残業の共有コード ----------
+  // 形式: "P6:" + base64(gzip( 開始日 FS 終了日 GS 名前 FS 日数:時間,日数:時間… RS … ))
+  // 読み込むと、コードに含まれる人の「その期間」の残業が置き換わる（期間の外・コードにない人はそのまま）。
+  var OT_CODE_PREFIX = "P6:";
+  function allOvertimeRange(){
+    var min = null, max = null, names = Object.create(null);
+    state.nameplates.forEach(function(np){ names[np.name] = true; });
+    Object.keys(state.overtime).forEach(function(name){
+      if(!names[name]) return;
+      Object.keys(state.overtime[name]).forEach(function(iso){
+        if(min === null || iso < min) min = iso;
+        if(max === null || iso > max) max = iso;
+      });
+    });
+    return min ? { start: min, end: max } : null;
+  }
+  async function packCode(prefix, payload){
+    if(typeof CompressionStream !== "undefined"){
+      var stream = new Blob([new TextEncoder().encode(payload)]).stream().pipeThrough(new CompressionStream("gzip"));
+      return prefix + bytesToBase64(new Uint8Array(await new Response(stream).arrayBuffer()));
+    }
+    return prefix + btoa(unescape(encodeURIComponent(payload)));
+  }
+  async function encodeOvertimeCode(startISO, endISO, people){
+    var s = isoToDayNum(startISO), e = isoToDayNum(endISO), recs = [];
+    (people || distinctShiftNames()).forEach(function(name){
+      var m = getOvertimeMap(name), items = [];
+      if(m){
+        Object.keys(m).forEach(function(iso){
+          var n = isoToDayNum(iso);
+          if(n >= s && n <= e && m[iso] > 0) items.push({ n: n - s, h: m[iso] });
+        });
+      }
+      items.sort(function(a, b){ return a.n - b.n; });
+      recs.push(name + FS + items.map(function(o){ return o.n + ":" + fmtHours(o.h); }).join(","));
+    });
+    return packCode(OT_CODE_PREFIX, startISO + FS + endISO + GS + recs.join(RS));
+  }
+  async function decodeOvertimeCode(code){
+    var trimmed = fixCodePrefix((code || "").replace(/\s+/g, ""));
+    if(trimmed.indexOf(SHIFT_CODE_PREFIX) === 0){
+      throw new Error("これはシフト（休み）の共有コードです。「シフト」に切り替えてから読み込んでください。");
+    }
+    if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0){
+      throw new Error("これはテンプレート／配置のコードです。残業の共有コード（P6: で始まる）を貼り付けてください。");
+    }
+    if(trimmed.indexOf(OT_CODE_PREFIX) !== 0){
+      throw new Error("残業の共有コード（P6: で始まる）を全体貼り付けてください。");
+    }
+    var payload;
+    try{
+      var binary = atob(trimmed.slice(OT_CODE_PREFIX.length));
+      var bytes = Uint8Array.from(binary, function(c){ return c.charCodeAt(0); });
+      if(bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b && typeof DecompressionStream !== "undefined"){
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        payload = new TextDecoder().decode(await new Response(stream).arrayBuffer());
+      } else {
+        payload = decodeURIComponent(escape(binary));
+      }
+    }catch(e){
+      throw new Error("コードの形式が正しくありません。コピーし直してください。");
+    }
+    var sections = payload.split(GS), head = sections[0].split(FS);
+    var iso = /^\d{4}-\d{2}-\d{2}$/;
+    if(head.length < 2 || !iso.test(head[0]) || !iso.test(head[1])) throw new Error("コードの中身が正しくありません。");
+    var s = isoToDayNum(head[0]), e = isoToDayNum(head[1]);
+    if(!(e >= s) || e - s > 800) throw new Error("コードの中身が正しくありません。");
+    var people = (sections[1] || "").length === 0 ? [] : sections[1].split(RS).map(function(rec){
+      var f = rec.split(FS), offs = Object.create(null);
+      (f[1] || "").split(",").forEach(function(x){
+        var mt = /^(\d+):(\d+(?:\.\d+)?)$/.exec(x);
+        if(!mt) return;
+        var n = parseInt(mt[1], 10), h = Math.round(parseFloat(mt[2]) / OT_STEP) * OT_STEP;
+        if(n >= 0 && s + n <= e && h > 0 && h <= OT_MAX) offs[dayNumToISO(s + n)] = h;
+      });
+      return { name: cleanText(f[0], LIMITS.nameplateName), offs: offs };
+    }).filter(function(pp){ return pp.name; });
+    return { start: head[0], end: head[1], people: people };
+  }
+
   function copyToClipboard(text, area, done, fail){
     function fallback(){
       var ok = false;
@@ -5293,12 +5624,14 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   }
 
 
-  function openShiftShareModal(){
+  // mode: "off"（シフトの休み・既定）/ "ot"（残業）
+  function openShiftShareModal(mode){
+    var isOT = mode === "ot", what = isOT ? "残業" : "休み";
     var y = shiftMonth.y, m = shiftMonth.m, scope = "month", code = "", token = 0;
     openModal(function(box){
       box.innerHTML =
-        '<div class="sheet-header"><span>シフトの共有コードを作る</span></div>' +
-        '<p class="confirm-msg">休みをコードにします。相手が下のQRを読み取るか、コードを貼り付けると取り込めます。</p>' +
+        '<div class="sheet-header"><span>' + (isOT ? '残業' : 'シフト') + 'の共有コードを作る</span></div>' +
+        '<p class="confirm-msg">' + what + 'をコードにします。相手が下のQRを読み取るか、コードを貼り付けると取り込めます。</p>' +
         '<label class="lbl-tight">共有する期間</label>' +
         '<div class="choice-row" id="scopeChoice">' +
           '<div class="choice-btn selected" data-scope="month">表示中の月（' + y + '年' + m + '月）</div>' +
@@ -5325,11 +5658,11 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
 
       async function refresh(){
         var my = ++token;
-        var range = scope === "month" ? { start: isoOf(y, m, 1), end: isoOf(y, m, daysInMonth(y, m)) } : allDayoffRange();
+        var range = scope === "month" ? { start: isoOf(y, m, 1), end: isoOf(y, m, daysInMonth(y, m)) } : (isOT ? allOvertimeRange() : allDayoffRange());
         setActionsEnabled(false);
-        if(!range){ showEmpty("共有できる休みの入力がまだありません。"); return; }
+        if(!range){ showEmpty("共有できる" + what + "の入力がまだありません。"); return; }
         var people = distinctShiftNames(), c;
-        try{ c = await encodeShiftCode(range.start, range.end, people); }
+        try{ c = await (isOT ? encodeOvertimeCode : encodeShiftCode)(range.start, range.end, people); }
         catch(err){ if(my === token) showEmpty("共有コードの作成に失敗しました。"); return; }
         if(my !== token) return;
         code = c; area.value = c;
@@ -5355,22 +5688,23 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       if(sendBtn){
         sendBtn.addEventListener("click", function(){
           if(!code) return;
-          navigator.share({ title: "シフトの共有コード", text: code }).catch(function(){ /* キャンセルなど */ });
+          navigator.share({ title: (isOT ? "残業" : "シフト") + "の共有コード", text: code }).catch(function(){ /* キャンセルなど */ });
         });
       }
       refresh();
     });
   }
 
-  function openShiftReceiveModal(){
+  function openShiftReceiveModal(mode){
+    var isOT = mode === "ot", what = isOT ? "残業" : "休み", kindName = isOT ? "残業" : "シフト";
     var decoded = null, token = 0;
     openModal(function(box){
       box.innerHTML =
-        '<div class="sheet-header"><span>共有コードから休みを読み込む</span></div>' +
+        '<div class="sheet-header"><span>共有コードから' + what + 'を読み込む</span></div>' +
         '<label>共有コードを貼り付け</label>' +
-        '<textarea id="shiftCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="P5: で始まるコード"></textarea>' +
+        '<textarea id="shiftCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="' + (isOT ? 'P6' : 'P5') + ': で始まるコード"></textarea>' +
         '<div id="shiftScanQRRow"></div>' +
-        '<div class="imp-preview" id="shiftCodePreview">シフトの共有コードを貼り付けてください。</div>' +
+        '<div class="imp-preview" id="shiftCodePreview">' + kindName + 'の共有コードを貼り付けてください。</div>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
           '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
@@ -5382,17 +5716,18 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       area.addEventListener("input", async function(){
         var my = ++token;
         decoded = null; okBtn.disabled = true;
-        if(!area.value.trim()){ setPreview("シフトの共有コードを貼り付けてください。"); return; }
+        if(!area.value.trim()){ setPreview(kindName + "の共有コードを貼り付けてください。"); return; }
         var code;
-        try{ code = await decodeShiftCode(area.value); }
+        try{ code = await (isOT ? decodeOvertimeCode : decodeShiftCode)(area.value); }
         catch(err){ if(my === token) setPreview(escapeHtml(err.message), true); return; }
         if(my !== token) return;
-        var match = buildNameMatcher(), people = [], unmatched = [], fuzzy = [], offCount = 0;
+        var match = buildNameMatcher(), people = [], unmatched = [], fuzzy = [], offCount = 0, otTotal = 0;
         code.people.forEach(function(pp){
           var hit = match(pp.name);
           if(!hit){ unmatched.push(pp.name); return; }
           if(hit.fuzzy) fuzzy.push(pp.name + "→" + hit.name);
           offCount += Object.keys(pp.offs).length;
+          if(isOT) Object.keys(pp.offs).forEach(function(k){ otTotal += pp.offs[k]; });
           people.push({ name: hit.name, offs: pp.offs });
         });
         if(!people.length){
@@ -5401,16 +5736,17 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         }
         var cols = [], s = isoToDayNum(code.start), e = isoToDayNum(code.end);
         for(var n = s; n <= e; n++){ cols.push({ iso: dayNumToISO(n) }); }
-        decoded = { cols: cols, people: people, offCount: offCount };
+        decoded = { cols: cols, people: people, offCount: offCount, otTotal: otTotal };
         okBtn.disabled = false;
-        var html = '<b>' + people.length + '人</b> × <b>' + cols.length + '日</b>（' + mdOfISO(code.start) + '〜' + mdOfISO(code.end) + '）／休み <b>' + offCount + '</b>マス';
+        var html = '<b>' + people.length + '人</b> × <b>' + cols.length + '日</b>（' + mdOfISO(code.start) + '〜' + mdOfISO(code.end) + '）／' + what + ' <b>' + offCount + '</b>マス' +
+          (isOT ? '・合計 <b>' + fmtHours(otTotal) + '</b>時間' : '');
         if(fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(fuzzy, 3);
         if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + expandableList(unmatched, 6);
-        html += '<br>読み込んだ人の、この期間の休みが置き換わります。';
+        html += '<br>読み込んだ人の、この期間の' + what + 'が置き換わります。';
         setPreview(html, false);
       });
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
-      okBtn.addEventListener("click", function(){ if(decoded) applyShiftImport(decoded); });
+      okBtn.addEventListener("click", function(){ if(decoded){ if(isOT) applyOvertimeImport(decoded); else applyShiftImport(decoded); } });
       setTimeout(function(){ area.focus(); }, 50);
     });
   }
@@ -5435,19 +5771,25 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     return (err && err.message) || "読み込めませんでした。";
   }
 
-  function openShiftImportModal(){
+  // mode: "off"（休み・既定）/ "ot"（残業）
+  function openShiftImportModal(mode){
+    var isOT = mode === "ot";
     var y0 = shiftMonth.y, m0 = shiftMonth.m;
     var workbook = null, rows = null, result = null;
     openModal(function(box){
       box.innerHTML =
-        '<div class="sheet-header"><span>Excel・CSVから休みを読み込む</span></div>' +
+        '<div class="sheet-header"><span>Excel・CSVから' + (isOT ? '残業' : '休み') + 'を読み込む</span></div>' +
         '<label>ファイル（.xlsx / .csv）</label>' +
         '<input type="file" id="impFile" accept=".xlsx,.xlsm,.csv,.tsv,.txt" style="width:100%;font-size:13px;">' +
         '<div id="impSheetRow" style="display:none;"><label>シート</label><select id="impSheet" class="imp-select"></select></div>' +
         '<label>またはExcelでコピーしたセルを貼り付け</label>' +
         '<textarea id="impPaste" rows="3" placeholder="名前と日付の見出しを含めてコピーして貼り付け"></textarea>' +
-        '<label>休みとして読む記号（カンマ区切り）</label>' +
-        '<input type="text" id="impTokens" value="休,有,指,*,健診,欠">' +
+        (isOT
+          ? '<p class="imp-hint">名前の列と、日付（1, 2, 3… や 9/1）の見出しがある表を読みます。マスの値は 2 / 1.5 / 1:30 / 1時間30分 / 90分 のどれでも読めます。</p>'
+          : '<label>休みとして読む記号（カンマ区切り）</label>' +
+            '<input type="text" id="impTokens" value="休,有,指,*,健診,欠">' +
+            '<label>出勤として読む記号（カンマ区切り）</label>' +
+            '<input type="text" id="impWorkTokens" value="冷">') +
         '<div class="imp-preview" id="impPreview"></div>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
@@ -5455,7 +5797,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         '</div>';
       var elFile = box.querySelector("#impFile"), elPaste = box.querySelector("#impPaste"),
           elSheetRow = box.querySelector("#impSheetRow"), elSheet = box.querySelector("#impSheet"),
-          elTokens = box.querySelector("#impTokens"),
+          elTokens = box.querySelector("#impTokens"), elWorkTokens = box.querySelector("#impWorkTokens"),
           elPreview = box.querySelector("#impPreview"), okBtn = box.querySelector("#okBtn");
 
       function setPreview(html, isErr){ elPreview.innerHTML = html; elPreview.classList.toggle("err", !!isErr); }
@@ -5464,8 +5806,10 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         return {
           y: y0,
           m: m0,
-          tokens: elTokens.value.split(/[,、，\s]+/).map(function(t){ return normText(t).toLowerCase(); }).filter(Boolean),
-          blank: false
+          tokens: elTokens ? elTokens.value.split(/[,、，\s]+/).map(function(t){ return normText(t).toLowerCase(); }).filter(Boolean) : [],
+          workTokens: elWorkTokens ? elWorkTokens.value.split(/[,、，\s]+/).map(function(t){ return normText(t).toLowerCase(); }).filter(Boolean) : [],
+          blank: false,
+          readValue: isOT ? readOvertimeCell : null
         };
       }
 
@@ -5509,28 +5853,43 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
             (res.unmatched.length ? "<br>表の名前: <b>" + expandableList(res.unmatched, 6) + "</b>" : ""), true);
           return;
         }
+        if(isOT){
+          finalizeOvertimeResult(res);
+          if(!res.offCount){
+            setPreview("表は見つかりましたが、残業の時間として読める値がありませんでした。" +
+              (res.otOver ? "<br>" + fmtHours(OT_MAX) + "時間を超える値が" + res.otOver + "マスありました（分で書かれた表かもしれません）。" : "") +
+              (Object.keys(res.otherMarks).length ? "<br>読めなかった値: " + expandableList(Object.keys(res.otherMarks), 6, "・") : ""), true);
+            return;
+          }
+        }
         result = res; okBtn.disabled = false;
         var html = '';
         if(workbook && workbook.names.length > 1){
           html += 'シート「' + escapeHtml(workbook.names[parseInt(elSheet.value, 10)] || "") + '」を読みました（違うときは上で選び直し）<br>';
         }
         html += '<b>' + res.people.length + '人</b> × <b>' + res.cols.length + '日</b>（' + mdOfISO(res.cols[0].iso) + '〜' + mdOfISO(res.cols[res.cols.length - 1].iso) +
-          '）／休み <b>' + res.offCount + '</b>マス' + (swapped ? '<br>縦横を入れ替えて読みました。' : '');
+          '）／' + (isOT ? '残業 <b>' + res.offCount + '</b>マス・合計 <b>' + fmtHours(res.otTotal) + '</b>時間' : '休み <b>' + res.offCount + '</b>マス') +
+          (swapped ? '<br>縦横を入れ替えて読みました。' : '');
+        if(isOT && res.otSerial) html += '<br>Excelの時刻（1:30 など）の形式として読み、時間に直しました。';
+        if(isOT && res.otOver) html += '<br><b>' + fmtHours(OT_MAX) + '時間を超える値が' + res.otOver + 'マスあり、読み込みません</b>（分で書かれた表かもしれません）。';
         if(!swapped){
           html += '<br>読み取り位置: 日付 ' + (res.hdr + 1) + '行目（' + colLetter(res.cols[0].c) + '〜' + colLetter(res.cols[res.cols.length - 1].c) + '列）・名前 ' +
             colLetter(res.nameCol) + '列' + (res.firstDataRow >= 0 ? '（' + (res.firstDataRow + 1) + '行目から）' : '');
           if(res.sheetMonth) html += '<br>月: ' + res.sheetMonth.m + '月（' + colLetter(res.sheetMonth.c) + (res.sheetMonth.r + 1) + 'から判定）';
         }
         var hitKeys = Object.keys(res.tokenHits);
-        html += '<br>休みとして読んだ記号: ' + (hitKeys.length ? escapeHtml(hitKeys.map(function(k){ return k + ' ' + res.tokenHits[k]; }).join('・')) : '<b>なし</b>');
+        if(!isOT) html += '<br>休みとして読んだ記号: ' + (hitKeys.length ? escapeHtml(hitKeys.map(function(k){ return k + ' ' + res.tokenHits[k]; }).join('・')) : '<b>なし</b>');
+        var workKeys = Object.keys(res.workHits || {});
+        if(!isOT && workKeys.length) html += '<br>出勤として読んだ記号: ' + escapeHtml(workKeys.map(function(k){ return k + ' ' + res.workHits[k]; }).join('・'));
         var otherKeys = Object.keys(res.otherMarks).sort(function(a, b){ return res.otherMarks[b] - res.otherMarks[a]; });
-        if(otherKeys.length) html += '<br>休みにしなかった記号: ' + expandableList(otherKeys.map(function(k){ return k + ' ' + res.otherMarks[k]; }), 6, '・') +
-          '（休みにするなら下の記号欄に追加）';
+        if(otherKeys.length) html += (isOT ? '<br>数字として読めなかった値: ' : '<br>休みにしなかった記号: ') +
+          expandableList(otherKeys.map(function(k){ return k + ' ' + res.otherMarks[k]; }), 6, '・') +
+          (isOT ? '' : '（休みにするなら「休みとして読む記号」、出勤なら「出勤として読む記号」に追加）');
         if(res.fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(res.fuzzy, 3);
-        if(res.dupNames.length) html += '<br><b>別々の名前の行が同じ人に当たりました（休みを合わせて読みます）:</b> ' + expandableList(res.dupNames, 6) +
+        if(res.dupNames.length) html += '<br><b>別々の名前の行が同じ人に当たりました（' + (isOT ? '先に出てきた行の値を使います' : '休みを合わせて読みます') + '）:</b> ' + expandableList(res.dupNames, 6) +
           '（別の人が混ざっていないか確認してください）';
         if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない行: ' + expandableList(res.unmatched, 6);
-        html += '<br>読み込んだ人の、この日付の範囲の休みが置き換わります。';
+        html += '<br>読み込んだ人の、この日付の範囲の' + (isOT ? '残業' : '休み') + 'が置き換わります。';
         setPreview(html, false);
       }
 
@@ -5573,19 +5932,26 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         rows = elPaste.value.trim() ? parseDelimited(elPaste.value) : null;
         recompute();
       });
-      elTokens.addEventListener("input", recompute);
+      if(elTokens) elTokens.addEventListener("input", recompute);
+      if(elWorkTokens) elWorkTokens.addEventListener("input", recompute);
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
 
-      okBtn.addEventListener("click", function(){ if(result) applyShiftImport(result); });
+      okBtn.addEventListener("click", function(){ if(result){ if(isOT) applyOvertimeImport(result); else applyShiftImport(result); } });
       recompute();
     });
   }
 
   shiftBody.addEventListener("click", function(e){
     var t = e.target;
-    if(t.closest("#shiftImportBtn")){ openShiftImportModal(); return; }
-    if(t.closest("#shiftShareBtn")){ openShiftShareModal(); return; }
-    if(t.closest("#shiftReceiveBtn")){ openShiftReceiveModal(); return; }
+    var modeBtn = t.closest(".shift-mode-btn");
+    if(modeBtn){
+      if(modeBtn.dataset.mode !== shiftMode){ shiftMode = modeBtn.dataset.mode; renderShiftSheet(true); }
+      return;
+    }
+    if(t.closest("#shiftImportBtn")){ openShiftImportModal("off"); return; }
+    if(t.closest("#shiftOtImportBtn")){ openShiftImportModal("ot"); return; }
+    if(t.closest("#shiftShareBtn")){ openShiftShareModal(shiftMode); return; }
+    if(t.closest("#shiftReceiveBtn")){ openShiftReceiveModal(shiftMode); return; }
     var cell = t.closest(".shift-cell");
     if(cell){
       if(cell.classList.contains("locked")){          // 入力範囲の外は変更しない
@@ -5594,6 +5960,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         return;
       }
       var name = shiftPeople[parseInt(cell.dataset.i, 10)];
+      if(shiftMode === "ot"){ openOvertimeModal(name, cell.dataset.d); return; }
       var on = !isOff(name, cell.dataset.d);   // 手入力は「休」だけ。有・指のマスをタップすると空に戻る
       setOff(name, cell.dataset.d, on, "休");
       cell.classList.toggle("on", on);
