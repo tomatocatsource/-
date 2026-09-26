@@ -26,6 +26,7 @@
     background:var(--bg);
     color:var(--ink);
     height:100vh;
+    height:100dvh;
     display:flex;
     flex-direction:column;
     -webkit-tap-highlight-color:transparent;
@@ -178,7 +179,7 @@
   .modal,.sheet{
     background:var(--surface);width:100%;max-width:420px;
     border-radius:16px 16px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
-    max-height:82vh;overflow-y:auto;
+    max-height:82vh;max-height:82dvh;overflow-y:auto;
   }
   .sheet-header{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:16px;margin-bottom:12px;}
   .icon-btn{background:none;border:none;font-size:20px;color:var(--ink-soft);cursor:pointer;line-height:1;padding:4px;}
@@ -2442,7 +2443,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 .date-step:active{background:var(--bg);}
 .date-step.lg{width:40px;height:40px;font-size:14px;}
 #shiftOverlay{z-index:95;}
-#shiftSheet{max-width:900px;max-height:94vh;}
+#shiftSheet{max-width:900px;max-height:94vh;max-height:94dvh;}
 .shift-toggle-row{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;
@@ -2461,7 +2462,7 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 .shift-toolbar{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;}
 .shift-month{font-size:16px;font-weight:700;min-width:96px;text-align:center;}
 .shift-scroll{
-  overflow:auto;max-height:60vh;border:1px solid var(--line);border-radius:10px;
+  overflow:auto;max-height:60vh;max-height:60dvh;border:1px solid var(--line);border-radius:10px;
   -webkit-overflow-scrolling:touch;background:var(--surface);
 }
 .shift-table{border-collapse:separate;border-spacing:0;font-size:13px;color:var(--ink);}
@@ -2737,8 +2738,11 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     return TEMPLATE_CODE_PREFIX + b64plain;
   }
 
+  // コピー先のアプリによって先頭の「P」が小文字になることがあるので、先頭だけ大文字に戻す
+  function fixCodePrefix(text){ return text.replace(/^p(\d):/, "P$1:"); }
+
   async function decodeTemplateCode(code){
-    var trimmed = (code || "").trim();
+    var trimmed = fixCodePrefix((code || "").trim());
     if(trimmed.indexOf(TEMPLATE_CODE_PREFIX) !== 0){
       throw new Error("このコードは読み込めませんでした。コピーした共有コード全体を貼り付けてください。");
     }
@@ -4015,7 +4019,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
         '<div class="sheet-header"><span>「' + escapeHtml(tpl.name) + '」を共有</span></div>' +
         '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「テンプレート」→「共有コードから追加」に貼り付けると読み込めます。</p>' +
         '<label>共有コード</label>' +
-        '<textarea id="shareCodeArea" readonly rows="5"></textarea>' +
+        '<textarea id="shareCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" readonly rows="5"></textarea>' +
         '<div class="qr-share-wrap"><div class="qr-share-box" id="shareQRBox" hidden></div><p class="qr-share-note">相手がこの画面をカメラで読み取ると取り込めます</p></div>' +
         '<div class="modal-actions">' +
         '<button class="btn-secondary" id="closeBtn" type="button">閉じる</button>' +
@@ -4037,7 +4041,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       box.innerHTML =
         '<div class="sheet-header"><span>共有コードから追加</span></div>' +
         '<label>共有コードを貼り付け</label>' +
-        '<textarea id="importCodeArea" rows="5" placeholder="P3: で始まるコード"></textarea>' +
+        '<textarea id="importCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="P3: で始まるコード"></textarea>' +
         '<div id="importQRRow"></div>' +
         '<p class="confirm-msg" id="importError" style="display:none;color:var(--danger);"></p>' +
         '<div class="modal-actions">' +
@@ -4903,7 +4907,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
   }
 
   async function decodeShiftCode(code){
-    var trimmed = (code || "").replace(/\s+/g, "");   // チャットで折り返されていても読めるように
+    var trimmed = fixCodePrefix((code || "").replace(/\s+/g, ""));   // チャットで折り返されていても読めるように
     if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0){
       throw new Error("これはテンプレート／配置のコードです。シフトの共有コード（P5: で始まる）を貼り付けてください。");
     }
@@ -4987,14 +4991,55 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
     }
   }
 
+  // QRの読み取り方法: "native"（ブラウザ内蔵の BarcodeDetector。Android の Chrome など）/
+  // "jsqr"（内蔵がないとき。iPhone の Safari など。読み取り用のライブラリを初回だけネットから読み込む）/ false（読めない）
+  var JSQR_URL = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
   var qrDetectorSupport = null;
+  function loadJsQR(){
+    if(typeof window.jsQR === "function") return Promise.resolve(true);
+    return new Promise(function(resolve){
+      var sc = document.createElement("script"), done = false;
+      function finish(ok){ if(!done){ done = true; resolve(ok && typeof window.jsQR === "function"); } }
+      sc.src = JSQR_URL;
+      sc.onload = function(){ finish(true); };
+      sc.onerror = function(){ finish(false); };
+      setTimeout(function(){ finish(false); }, 10000);
+      document.head.appendChild(sc);
+    });
+  }
   function checkQRDetectorSupport(){
     if(qrDetectorSupport !== null) return Promise.resolve(qrDetectorSupport);
-    if(typeof window.BarcodeDetector !== "function"){ qrDetectorSupport = false; return Promise.resolve(false); }
-    return window.BarcodeDetector.getSupportedFormats().then(function(fmts){
-      qrDetectorSupport = fmts.indexOf("qr_code") !== -1;
-      return qrDetectorSupport;
-    }).catch(function(){ qrDetectorSupport = false; return false; });
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ qrDetectorSupport = false; return Promise.resolve(false); }
+    var native = (typeof window.BarcodeDetector === "function")
+      ? window.BarcodeDetector.getSupportedFormats().then(function(f){ return f.indexOf("qr_code") !== -1; }).catch(function(){ return false; })
+      : Promise.resolve(false);
+    return native.then(function(ok){
+      if(ok) return "native";
+      return loadJsQR().then(function(j){ return j ? "jsqr" : false; });
+    }).then(function(mode){
+      qrDetectorSupport = mode;
+      return mode;
+    });
+  }
+  // 読み取り方法ごとに「映像から文字を探す」関数を作る。見つからなければ null を返す（Promise）
+  function makeQRReader(mode){
+    if(mode === "native"){
+      var detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+      return function(video){
+        return detector.detect(video).then(function(codes){ return (codes && codes.length && codes[0].rawValue) || null; });
+      };
+    }
+    var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
+    return function(video){
+      var vw = video.videoWidth, vh = video.videoHeight;
+      if(!vw || !vh) return Promise.resolve(null);
+      var scale = Math.min(1, 800 / Math.max(vw, vh));   // 大きすぎる映像は縮めて処理を軽くする
+      canvas.width = Math.round(vw * scale); canvas.height = Math.round(vh * scale);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var hit = window.jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+      return Promise.resolve(hit && hit.data ? hit.data : null);
+    };
   }
 
   var qrScanOverlay = null, qrScanVideo = null, qrScanStatus = null, qrScanStream = null, qrScanRAF = null, qrScanCb = null;
@@ -5042,15 +5087,21 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       qrScanVideo.srcObject = stream;
       return qrScanVideo.play();
     }).then(function(){
+      return checkQRDetectorSupport();
+    }).then(function(mode){
       if(session !== qrScanSession) return;
-      var detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-      var scanning = true;
-      var scan = function(){
+      if(!mode){ qrScanStatus.textContent = "この端末ではQRコードを読み取れません。コードを貼り付けてください。"; return; }
+      var readQR = makeQRReader(mode);
+      var scanning = true, last = 0;
+      var scan = function(ts){
         if(session !== qrScanSession || !qrScanStream || !scanning) return;
-        detector.detect(qrScanVideo).then(function(codes){
-          if(codes && codes.length && codes[0].rawValue){
+        if(ts - last < 150){ qrScanRAF = requestAnimationFrame(scan); return; }   // 1秒に6〜7回で十分（電池の節約）
+        last = ts;
+        readQR(qrScanVideo).then(function(text){
+          if(session !== qrScanSession || !scanning) return;
+          if(text){
             scanning = false;
-            var text = codes[0].rawValue, cb = qrScanCb;
+            var cb = qrScanCb;
             closeQRScanner();
             if(cb) cb(text);
             return;
@@ -5089,7 +5140,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
           '<div class="choice-btn" data-scope="all">入力済みのすべて</div>' +
         '</div>' +
         '<label class="lbl-tight">共有コード</label>' +
-        '<textarea id="shiftShareArea" class="ta-sm" readonly rows="2"></textarea>' +
+        '<textarea id="shiftShareArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" class="ta-sm" readonly rows="2"></textarea>' +
         '<div class="imp-hint" id="shiftShareInfo"></div>' +
         '<div class="qr-share-wrap">' +
           '<div class="qr-share-box" id="shiftShareQRBox" hidden></div>' +
@@ -5149,7 +5200,7 @@ html body .shift-table td.shift-cell.on.k-ast{color:#8C929C;background:rgba(140,
       box.innerHTML =
         '<div class="sheet-header"><span>共有コードから休みを読み込む</span></div>' +
         '<label>共有コードを貼り付け</label>' +
-        '<textarea id="shiftCodeArea" rows="5" placeholder="P5: で始まるコード"></textarea>' +
+        '<textarea id="shiftCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="P5: で始まるコード"></textarea>' +
         '<div id="shiftScanQRRow"></div>' +
         '<div class="imp-preview" id="shiftCodePreview">シフトの共有コードを貼り付けてください。</div>' +
         '<div class="modal-actions">' +
