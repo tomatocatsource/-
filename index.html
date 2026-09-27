@@ -2609,7 +2609,23 @@ html body .nameplate-chip .ot-alert-dot{position:absolute;top:2px;right:2px;widt
 html body .location-left-slot .nameplate-chip .ot-alert-dot{right:auto;left:50%;margin-left:-3px;}
 html body .nameplate-chip .ot-alert-warn{background:#E6A000;}
 html body .nameplate-chip .ot-alert-over{background:#D93A2F;}
-.ot-alert-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:-4px 0 10px;font-size:12px;color:var(--ink-soft);}
+.ot-alert-row{display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap;margin:-2px 0 10px;font-size:12px;color:var(--ink-soft);}
+.ot-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:6px;}
+.ot-dot:first-child{margin-left:0;}
+html body .ot-dot-warn{background:#E6A000;}
+html body .ot-dot-over{background:#D93A2F;}
+html body .ot-alert-link{border:0;background:transparent;padding:2px 4px;margin-left:6px;font-size:12px;font-weight:600;color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
+/* 読み込み・共有のバー：1つの枠の中に仕切り線で3つ並べる */
+.shift-tools{display:flex;margin:0 0 10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+html body .shift-tool{
+  flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:9px 4px;border:0;border-radius:0;background:transparent;box-shadow:none;
+  color:var(--ink);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;
+}
+html body .shift-tool + .shift-tool{border-left:1px solid var(--line);}
+.shift-tool svg{width:15px;height:15px;flex:none;color:var(--accent);}
+.shift-tool span{overflow:hidden;text-overflow:ellipsis;}
+html body .shift-tool:active{background:var(--bg);}
 .ot-month-line{margin-top:6px;font-size:12px;}
 html body .ot-month-line.ot-lv{display:inline-block;padding:2px 8px;}
 .ot-choice-row .choice-btn{min-width:0;padding:9px 0;text-align:center;}
@@ -4694,6 +4710,18 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
   function closeShiftSheet(){ shiftOverlay.classList.remove("open"); }
 
+  // シフト表の読み込み・共有バーのボタン（線のアイコン＋短い文字）
+  var SHIFT_TOOL_ICONS = {
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11v6"/><path d="m9 14 3 3 3-3"/>',
+    send: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+    receive: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>'
+  };
+  function shiftToolBtn(id, icon, label){
+    return '<button type="button" class="shift-tool" id="' + id + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + SHIFT_TOOL_ICONS[icon] + '</svg>' +
+      '<span>' + label + '</span></button>';
+  }
+
   function renderShiftSheet(keepScroll){
     var y = shiftMonth.y, m = shiftMonth.m, n = daysInMonth(y, m);
     var boardIso = state.boardDate || todayISO();
@@ -4720,16 +4748,17 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "off" ? ' selected' : '') + '" data-mode="off" aria-selected="' + (shiftMode === "off") + '">シフト</button>' +
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "ot" ? ' selected' : '') + '" data-mode="ot" aria-selected="' + (shiftMode === "ot") + '">残業</button>' +
       '</div>' +
-      (shiftMode === "off"
-        ? '<div class="shift-import-row"><button type="button" class="btn-secondary btn-sm" id="shiftImportBtn">Excel・CSV読み込み</button>' +
-          '<button type="button" class="btn-secondary btn-sm" id="shiftShareBtn">共有コード作成</button>' +
-          '<button type="button" class="btn-secondary btn-sm" id="shiftReceiveBtn">共有コード読み込み</button></div>'
-        : '<div class="shift-import-row"><button type="button" class="btn-secondary btn-sm" id="shiftOtImportBtn">Excel・CSV読み込み</button>' +
-          '<button type="button" class="btn-secondary btn-sm" id="shiftShareBtn">共有コード作成</button>' +
-          '<button type="button" class="btn-secondary btn-sm" id="shiftReceiveBtn">共有コード読み込み</button></div>' +
-          '<div class="ot-alert-row">アラート：<span class="ot-lv ot-lv-warn">注意 ' + fmtHours(state.otAlert.warn) + 'h</span>' +
-          '<span class="ot-lv ot-lv-over">上限 ' + fmtHours(state.otAlert.limit) + 'h</span>' +
-          '<button type="button" class="btn-secondary btn-sm" id="otAlertSettingBtn">変更</button></div>');
+      // 読み込み・共有は1本のバーにまとめる（ボタンの枠を並べるより目に入る情報を減らすため）
+      '<div class="shift-tools" role="group" aria-label="読み込みと共有">' +
+        shiftToolBtn(shiftMode === "off" ? "shiftImportBtn" : "shiftOtImportBtn", "file", "ファイル読込") +
+        shiftToolBtn("shiftShareBtn", "send", "コードを送る") +
+        shiftToolBtn("shiftReceiveBtn", "receive", "コードを受取") +
+      '</div>' +
+      (shiftMode === "ot"
+        ? '<div class="ot-alert-row"><span class="ot-dot ot-dot-warn"></span>注意 ' + fmtHours(state.otAlert.warn) + 'h' +
+          '<span class="ot-dot ot-dot-over"></span>上限 ' + fmtHours(state.otAlert.limit) + 'h' +
+          '<button type="button" class="ot-alert-link" id="otAlertSettingBtn">変更</button></div>'
+        : '');
 
     if(shiftPeople.length === 0){
       html += '<p class="confirm-msg">ネームプレートがありません。先に「＋」から追加してください。</p>';
