@@ -2533,6 +2533,22 @@ body[data-theme="ink"] .nameplate-chip.plate-white{
 .qr-share-box{max-width:100%;width:min(220px, 100%);box-sizing:border-box;}
 .qr-share-box img{display:block;max-width:100%;height:auto;}
 .qr-share-note{font-size:11px;color:var(--ink-soft);text-align:center;}
+.qr-share-box img{cursor:zoom-in;}
+.qr-share-box .qr-share-msg{margin:0;padding:4px 2px;font-size:12px;line-height:1.6;color:#8A3B2F;text-align:left;}
+.qr-share-box .qr-zoom-btn{display:block;width:100%;margin-top:8px;line-height:1.4;}
+/* QRの拡大表示。白地にできるだけ大きく出す（マス目がぼやけないよう拡大はドット単位で） */
+.qr-zoom-overlay{
+  position:fixed;inset:0;z-index:130;background:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:calc(16px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  box-sizing:border-box;
+}
+.qr-zoom-overlay img{
+  width:min(96vw, calc(100vh - 170px));height:auto;max-width:720px;
+  image-rendering:pixelated;image-rendering:crisp-edges;
+}
+.qr-zoom-note{margin:0;font-size:13px;color:#555;text-align:center;line-height:1.5;}
+html body .qr-zoom-overlay .qr-zoom-close{flex:none;height:auto;min-width:160px;padding:12px 28px;}
 .qr-scan-row{display:flex;justify-content:center;margin:2px 0 12px;}
 .qr-scan-overlay{z-index:120;align-items:center;}
 .qr-scan-box{background:#0A0A0A;width:100%;max-width:420px;border-radius:16px;overflow:hidden;margin:0 16px;}
@@ -5362,27 +5378,37 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if((mm = t.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/))) return +mm[1] + (+mm[2]) / 60;
     if((mm = t.match(/^(\d+(?:\.\d+)?)時間(?:(\d{1,2})分)?$/))) return +mm[1] + (mm[2] ? +mm[2] / 60 : 0);
     if((mm = t.match(/^(\d{1,3})分$/))) return +mm[1] / 60;
-    if(/^\d*\.?\d+$/.test(t)) return parseFloat(t);
+    // ふつうの数字。Excelのファイルの中では、小さい数が「6.25E-2」（= 0.0625 = 1:30）のような
+    // 指数の形で保存されていることがあるので、その形も読む
+    if(/^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/.test(t)){ var n = parseFloat(t); return isFinite(n) ? n : null; }
     return null;
   }
   // 読んだ値の仕上げ。すべて1未満で15分単位にならない値があれば「Excelの時刻（1日=1）」とみなして24倍する。
   // そのあと15分単位にそろえ、上限を超える値は読み込まない。
+  // Excelの時刻（1:30 と表示されるセル）は、中身が「1日 = 1」の小数（1:30 = 0.0625）。
+  // 1マスずつ判定する（「1:30」と文字で書いたマスと、時刻のマスが混ざっていても読めるように）:
+  //   1未満で15分単位にならない値 → 時刻なので24倍
+  //   1未満で15分単位の値（0.25 / 0.5 / 0.75）→ 表の1未満の値の多くが時刻なら24倍（6:00 / 12:00 / 18:00）、そうでなければ時間のまま
+  //   1以上 → 時間のまま
   function finalizeOvertimeResult(res){
-    var vals = [];
-    res.people.forEach(function(pp){ Object.keys(pp.offs).forEach(function(iso){ vals.push(pp.offs[iso]); }); });
-    var serial = vals.length > 0 && vals.every(function(v){ return v < 1; }) &&
-      vals.some(function(v){ return Math.abs(v * 4 - Math.round(v * 4)) > 0.01; });
-    var count = 0, total = 0, over = 0;
+    function isQuarter(v){ return Math.abs(v * 4 - Math.round(v * 4)) < 0.01; }
+    var small = [];
+    res.people.forEach(function(pp){ Object.keys(pp.offs).forEach(function(iso){ if(pp.offs[iso] < 1) small.push(pp.offs[iso]); }); });
+    var nonQuarter = small.filter(function(v){ return !isQuarter(v); }).length;
+    var serialMode = nonQuarter > 0 && nonQuarter * 2 >= small.length;
+    var count = 0, total = 0, over = 0, converted = 0;
     res.people.forEach(function(pp){
       Object.keys(pp.offs).forEach(function(iso){
-        var h = pp.offs[iso] * (serial ? 24 : 1);
+        var raw = pp.offs[iso], toHours = raw < 1 && (!isQuarter(raw) || serialMode);
+        if(toHours) converted++;
+        var h = raw * (toHours ? 24 : 1);
         h = Math.round(h / OT_STEP) * OT_STEP;
         if(h > OT_MAX){ over++; delete pp.offs[iso]; return; }
         if(h <= 0){ delete pp.offs[iso]; return; }
         pp.offs[iso] = h; count++; total += h;
       });
     });
-    res.offCount = count; res.otTotal = total; res.otSerial = serial; res.otOver = over;
+    res.offCount = count; res.otTotal = total; res.otSerial = converted > 0; res.otOver = over;
     return res;
   }
   // 読み込んだ残業を反映する。読み込んだ人の、表の日付の範囲は置き換え（表で空のマスは残業なしになる）
@@ -5713,12 +5739,57 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function mdOfISO(iso){ return parseInt(iso.slice(5, 7), 10) + "/" + parseInt(iso.slice(8), 10); }
 
   // ---------- QRコード（共有コードの表示・読み取り） ----------
+  // QRコードを画面いっぱいに表示する。どこかをタップすると閉じる
+  function openQRZoom(src){
+    var old = document.getElementById("qrZoomOverlay");
+    if(old) old.remove();
+    var ov = document.createElement("div");
+    ov.id = "qrZoomOverlay";
+    ov.className = "qr-zoom-overlay";
+    ov.setAttribute("role", "dialog");
+    ov.setAttribute("aria-label", "QRコードを大きく表示");
+    ov.innerHTML =
+      '<img alt="QRコード">' +
+      '<p class="qr-zoom-note">読み取れないときは、画面を明るくして、カメラを少し離してみてください</p>' +
+      '<button type="button" class="btn-primary qr-zoom-close">閉じる</button>';
+    ov.querySelector("img").src = src;
+    function close(){ ov.remove(); document.removeEventListener("keydown", onKey); }
+    function onKey(e){ if(e.key === "Escape") close(); }
+    ov.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(ov);
+  }
+
   function renderShareQR(box, text){
     if(!box) return;
     box.innerHTML = "";
-    if(!text || typeof QRCode !== "function"){ box.hidden = true; return; }
+    if(!text){ box.hidden = true; return; }
+    if(typeof QRCode !== "function"){
+      showQRMessage(box, "QRコードを作る部品（qrcode.js）が読み込めていません。コピーか「共有…」で送ってください。");
+      return;
+    }
+    // 誤り訂正のレベルを、長さに合わせたものから順に試す。ライブラリは長さの境目で
+    // 「code length overflow」を出すことがあるので、失敗したら1段低いレベル（＝たくさん入る）で作り直す
+    var C = QRCode.CorrectLevel;
+    var levels = text.length > 900 ? [C.L] : text.length > 500 ? [C.M, C.L] : [C.Q, C.M, C.L];
+    for(var li = 0; li < levels.length; li++){
+      if(buildShareQR(box, text, levels[li])) return;
+    }
+    showQRMessage(box, "コードが長すぎてQRコードにできませんでした（" + text.length + "文字）。" +
+      "共有する期間を「表示中の月」にすると短くなります。または、コピーか「共有…」で送ってください。");
+  }
+  // QRの代わりに案内を出す（何も出ないと、表示されていないのか分からないため）
+  function showQRMessage(box, msg){
+    box.innerHTML = "";
+    var p = document.createElement("p");
+    p.className = "qr-share-msg";
+    p.textContent = msg;
+    box.appendChild(p);
+    box.hidden = false;
+  }
+  function buildShareQR(box, text, level){
+    box.innerHTML = "";
     try{
-      var level = text.length > 900 ? QRCode.CorrectLevel.L : text.length > 500 ? QRCode.CorrectLevel.M : QRCode.CorrectLevel.Q;
       // 画面外に作ってから、白いクワイエットゾーン（余白）を付けて box に差し込む。
       // ライブラリはモジュールいっぱいに描くだけで余白を付けないため、余白なしの画像を
       // 保存・書き出しすると実機のカメラで読み取れないことがある。
@@ -5738,13 +5809,23 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, padded.width, padded.height);
       if(srcCanvas) ctx.drawImage(srcCanvas, quiet, quiet, size, size);
       var img = document.createElement("img");
-      img.alt = "QRコード";
+      img.alt = "QRコード（タップで大きく表示）";
       img.src = padded.toDataURL("image/png");
+      img.addEventListener("click", function(){ openQRZoom(img.src); });
       box.appendChild(img);
+      // 細かいQRは小さいままだと読み取れないので、画面いっぱいに出すボタンを付ける
+      var zoomBtn = document.createElement("button");
+      zoomBtn.type = "button";
+      zoomBtn.className = "btn-secondary btn-sm qr-zoom-btn";
+      zoomBtn.textContent = "QRを大きく表示";
+      zoomBtn.addEventListener("click", function(){ openQRZoom(img.src); });
+      box.appendChild(zoomBtn);
       box.hidden = false;
     }catch(e){
-      box.hidden = true;   // 長すぎるなどQRコードにできない場合は、上のテキストのコピーのみ案内する
+      box.innerHTML = "";
+      return false;   // 長すぎるなど、このレベルではQRコードにできない
     }
+    return true;
   }
 
   // QRの読み取り方法: "native"（ブラウザ内蔵の BarcodeDetector。Android の Chrome など）/
