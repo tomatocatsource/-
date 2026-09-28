@@ -2917,7 +2917,48 @@ html body .qr-share-box .qr-zoom-btn{background:#fff;color:#23241F;border:1px so
 }
 .qr-zoom-note{margin:0;font-size:13px;color:#555;text-align:center;line-height:1.5;}
 html body .qr-zoom-overlay .qr-zoom-close{flex:none;height:auto;min-width:160px;padding:12px 28px;}
-.qr-scan-row{display:flex;margin:10px 0 14px;}
+/* ---- メニュー（シフト表の見た目にそろえる） ---- */
+#templateSheet .menu-section-title{display:flex;align-items:baseline;gap:6px;font-size:13px;margin:18px 0 8px;}
+#templateSheet .sheet-header + .menu-section-title{margin-top:4px;}
+.menu-count{font-size:12px;font-weight:500;}
+.template-list{display:flex;flex-direction:column;gap:10px;margin-top:0;}
+#templateSheet .menu-card{display:block;padding:0;margin:0;overflow:hidden;}
+#templateSheet .menu-card.in-use{box-shadow:inset 3px 0 0 var(--accent);}
+.menu-card-head{padding:10px 12px 9px;}
+.menu-card-name{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;}
+.menu-card-meta{margin-top:2px;font-size:12px;color:var(--ink-soft);}
+.menu-badge{
+  display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;vertical-align:1px;
+  font-size:11px;font-weight:700;color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.menu-card-actions{display:flex;border-top:1px solid;border-top-color:inherit;}
+html body .shift-tool.menu-danger{color:var(--danger);}
+html body .shift-tool.menu-danger svg{color:var(--danger);}
+#templateSheet .shift-tools{margin-bottom:0;}
+#templateSheet .shift-tools + .template-list{margin-top:10px;}
+.menu-empty{margin:0;padding:14px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;line-height:1.7;color:var(--ink-soft);}
+.qr-scan-wrap{display:flex;flex-direction:column;gap:8px;margin:10px 0 14px;}
+.qr-image-btn{
+  display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 14px;
+  background:transparent;border:1px solid var(--line);border-radius:var(--radius);
+  color:var(--ink);font:inherit;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.qr-image-btn:active{background:color-mix(in srgb, var(--accent) 8%, transparent);}
+.qr-image-btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.qr-image-btn .qr-scan-icon{
+  flex:none;width:36px;height:36px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.qr-image-btn .qr-scan-icon svg{width:22px;height:22px;display:block;}
+.qr-image-btn .qr-scan-text{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.qr-image-btn .qr-scan-title{font-size:14px;font-weight:700;line-height:1.3;}
+.qr-image-btn .qr-scan-sub{font-size:12px;color:var(--ink-soft);line-height:1.4;}
+.qr-scan-btn:disabled,.qr-image-btn:disabled{opacity:.55;cursor:default;}
+.qr-image-status{margin:0;font-size:12px;line-height:1.6;color:var(--ink-soft);}
+.qr-image-status.err{color:var(--danger);}
 .qr-scan-btn{
   display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px 14px;
   background:color-mix(in srgb, var(--accent) 12%, var(--surface));
@@ -3081,25 +3122,18 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         <button class="icon-btn" id="closeTemplateSheetBtn" type="button">×</button>
       </div>
 
-      <button type="button" class="sheet-section-title sheet-collapse-toggle" id="templateSectionToggle" aria-expanded="false">
-        <span>テンプレート</span><span class="collapse-arrow">▾</span>
-      </button>
-      <div class="sheet-section collapsible" id="templateSectionContent">
-        <div class="collapsible-inner">
-          <div class="sheet-btn-row">
-            <button class="btn-primary" id="saveTemplateBtn" type="button">現在の配置場所を保存</button>
-            <button class="btn-secondary" id="importTemplateBtn" type="button">共有コードから追加</button>
-          </div>
-          <div class="template-list" id="templateList"></div>
-        </div>
+      <!-- シフト表と同じ見た目（枠線の中にアイコン＋短い文字のボタン）にそろえる。よく使う操作を上に置く -->
+      <div class="menu-section-title sheet-section-title">ボード</div>
+      <div class="shift-tools" role="group" aria-label="ボードの操作">
+        <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
       </div>
 
-      <div class="sheet-divider"></div>
-
-      <div class="sheet-section-title">操作</div>
-      <div class="sheet-section">
-        <button class="btn-secondary" id="unassignAllBtn" type="button" style="width:100%;">配置を一括解除</button>
+      <div class="menu-section-title sheet-section-title"><span>テンプレート</span><span class="menu-count" id="templateCount"></span></div>
+      <div class="shift-tools" role="group" aria-label="テンプレートの保存と受け取り">
+        <button type="button" class="shift-tool" id="saveTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>今の配置を保存</span></button>
+        <button type="button" class="shift-tool" id="importTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>コードを受取</span></button>
       </div>
+      <div class="template-list" id="templateList"></div>
     </div>
   </div>
 
@@ -4521,30 +4555,56 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
+  // メニューのボタン用アイコン（シフト表の SHIFT_TOOL_ICONS と同じ線の太さ・大きさ）
+  var MENU_ICONS = {
+    apply: '<path d="M20 6 9 17l-5-5"/>',
+    send: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 1H8a2 2 0 0 1-2-1L5 6"/><path d="M10 11v6M14 11v6"/>'
+  };
+  function menuIcon(name){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + MENU_ICONS[name] + '</svg>';
+  }
   function renderTemplateList(){
     var list = document.getElementById("templateList");
+    var countEl = document.getElementById("templateCount");
     list.innerHTML = "";
+    countEl.textContent = state.templates.length ? state.templates.length + "件" : "";
     if(state.templates.length === 0){
       var p = document.createElement("p");
-      p.className = "confirm-msg";
-      p.textContent = "保存されたテンプレートはありません。";
+      p.className = "menu-empty";
+      p.textContent = "保存したテンプレートはまだありません。「今の配置を保存」で、いまの配置場所とネームプレートを保存できます。";
       list.appendChild(p);
       return;
     }
     state.templates.forEach(function(tpl){
+      // 1件ずつ枠で囲み、下にシフト表と同じ形のボタンバーを付ける
+      var inUse = state.currentTemplateName === tpl.name;
       var row = document.createElement("div");
-      row.className = "template-row";
-      var name = document.createElement("span");
-      name.className = "template-name";
+      row.className = "shift-toggle-row menu-card" + (inUse ? " in-use" : "");
+      var head = document.createElement("div");
+      head.className = "menu-card-head";
+      var name = document.createElement("div");
+      name.className = "menu-card-name";
+      name.textContent = tpl.name;
       var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
-      name.textContent = tpl.name + "（" + tpl.locationNames.length + "箇所・" + npCount + "人）";
+      var meta = document.createElement("div");
+      meta.className = "menu-card-meta";
+      meta.textContent = "配置場所 " + tpl.locationNames.length + "箇所・ネームプレート " + npCount + "人";
+      head.appendChild(name);
+      if(inUse){
+        var badge = document.createElement("span");
+        badge.className = "menu-badge";
+        badge.textContent = "使用中";
+        name.appendChild(badge);
+      }
+      head.appendChild(meta);
       var actions = document.createElement("div");
-      actions.className = "template-actions";
+      actions.className = "menu-card-actions";
 
       var applyBtn = document.createElement("button");
       applyBtn.type = "button";
-      applyBtn.className = "btn-primary btn-sm";
-      applyBtn.textContent = "適用";
+      applyBtn.className = "shift-tool";
+      applyBtn.innerHTML = menuIcon("apply") + "<span>適用</span>";
       applyBtn.addEventListener("click", function(){
         var hasNameplates = Array.isArray(tpl.nameplates) && tpl.nameplates.length > 0;
         var msg = hasNameplates
@@ -4584,16 +4644,16 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
       var shareBtn = document.createElement("button");
       shareBtn.type = "button";
-      shareBtn.className = "btn-secondary btn-sm";
-      shareBtn.textContent = "共有";
+      shareBtn.className = "shift-tool";
+      shareBtn.innerHTML = menuIcon("send") + "<span>コードを送る</span>";
       shareBtn.addEventListener("click", function(){
         openShareTemplateModal(tpl);
       });
 
       var delBtn = document.createElement("button");
       delBtn.type = "button";
-      delBtn.className = "btn-danger btn-sm";
-      delBtn.textContent = "削除";
+      delBtn.className = "shift-tool menu-danger";
+      delBtn.innerHTML = menuIcon("trash") + "<span>削除</span>";
       delBtn.addEventListener("click", function(){
         openConfirmModal('テンプレート「' + tpl.name + '」を削除しますか？', function(){
           state.templates = state.templates.filter(function(t){ return t.id !== tpl.id; });
@@ -4604,7 +4664,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       actions.appendChild(applyBtn);
       actions.appendChild(shareBtn);
       actions.appendChild(delBtn);
-      row.appendChild(name);
+      row.appendChild(head);
       row.appendChild(actions);
       list.appendChild(row);
     });
@@ -4671,7 +4731,6 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       content.classList.toggle("open", !open);
     });
   }
-  setupCollapsible("templateSectionToggle", "templateSectionContent");
 
   document.getElementById("unassignAllBtn").addEventListener("click", function(){
     var placedCount = state.nameplates.filter(function(n){ return !!n.locationId; }).length;
@@ -4696,7 +4755,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(box){
       box.innerHTML =
         '<div class="sheet-header"><span>「' + escapeHtml(tpl.name) + '」を共有</span></div>' +
-        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「テンプレート」→「共有コードから追加」に貼り付けると読み込めます。</p>' +
+        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「メニュー」→「コードを受取」に貼り付けると読み込めます。</p>' +
         '<label>共有コード</label>' +
         '<textarea id="shareCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" readonly rows="5"></textarea>' +
         '<div class="qr-share-wrap"><div class="qr-share-box" id="shareQRBox" hidden></div><p class="qr-share-note">相手がこの画面をカメラで読み取ると取り込めます</p></div>' +
@@ -4721,7 +4780,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function openImportTemplateModal(){
     openModal(function(box){
       box.innerHTML =
-        '<div class="sheet-header"><span>共有コードから追加</span></div>' +
+        '<div class="sheet-header"><span>共有コードからテンプレートを追加</span></div>' +
         '<label>共有コードを貼り付け</label>' +
         '<textarea id="importCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="P3: で始まるコード"></textarea>' +
         '<div id="importQRRow"></div>' +
@@ -6262,8 +6321,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
   function checkQRDetectorSupport(){
+    // カメラの有無は見ない（画像からの読み取りはカメラがなくても使えるため）。カメラは hasQRCamera() で別に確かめる
     if(qrDetectorSupport !== null) return Promise.resolve(qrDetectorSupport);
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ qrDetectorSupport = false; return Promise.resolve(false); }
     var native = (typeof window.BarcodeDetector === "function")
       ? window.BarcodeDetector.getSupportedFormats().then(function(f){ return f.indexOf("qr_code") !== -1; }).catch(function(){ return false; })
       : Promise.resolve(false);
@@ -6294,6 +6353,53 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       var hit = window.jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
       return Promise.resolve(hit && hit.data ? hit.data : null);
     };
+  }
+
+  function hasQRCamera(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); }
+
+  // 選んだ画像ファイル（スクショや保存した写真）からQRコードを探す。見つからなければ null を返す（Promise）
+  function loadImageForQR(file){
+    if(typeof window.createImageBitmap === "function"){
+      return window.createImageBitmap(file).catch(function(){ return loadImageElement(file); });
+    }
+    return loadImageElement(file);
+  }
+  function loadImageElement(file){
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){ URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("image")); };
+      img.src = url;
+    });
+  }
+  function decodeQRFromImageFile(file, mode){
+    return loadImageForQR(file).then(function(src){
+      var w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+      if(!w || !h) return null;
+      var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
+      function drawAt(maxSide){
+        var scale = Math.min(1, maxSide / Math.max(w, h));
+        canvas.width = Math.max(1, Math.round(w * scale)); canvas.height = Math.max(1, Math.round(h * scale));
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);   // 透過PNGの背景を白にする
+        ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+      }
+      function tryJsQR(maxSide){
+        drawAt(maxSide);
+        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var hit = window.jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+        return hit && hit.data ? hit.data : null;
+      }
+      var done = function(v){ if(src.close) src.close(); return v; };
+      if(mode === "native"){
+        drawAt(2000);
+        var detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        return detector.detect(canvas).then(function(codes){
+          return done((codes && codes.length && codes[0].rawValue) || null);
+        });
+      }
+      // 細かいQRは大きいまま、ぼやけた写真は少し縮めたほうが読めることがあるので、大きさを変えて2回試す
+      return done(tryJsQR(2000) || tryJsQR(900));
+    });
   }
 
   var qrScanOverlay = null, qrScanVideo = null, qrScanStatus = null, qrScanStream = null, qrScanRAF = null, qrScanCb = null;
@@ -6369,30 +6475,77 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       if(qrScanStatus) qrScanStatus.textContent = "カメラを使用できませんでした。設定でカメラへのアクセスを許可するか、コードを貼り付けてください。";
     });
   }
-  // 読み込み画面に「QRコードを読み取る」ボタンを追加する。対応していない端末ではボタンを出さない。
+  // 読み込み画面に「QRコードを読み取る」「画像から読み取る」ボタンを追加する。対応していない端末ではボタンを出さない。
+  var QR_ICON_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>' +
+      '<rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/>' +
+      '<path d="M13 13h1.5M17 13v1.5M13 17h4"/>' +
+    '</svg>';
+  var IMAGE_ICON_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/>' +
+    '</svg>';
   function addQRScanButton(container, onText){
-    checkQRDetectorSupport().then(function(ok){
-      if(!ok || !container.isConnected) return;
-      var row = document.createElement("div");
-      row.className = "qr-scan-row";
-      row.innerHTML =
-        '<button type="button" class="qr-scan-btn" id="qrScanOpenBtn">' +
-          '<span class="qr-scan-icon" aria-hidden="true">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-              '<path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>' +
-              '<rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/>' +
-              '<path d="M13 13h1.5M17 13v1.5M13 17h4"/>' +
-            '</svg>' +
-          '</span>' +
+    checkQRDetectorSupport().then(function(mode){
+      if(!mode || !container.isConnected) return;
+      var camera = hasQRCamera();
+      var wrap = document.createElement("div");
+      wrap.className = "qr-scan-wrap";
+      var html = "";
+      if(camera){
+        html +=
+          '<button type="button" class="qr-scan-btn" data-qr="camera">' +
+            '<span class="qr-scan-icon" aria-hidden="true">' + QR_ICON_SVG + '</span>' +
+            '<span class="qr-scan-text">' +
+              '<span class="qr-scan-title">QRコードを読み取る</span>' +
+              '<span class="qr-scan-sub">カメラで写すと、コードが自動で入ります</span>' +
+            '</span>' +
+          '</button>';
+      }
+      // カメラがあるときは控えめな2つめのボタン、ないときはこちらを大きく出す
+      html +=
+        '<button type="button" class="' + (camera ? "qr-image-btn" : "qr-scan-btn") + '" data-qr="image">' +
+          '<span class="qr-scan-icon" aria-hidden="true">' + IMAGE_ICON_SVG + '</span>' +
           '<span class="qr-scan-text">' +
-            '<span class="qr-scan-title">QRコードを読み取る</span>' +
-            '<span class="qr-scan-sub">カメラで写すと、コードが自動で入ります</span>' +
+            '<span class="qr-scan-title">画像から読み取る</span>' +
+            '<span class="qr-scan-sub">送られてきたQRのスクショや写真を選びます</span>' +
           '</span>' +
-        '</button>';
-      container.appendChild(row);
-      row.querySelector("#qrScanOpenBtn").addEventListener("click", function(){ openQRScanner(onText); });
+        '</button>' +
+        '<input type="file" accept="image/*" hidden>' +
+        '<p class="qr-image-status" role="status" aria-live="polite" hidden></p>';
+      wrap.innerHTML = html;
+      container.appendChild(wrap);
+
+      var fileInput = wrap.querySelector('input[type="file"]');
+      var imageBtn = wrap.querySelector('[data-qr="image"]');
+      var status = wrap.querySelector(".qr-image-status");
+      function setStatus(msg, isErr){
+        status.hidden = !msg;
+        status.textContent = msg || "";
+        status.classList.toggle("err", !!isErr);
+      }
+      var camBtn = wrap.querySelector('[data-qr="camera"]');
+      if(camBtn) camBtn.addEventListener("click", function(){
+        setStatus("");
+        openQRScanner(function(text){ setStatus("QRコードを読み取りました。"); onText(text); });
+      });
+      imageBtn.addEventListener("click", function(){ fileInput.value = ""; fileInput.click(); });
+      fileInput.addEventListener("change", function(){
+        var file = fileInput.files && fileInput.files[0];
+        if(!file) return;
+        imageBtn.disabled = true;
+        setStatus("画像を読み取っています…");
+        decodeQRFromImageFile(file, mode).then(function(text){
+          if(text){ setStatus("QRコードを読み取りました。"); onText(text); }
+          else setStatus("この画像からQRコードが見つかりませんでした。QRの部分が大きく写った画像や、切り抜いた画像で試してください。", true);
+        }).catch(function(){
+          setStatus("画像を開けませんでした。スクショや写真（JPEG・PNG）を選んでください。", true);
+        }).then(function(){ imageBtn.disabled = false; });
+      });
     });
   }
+
 
 
   // mode: "off"（シフトの休み・既定）/ "ot"（残業）
