@@ -3004,6 +3004,29 @@ html body .my-cal td.work-mark .my-s{color:#2A7FB8;font-size:12px;font-weight:70
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .my-cal .my-ot{display:inline-block;margin-top:2px;padding:0 3px;border-radius:4px;font-size:9.5px;font-weight:700;line-height:1.5;background:#E07A2E;color:#fff;}
+/* ---- 日付の印 ---- */
+.shift-table.has-dm thead th{height:62px;}
+.shift-table thead th .dm{
+  display:block;margin:0 auto 2px;max-width:48px;padding:0 3px;border-radius:4px;
+  font-size:10px;font-weight:700;line-height:1.5;letter-spacing:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#8A5A00;background:#FFE7A8;
+}
+.date-dm{
+  display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;vertical-align:1px;
+  font-size:11px;font-weight:700;line-height:1.6;color:#8A5A00;background:#FFE7A8;
+}
+.my-cal .my-dm{
+  display:inline-block;float:right;margin:0 2px 0 0;padding:0 3px;border-radius:3px;max-width:60%;
+  font-size:9.5px;font-weight:700;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#8A5A00;background:#FFE7A8;
+}
+.my-cal .my-d{display:inline-block;}
+.dm-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;}
+.dm-chip{
+  padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);
+  font:inherit;font-size:13px;font-weight:700;cursor:pointer;
+}
 .qr-scan-wrap{display:flex;flex-direction:column;gap:8px;margin:10px 0 14px;}
 .qr-image-btn{
   display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 14px;
@@ -3238,7 +3261,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {} };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3529,7 +3552,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null;
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {};
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -3636,6 +3659,13 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     return out;
   }
   // 出勤の記号（「冷」など）: { 名前: { "YYYY-MM-DD": "冷" } }
+  function cleanStoredDayMarks(obj){
+    var out = {};
+    Object.keys(obj).forEach(function(iso){
+      if(/^\d{4}-\d{2}-\d{2}$/.test(iso) && typeof obj[iso] === "string"){ var v = cleanDayMark(obj[iso]); if(v) out[iso] = v; }
+    });
+    return out;
+  }
   function cleanStoredMarks(obj){
     var out = {};
     Object.keys(obj).forEach(function(name){
@@ -3693,6 +3723,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.myName = (typeof parsed.myName === "string" && parsed.myName) ? parsed.myName.slice(0, 40) : null;   // 個人カレンダーで選んだ名前
         state.overtime = isObj(parsed.overtime) ? cleanStoredOvertime(parsed.overtime) : {};
         state.workMarks = isObj(parsed.workMarks) ? cleanStoredMarks(parsed.workMarks) : {};
+        state.dayMarks = isObj(parsed.dayMarks) ? cleanStoredDayMarks(parsed.dayMarks) : {};
         state.otAlert = cleanOtAlert(parsed.otAlert);
       }catch(e){
         // 読めないデータを空の状態で上書きしてしまわないよう、先に退避する
@@ -4035,7 +4066,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
 
   function renderDateBar(){
-    document.getElementById("dateBar").textContent = formatDateJP(state.boardDate || todayISO());
+    var iso = state.boardDate || todayISO(), dmk = dayMarkOf(iso);
+    document.getElementById("dateBar").innerHTML = escapeHtml(formatDateJP(iso)) + (dmk ? '<span class="date-dm">' + escapeHtml(dmk) + '</span>' : '');
   }
 
   // ---------- drag & drop (long press then move) ----------
@@ -5203,6 +5235,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // ---------- 出勤の記号（「冷」など） ----------
   // Excelから読んだ「出勤として読む記号」を、シフト表にそのまま表示するために名前・日付ごとに持つ。休みの日には持たない。
   function cleanMark(v){ return String(v).replace(/[\u0000-\u001F,=]/g, "").trim().slice(0, 3); }
+  // ---------- 日付の印（「棚」「特」など、その日全体に付ける文字） ----------
+  // state.dayMarks = { "YYYY-MM-DD": "棚" }。Excelの日付の上（または下）の行から読むほか、シフト表で手入力もできる。
+  var DAY_MARK_MAX = 4;
+  function cleanDayMark(v){ return String(v == null ? "" : v).normalize("NFKC").replace(/[\u0000-\u001F]/g, "").replace(/\s+/g, "").slice(0, DAY_MARK_MAX); }
+  function dayMarkOf(iso){ return Object.prototype.hasOwnProperty.call(state.dayMarks, iso) ? state.dayMarks[iso] : null; }
+  function setDayMark(iso, v){
+    v = cleanDayMark(v);
+    if(v) state.dayMarks[iso] = v; else delete state.dayMarks[iso];
+  }
   function markOf(name, iso){
     var m = Object.prototype.hasOwnProperty.call(state.workMarks, name) ? state.workMarks[name] : null;
     return (m && m[iso]) || null;
@@ -5560,11 +5601,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           '</svg><span>' + (shiftFs ? '閉じる' : '全画面') + '</span></button>' +
       '</div>' +
       '<div class="shift-scroll"><table class="shift-table"><thead><tr><th class="name-col">名前</th>';
+    var hasDm = false;
     for(var d = 1; d <= n; d++){
       var wd = new Date(y, m - 1, d).getDay();
       var iso = isoOf(y, m, d);
       var cls = (wd === 0 ? "sun" : wd === 6 ? "sat" : "") + (iso === boardIso ? " board-col" : "");
-      t += '<th class="' + cls + '" data-d="' + iso + '"><div>' + d + '</div><div class="wd">' + WEEKDAYS[wd] + '</div></th>';
+      var dmk = dayMarkOf(iso);
+      if(dmk) hasDm = true;
+      t += '<th class="' + cls + '" data-d="' + iso + '">' + (dmk ? '<div class="dm" title="' + escapeHtml(dmk) + '">' + escapeHtml(dmk) + '</div>' : '') +
+        '<div>' + d + '</div><div class="wd">' + WEEKDAYS[wd] + '</div></th>';
     }
     t += '</tr></thead><tbody>';
     shiftPeople.forEach(function(name, i){
@@ -5589,6 +5634,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     for(var c = 1; c <= n; c++){ t += '<td class="cnt" data-d="' + isoOf(y, m, c) + '"></td>'; }
     t += '</tr></tfoot></table></div></div>';
 
+    if(hasDm) t = t.replace('<table class="shift-table">', '<table class="shift-table has-dm">');
     shiftBody.innerHTML = html + t;
     document.getElementById("shiftSheet").classList.toggle("table-fs", shiftFs);
     refreshShiftCounts();
@@ -5648,7 +5694,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       var cls = 'shift-cell my-day' + (kind ? ' on' + kindClass(kind) : '') + (iso === boardIso ? ' board-col' : '') + (iso === today ? ' my-today' : '') + (mk ? ' work-mark' : '') +
         (wd === 0 ? ' my-sun' : wd === 6 ? ' my-sat' : '');
       t += '<td class="' + cls + '" data-d="' + iso + '">' +
-        '<span class="my-d">' + d + '</span>' +
+        '<span class="my-d">' + d + '</span>' + (dayMarkOf(iso) ? '<span class="my-dm">' + escapeHtml(dayMarkOf(iso)) + '</span>' : '') +
         '<span class="my-s">' + (kind ? kind : escapeHtml(mk || '出勤')) + '</span>' +
         (loc ? '<span class="my-loc">' + escapeHtml(loc) + '</span>' : '') +
         (oh ? '<span class="my-ot">残' + fmtHours(oh) + '</span>' : '') +
@@ -5757,7 +5803,40 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(days.length) parts.push('列 <b>' + limitedJoin(days, 4) + '</b>');
     bar.innerHTML = '<span>入力範囲：' + parts.join('') + '</span>' +
       '<button type="button" class="btn-secondary btn-sm" id="shiftClearRange">解除</button>' +
+      (days.length ? '<button type="button" class="btn-secondary btn-sm" id="shiftDayMarkBtn">日付の印</button>' : '') +
       (names.length && shiftMode === "off" ? '<button type="button" class="btn-secondary btn-sm" id="shiftPatternBtn">曜日でまとめて入力</button>' : '');
+  }
+
+  // 選んだ日付に印（短い文字）をつける・消す
+  function openDayMarkModal(isos){
+    if(!isos.length) return;
+    var cur = dayMarkOf(isos[0]) || "";
+    var same = isos.every(function(iso){ return (dayMarkOf(iso) || "") === cur; });
+    var label = isos.length === 1 ? formatDateJP(isos[0]) : isos.length + "日分（" + limitedJoin(isos.map(mdOfISO), 4) + "）";
+    var used = Object.create(null);
+    Object.keys(state.dayMarks).forEach(function(iso){ used[state.dayMarks[iso]] = true; });
+    var chips = Object.keys(used).slice(0, 8);
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>日付の印</span></div>' +
+        '<p class="confirm-msg">' + escapeHtml(label) + 'の日付の上に表示する文字です（' + DAY_MARK_MAX + '文字まで）。</p>' +
+        '<input type="text" id="dayMarkInput" maxlength="' + DAY_MARK_MAX + '" autocomplete="off" value="' + escapeHtml(same ? cur : "") + '" placeholder="例: 棚">' +
+        (chips.length ? '<div class="dm-chips">' + chips.map(function(c){ return '<button type="button" class="dm-chip" data-v="' + escapeHtml(c) + '">' + escapeHtml(c) + '</button>'; }).join('') + '</div>' : '') +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+          '<button class="btn-secondary" id="clearBtn" type="button">印を消す</button>' +
+          '<button class="btn-primary" id="okBtn" type="button">つける</button>' +
+        '</div>';
+      var input = box.querySelector("#dayMarkInput");
+      function done(v){
+        isos.forEach(function(iso){ setDayMark(iso, v); });
+        scheduleSave(); closeModal(); renderShiftSheet(true); renderDateBar();
+      }
+      box.querySelectorAll(".dm-chip").forEach(function(b){ b.addEventListener("click", function(){ input.value = b.dataset.v; }); });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      box.querySelector("#clearBtn").addEventListener("click", function(){ done(null); });
+      box.querySelector("#okBtn").addEventListener("click", function(){ done(input.value); });
+    });
   }
 
   function openShiftPatternModal(names){
@@ -6150,6 +6229,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         return false;
       });
     }
+    if(!sheetMonth){
+      // 日付の最初の列の真上に月がない表（F4 の月の右から日付が始まる表など）: 日付の行より上の、いちばん近い月のセル
+      var lastHc = -1;
+      (rows[hdr] || []).forEach(function(v, c){ if(parseHeaderCell(v)) lastHc = c; });
+      if(lastHc >= 0){ var fm = findMonthCell(rows, hdr, lastHc, monthOf); if(fm) sheetMonth = fm; }
+    }
     var baseY = opts.y, baseM = opts.m;
     if(sheetMonth){ baseM = sheetMonth.m; if(sheetMonth.y) baseY = sheetMonth.y; }
     var cols = resolveDateColumns(rows[hdr], baseY, baseM);
@@ -6249,7 +6334,56 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       if(!best || res.offCount > best.offCount ||
          (res.offCount === best.offCount && res.people.length > best.people.length)) best = res;
     });
+    if(best){
+      var dm = detectDayMarks(rows, hdr, cols, monthOf);
+      best.dayMarks = dm.marks; best.dayMarkRows = dm.rows; best.dayMarkCell = dm.cell;
+    }
     return best;
+  }
+  // 日付の印は「月の行」（F4 の「9」のように月が書いてあるセルの行）に書いてある文字だけを読む。
+  // 月の行は、日付の見出しより上（6行まで）で、日付の列の右端までに月（「9」「9月」「2026年9月」）があるいちばん近い行。
+  // 数字だけの月（「9」）は、数字がいくつも並ぶ行（週の番号など）では月とみなさない。
+  // 月のセル・年や月の見出し・数字だけのセルは印にしない。
+  // 月のセルを探す。日付の見出しより上（10行まで）を下から見て、
+  //  1. 数字だけの月（F4 の「9」など）のいちばん近いセル
+  //  2. なければ「9月」「2026年9月」のセル
+  // の順に選ぶ。数字がたくさん並ぶ行（週の番号など）の数字は月とみなさない。
+  function findMonthCell(rows, hdr, lastC, monthOf){
+    var labelHit = null;
+    for(var r = hdr - 1; r >= Math.max(0, hdr - 10); r--){
+      var row = rows[r] || [], nums = 0;
+      for(var c0 = 0; c0 <= lastC; c0++){ if(/^\d+$/.test(normText(row[c0]))) nums++; }
+      // 「9」と表示されていても中身は日付（2026/9/1 を「m」の書式で表示）のことがあるので、
+      // 日付として読めるセルが1〜2個だけの行なら、その日付の月を月のセルとして使う
+      var dateCells = [];
+      for(var c1 = 0; c1 <= lastC; c1++){ var ph = parseHeaderCell(row[c1]); if(ph && ph.y) dateCells.push({ c: c1, p: ph }); }
+      if(dateCells.length >= 1 && dateCells.length <= 2) return { r: r, c: dateCells[0].c, y: dateCells[0].p.y, m: dateCells[0].p.m };
+      for(var c = 0; c <= lastC; c++){
+        var t = normText(row[c]), mv = t === "" ? null : monthOf(row[c]);
+        if(!mv) continue;
+        if(/^\d+$/.test(t)){
+          if(nums > 5) continue;
+          return { r: r, c: c, y: mv.y, m: mv.m };
+        }
+        if(!labelHit) labelHit = { r: r, c: c, y: mv.y, m: mv.m };
+      }
+    }
+    return labelHit;
+  }
+  function detectDayMarks(rows, hdr, cols, monthOf){
+    var marks = Object.create(null), cell = findMonthCell(rows, hdr, cols[cols.length - 1].c, monthOf);
+    if(!cell) return { marks: marks, rows: [], cell: null };
+    var mr = cell.r, mc = cell.c;
+    var mrow = rows[mr] || [], any = false;
+    cols.forEach(function(dc){
+      if(dc.c === mc) return;                                                            // 月のセル
+      var t = normText(mrow[dc.c]);
+      if(t === "" || /^[\d.,:\-\/]+$/.test(t)) return;
+      if(/年/.test(t) || /^\d{1,2}月度?$/.test(t) || /^(令和|平成|R)\d/.test(t)) return;  // 年・月の見出し
+      var v = cleanDayMark(mrow[dc.c]);
+      if(v){ marks[dc.iso] = v; any = true; }
+    });
+    return { marks: marks, rows: any ? [mr] : [], cell: mc >= 0 ? colLetter(mc) + (mr + 1) : null, row: mr };
   }
 
   // 読み込んだ休み（Excel/CSV・共有コード共通）をシフト表に反映する。反映直後の画面から元に戻せる。
@@ -6334,6 +6468,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     var byName = Object.create(null), order = [], allIso = Object.create(null);
     var unmatched = [], fuzzy = [], dupNames = [], tokenHits = Object.create(null), otherMarks = Object.create(null), workHits = Object.create(null);
     function addCounts(dst, src){ Object.keys(src || {}).forEach(function(k){ dst[k] = (dst[k] || 0) + src[k]; }); }
+    var dayMarks = Object.create(null), dayMarkRows = [], dayMarkCell = null;
+    // 日付の印は基準のシートからだけ読む（ほかのシートの別の行の文字が混ざらないように）
+    var masterPart = parts.filter(function(pt){ return pt.entryIdx === masterEntryIdx; })[0] || parts[0];
+    if(masterPart){
+      Object.keys(masterPart.res.dayMarks || {}).forEach(function(iso){ dayMarks[iso] = masterPart.res.dayMarks[iso]; });
+      dayMarkRows = masterPart.res.dayMarkRows || [];
+      dayMarkCell = masterPart.res.dayMarkCell || null;
+    }
     parts.forEach(function(part, idx){
       var res = part.res;
       res.cols.forEach(function(dc){ allIso[dc.iso] = true; });
@@ -6378,14 +6520,19 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       cols: Object.keys(allIso).sort().map(function(iso){ return { iso: iso }; }),
       people: people, offCount: offCount, unmatched: unmatched, fuzzy: fuzzy, dupNames: dupNames,
       tokenHits: tokenHits, otherMarks: otherMarks, workHits: workHits,
-      multiNames: multiNames, conflicts: conflicts, multi: true
+      multiNames: multiNames, conflicts: conflicts, multi: true, dayMarks: dayMarks, dayMarkRows: dayMarkRows, dayMarkCell: dayMarkCell
     };
   }
 
   function applyShiftImport(res){
     syncPlacementsToDay();
     var backup = JSON.parse(JSON.stringify(state.dayoffs)), backupPl = JSON.parse(JSON.stringify(state.dayPlacements)),
-        backupMarks = JSON.parse(JSON.stringify(state.workMarks));
+        backupMarks = JSON.parse(JSON.stringify(state.workMarks)), backupDayMarks = JSON.parse(JSON.stringify(state.dayMarks));
+    // 日付の印は、表に印の行があったときだけ、その日付の範囲を置き換える（印の行がない表で手入力の印を消さないため）
+    var dmCount = Object.keys(res.dayMarks || {}).length;
+    if(dmCount){
+      res.cols.forEach(function(dc){ setDayMark(dc.iso, res.dayMarks[dc.iso] || null); });
+    }
     res.people.forEach(function(pp){
       (pp.cols || res.cols).forEach(function(dc){   // 複数ファイルのときは、その人が載っていたファイルの日付だけ
         var v = pp.offs[dc.iso];
@@ -6401,15 +6548,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(b2){
       b2.innerHTML =
         '<div class="sheet-header"><span>読み込みました</span></div>' +
-        '<p class="confirm-msg">' + res.people.length + '人・' + res.cols.length + '日分の休み（' + res.offCount + 'マス）を反映しました。</p>' +
+        '<p class="confirm-msg">' + res.people.length + '人・' + res.cols.length + '日分の休み（' + res.offCount + 'マス）' + (dmCount ? 'と、日付の印' + dmCount + '日分' : '') + 'を反映しました。</p>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="undoBtn" type="button">元に戻す</button>' +
           '<button class="btn-primary" id="doneBtn" type="button">閉じる</button>' +
         '</div>';
       b2.querySelector("#doneBtn").addEventListener("click", closeModal);
       b2.querySelector("#undoBtn").addEventListener("click", function(){
-        state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks;
-        loadPlacementsForDay(state.boardDate);
+        state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks; state.dayMarks = backupDayMarks;
+        loadPlacementsForDay(state.boardDate); renderDateBar();
         scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
       });
     });
@@ -7228,6 +7375,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(res.dupNames.length) html += '<br><b>別々の名前の行が同じ人に当たりました（' + (isOT ? '先に出てきた行の値を使います' : '休みを合わせて読みます') + '）:</b> ' + expandableList(res.dupNames, 6) +
           '（別の人が混ざっていないか確認してください）';
         if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない行: ' + expandableList(res.unmatched, 6);
+        var dmKeys = Object.keys(res.dayMarks || {}).sort();
+        if(!isOT && dmKeys.length){
+          var dmTypes = Object.create(null);
+          dmKeys.forEach(function(iso){ dmTypes[res.dayMarks[iso]] = (dmTypes[res.dayMarks[iso]] || 0) + 1; });
+          html += '<br>日付の印: <b>' + dmKeys.length + '日分</b>（' + escapeHtml(Object.keys(dmTypes).map(function(k){ return k + ' ' + dmTypes[k]; }).join('・')) + '）' +
+            (res.dayMarkRows && res.dayMarkRows.length && !res.swapped ? '・' + res.dayMarkRows.map(function(r){ return (res.dayMarkCell ? res.dayMarkCell + 'の行' : (r + 1) + '行目'); }).join('・') + 'から' : '') +
+            '<br>この日付の範囲の印も置き換わります。';
+        }
         html += '<br>読み込んだ人の、この日付の範囲の' + what + 'が置き換わります。';
         return html;
       }
@@ -7463,6 +7618,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       return;
     }
     if(t.closest("#shiftPatternBtn")){ openShiftPatternModal(selectedShiftNames()); return; }
+    if(t.closest("#shiftDayMarkBtn")){ openDayMarkModal(Object.keys(shiftSelCols).sort()); return; }
     if(t.closest("#shiftFilterSwitch")){
       state.shiftFilter = !state.shiftFilter;
       if(state.shiftFilter) sanitizeOffPlacements();
