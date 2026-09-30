@@ -2936,6 +2936,9 @@ html body .qr-zoom-overlay .qr-zoom-close{flex:none;height:auto;min-width:160px;
 html body .shift-tool.menu-danger{color:var(--danger);}
 html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .shift-tools{margin-bottom:0;}
+#templateSheet .shift-tools.menu-bar-gap{margin-top:8px;}
+#templateSheet .menu-divider{margin:20px 0 0;}
+#templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
 #templateSheet .shift-tools + .template-list{margin-top:10px;}
 .menu-empty{margin:0;padding:14px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;line-height:1.7;color:var(--ink-soft);}
 .qr-scan-wrap{display:flex;flex-direction:column;gap:8px;margin:10px 0 14px;}
@@ -3140,10 +3143,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
       <!-- シフト表と同じ見た目（枠線の中にアイコン＋短い文字のボタン）にそろえる。よく使う操作を上に置く -->
       <div class="menu-section-title sheet-section-title">ボード</div>
-      <div class="shift-tools" role="group" aria-label="ボードの操作">
+      <div class="shift-tools" role="group" aria-label="配置の共有">
+        <button type="button" class="shift-tool" id="sharePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を送る</span></button>
+        <button type="button" class="shift-tool" id="receivePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を受取</span></button>
+      </div>
+      <div class="shift-tools menu-bar-gap" role="group" aria-label="ボードの操作">
         <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
       </div>
 
+      <div class="sheet-divider menu-divider" role="separator"></div>
       <div class="menu-section-title sheet-section-title"><span>テンプレート</span><span class="menu-count" id="templateCount"></span></div>
       <div class="shift-tools" role="group" aria-label="テンプレートの保存と受け取り">
         <button type="button" class="shift-tool" id="saveTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>テンプレートとして保存</span></button>
@@ -3288,6 +3296,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
   async function decodeTemplateCode(code){
     var trimmed = fixCodePrefix((code || "").trim());
+    if(trimmed.indexOf(PLACEMENT_CODE_PREFIX) === 0){
+      throw new Error("これは配置の共有コードです。メニューの「配置を受取」から読み込んでください。");
+    }
     if(trimmed.indexOf(TEMPLATE_CODE_PREFIX) !== 0){
       throw new Error("このコードは読み込めませんでした。コピーした共有コード全体を貼り付けてください。");
     }
@@ -4767,6 +4778,235 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   });
 
+  // ---------- 配置の共有コード ----------
+  // 表示中の日付で「どの配置場所に誰のチップがあるか」を送る。端末ごとにidが違うので、名前で照合する。
+  // 形式: "P7:" + base64(gzip( 日付 GS 配置場所名 FS 種類 FS 左枠 RS … GS 名前 FS 配置場所の番号 FS 枠 RS … ))
+  var PLACEMENT_CODE_PREFIX = "P7:";
+
+  async function encodePlacementCode(iso){
+    syncPlacementsToDay();
+    var list = state.dayPlacements[iso] || [];
+    var npById = Object.create(null), locById = Object.create(null), locIdx = Object.create(null), locs = [], recs = [];
+    state.nameplates.forEach(function(n){ npById[n.id] = n; });
+    state.locations.forEach(function(l){ locById[l.id] = l; });
+    list.forEach(function(p){
+      var np = npById[p[0]], loc = locById[p[1]];
+      if(!np || !loc) return;
+      if(!(loc.id in locIdx)){ locIdx[loc.id] = locs.length; locs.push(loc); }
+      recs.push(np.name + FS + locIdx[loc.id] + FS + slotToCode(p[2]));
+    });
+    // 並びは画面上の配置場所の順にする（受け取った側の表示順もそろう）
+    var payload = iso + GS +
+      locs.map(function(l){ return l.name + FS + typeToCode(l.type) + FS + (l.leftSlot ? 1 : 0); }).join(RS) + GS +
+      recs.join(RS);
+    var result = { code: "", people: recs.length, locations: locs.length };
+    if(typeof CompressionStream !== "undefined"){
+      var stream = new Blob([new TextEncoder().encode(payload)]).stream().pipeThrough(new CompressionStream("gzip"));
+      result.code = PLACEMENT_CODE_PREFIX + bytesToBase64(new Uint8Array(await new Response(stream).arrayBuffer()));
+    }else{
+      result.code = PLACEMENT_CODE_PREFIX + btoa(unescape(encodeURIComponent(payload)));
+    }
+    return result;
+  }
+
+  async function decodePlacementCode(code){
+    var trimmed = fixCodePrefix((code || "").replace(/\s+/g, ""));   // チャットで折り返されていても読めるように
+    if(trimmed.indexOf(TEMPLATE_CODE_PREFIX) === 0 || trimmed.indexOf("P4:") === 0){
+      throw new Error("これはテンプレートの共有コードです。メニューのテンプレートにある「コードを受取」から読み込んでください。");
+    }
+    if(trimmed.indexOf(SHIFT_CODE_PREFIX) === 0 || trimmed.indexOf(OT_CODE_PREFIX) === 0){
+      throw new Error("これはシフト表の共有コードです。シフト表の「コードを受取」から読み込んでください。");
+    }
+    if(trimmed.indexOf(PLACEMENT_CODE_PREFIX) !== 0){
+      throw new Error("配置の共有コード（P7: で始まる）を全体貼り付けてください。");
+    }
+    var payload;
+    try{
+      var binary = atob(trimmed.slice(PLACEMENT_CODE_PREFIX.length));
+      var bytes = Uint8Array.from(binary, function(c){ return c.charCodeAt(0); });
+      if(bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b){
+        if(typeof DecompressionStream === "undefined") throw new Error("old");
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        payload = new TextDecoder().decode(await new Response(stream).arrayBuffer());
+      }else{
+        payload = decodeURIComponent(escape(binary));
+      }
+    }catch(e){
+      throw new Error("コードの形式が正しくありません。途中で切れていないか確認してください。");
+    }
+    var sec = payload.split(GS), iso = sec[0] || "";
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) throw new Error("コードの中身が正しくありません。");
+    var locs = (sec[1] || "").length ? sec[1].split(RS).map(function(rec){
+      var f = rec.split(FS);
+      return { name: cleanText(f[0], LIMITS.locationName), type: codeToType(parseInt(f[1], 10)), leftSlot: f[2] === "1" };
+    }) : [];
+    var places = (sec[2] || "").length ? sec[2].split(RS).map(function(rec){
+      var f = rec.split(FS);
+      return { name: cleanText(f[0], LIMITS.nameplateName), loc: parseInt(f[1], 10), slot: codeToSlot(parseInt(f[2], 10)) };
+    }).filter(function(p){ return p.name && locs[p.loc]; }) : [];
+    return { iso: iso, locations: locs, places: places };
+  }
+
+  // 受け取った配置を、この端末の配置場所・ネームプレートに当てはめる（まだ反映はしない）
+  function matchPlacementCode(dec){
+    // 配置場所：同じ名前どうしで対応させる（同じ名前が複数あるときは上から順に）
+    var localByKey = Object.create(null);
+    state.locations.forEach(function(l){ var k = nameKey(l.name); (localByKey[k] = localByKey[k] || []).push(l); });
+    var usedKey = Object.create(null), locMap = [], missingLocs = [];
+    dec.locations.forEach(function(l, idx){
+      var k = nameKey(l.name), n = usedKey[k] || 0, hit = (localByKey[k] || [])[n];
+      usedKey[k] = n + 1;
+      locMap[idx] = hit || null;
+      if(!hit) missingLocs.push(l.name);
+    });
+    // 人：シフト表の読み込みと同じ照合（完全一致がなければ近い名前）
+    var match = buildNameMatcher(), usedNp = Object.create(null);
+    var list = [], unmatched = [], fuzzy = [], noLoc = [], off = [];
+    dec.places.forEach(function(p){
+      var loc = locMap[p.loc];
+      if(!loc){ noLoc.push(p.name); return; }
+      var hit = match(p.name);
+      if(!hit){ unmatched.push(p.name); return; }
+      var np = state.nameplates.find(function(n){ return n.name === hit.name && !usedNp[n.id]; });
+      if(!np){ unmatched.push(p.name); return; }
+      if(isOff(np.name, dec.iso)){ off.push(np.name); return; }
+      usedNp[np.id] = true;
+      if(hit.fuzzy) fuzzy.push(p.name + "→" + hit.name);
+      var slot = p.slot;
+      if(loc.type === "2人" || loc.type === "3人") slot = "top";
+      else if(slot === "left" && !loc.leftSlot) slot = "top";
+      list.push([np.id, loc.id, slot]);
+    });
+    return { iso: dec.iso, list: list, unmatched: unmatched, fuzzy: fuzzy, missingLocs: missingLocs, noLoc: noLoc, off: off };
+  }
+
+  function applyPlacementImport(res){
+    syncPlacementsToDay();
+    var backupPl = JSON.parse(JSON.stringify(state.dayPlacements)), backupDate = state.boardDate;
+    var moved = res.iso !== state.boardDate;
+    if(res.list.length) state.dayPlacements[res.iso] = res.list; else delete state.dayPlacements[res.iso];
+    if(moved){ state.boardDate = res.iso; }
+    loadPlacementsForDay(res.iso);
+    scheduleSave(); renderDateBar(); renderAll();
+    closeModal(); closeTemplateSheet();
+    openModal(function(b2){
+      b2.innerHTML =
+        '<div class="sheet-header"><span>配置を読み込みました</span></div>' +
+        '<p class="confirm-msg">' + formatDateJP(res.iso) + 'の配置に、' + res.list.length + '人を置きました。' +
+          (moved ? 'ボードをこの日付に切り替えています。' : '') + '</p>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="undoBtn" type="button">元に戻す</button>' +
+          '<button class="btn-primary" id="doneBtn" type="button">閉じる</button>' +
+        '</div>';
+      b2.querySelector("#doneBtn").addEventListener("click", closeModal);
+      b2.querySelector("#undoBtn").addEventListener("click", function(){
+        state.dayPlacements = backupPl; state.boardDate = backupDate;
+        loadPlacementsForDay(backupDate);
+        scheduleSave(); renderDateBar(); renderAll(); closeModal();
+      });
+    });
+  }
+
+  function openSharePlacementModal(){
+    var iso = state.boardDate, token = 0;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>配置の共有コードを作る</span></div>' +
+        '<p class="confirm-msg">' + formatDateJP(iso) + 'の配置（どの配置場所に誰がいるか）をコードにします。相手が下のQRを読み取るか、「メニュー」→「配置を受取」にコードを貼り付けると取り込めます。</p>' +
+        '<label class="lbl-tight">共有コード</label>' +
+        '<textarea id="placeShareArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" class="ta-sm" readonly rows="2"></textarea>' +
+        '<div class="imp-hint" id="placeShareInfo">コードを作っています…</div>' +
+        '<div class="qr-share-wrap">' +
+          '<div class="qr-share-box" id="placeShareQRBox" hidden></div>' +
+          '<p class="qr-share-note">相手がこの画面をカメラで読み取ると取り込めます</p>' +
+        '</div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="closeBtn" type="button">閉じる</button>' +
+          (navigator.share ? '<button class="btn-secondary" id="sendBtn" type="button" disabled>共有…</button>' : '') +
+          '<button class="btn-primary" id="copyBtn" type="button" disabled>コピー</button>' +
+        '</div>';
+      var area = box.querySelector("#placeShareArea"), info = box.querySelector("#placeShareInfo"),
+          qrBox = box.querySelector("#placeShareQRBox"),
+          copyBtn = box.querySelector("#copyBtn"), sendBtn = box.querySelector("#sendBtn"), code = "";
+      box.querySelector("#closeBtn").addEventListener("click", closeModal);
+      copyBtn.addEventListener("click", function(){
+        if(!code) return;
+        copyToClipboard(code, area, function(){ flashCopied(copyBtn); }, function(){
+          copyFailed(copyBtn);
+          area.focus(); area.select();   // 手でコピーできるよう、コードを選んだ状態にする
+        });
+      });
+      if(sendBtn){
+        sendBtn.addEventListener("click", function(){
+          if(code) navigator.share({ title: formatDateJP(iso) + "の配置", text: code }).catch(function(){ /* キャンセルなど */ });
+        });
+      }
+      var my = ++token;
+      encodePlacementCode(iso).then(function(r){
+        if(my !== token) return;
+        code = r.code; area.value = code;
+        info.textContent = formatDateJP(iso) + "・" + r.locations + "箇所に" + r.people + "人（コードの長さ " + code.length + "文字）";
+        renderShareQR(qrBox, code);
+        copyBtn.disabled = false; if(sendBtn) sendBtn.disabled = false;
+      }).catch(function(){
+        info.textContent = "共有コードの作成に失敗しました。";
+      });
+    });
+  }
+
+  function openReceivePlacementModal(){
+    var matched = null, token = 0;
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>共有コードから配置を読み込む</span></div>' +
+        '<label>共有コードを貼り付け</label>' +
+        '<textarea id="placeCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="4" placeholder="P7: で始まるコード"></textarea>' +
+        '<div id="placeScanQRRow"></div>' +
+        '<div class="imp-preview" id="placeCodePreview">配置の共有コードを貼り付けてください。</div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+          '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
+        '</div>';
+      var area = box.querySelector("#placeCodeArea"), pv = box.querySelector("#placeCodePreview"), okBtn = box.querySelector("#okBtn");
+      addQRScanButton(box.querySelector("#placeScanQRRow"), function(text){ area.value = text; area.dispatchEvent(new Event("input")); });
+      function setPreview(html, isErr){ pv.innerHTML = html; pv.classList.toggle("err", !!isErr); }
+      area.addEventListener("input", async function(){
+        var my = ++token;
+        matched = null; okBtn.disabled = true;
+        if(!area.value.trim()){ setPreview("配置の共有コードを貼り付けてください。"); return; }
+        var dec;
+        try{ dec = await decodePlacementCode(area.value); }
+        catch(err){ if(my === token) setPreview(escapeHtml(err.message), true); return; }
+        if(my !== token) return;
+        var res = matchPlacementCode(dec);
+        if(!res.list.length){
+          var why = !dec.places.length ? "このコードには配置された人がいません。"
+            : res.missingLocs.length === dec.locations.length ? "ボードに同じ名前の配置場所がありませんでした。<br>コードの配置場所: <b>" + expandableList(res.missingLocs, 6) + "</b>"
+            : "ボードの名前と一致する人がいませんでした。" + (res.unmatched.length ? "<br>コードの名前: <b>" + expandableList(res.unmatched, 6) + "</b>" : "");
+          setPreview(why, true);
+          return;
+        }
+        matched = res; okBtn.disabled = false;
+        var html = '<b>' + escapeHtml(formatDateJP(res.iso)) + '</b>の配置／<b>' + res.list.length + '人</b>を置きます';
+        if(res.fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(res.fuzzy, 3);
+        if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、置かない人: ' + expandableList(res.unmatched, 6);
+        if(res.missingLocs.length) html += '<br>ボードにない配置場所（' + expandableList(res.missingLocs, 4) + '）の人は置きません' + (res.noLoc.length ? '（' + res.noLoc.length + '人）' : '');
+        if(res.off.length) html += '<br>この日が休みになっている人は置きません: ' + expandableList(res.off, 6);
+        html += '<br>' + (res.iso === state.boardDate ? 'この日の今の配置は置き換わります。' : 'この日の配置が置き換わり、ボードがこの日付に切り替わります。');
+        setPreview(html, false);
+      });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+      okBtn.addEventListener("click", function(){ if(matched) applyPlacementImport(matched); });
+    });
+  }
+
+  document.getElementById("sharePlacementBtn").addEventListener("click", function(){
+    var placed = state.nameplates.some(function(n){ return !!n.locationId; });
+    if(!placed){ openNoticeModal("お知らせ", formatDateJP(state.boardDate) + "は、まだ誰も配置されていません。"); return; }
+    openSharePlacementModal();
+  });
+  document.getElementById("receivePlacementBtn").addEventListener("click", openReceivePlacementModal);
+
   async function openShareTemplateModal(tpl){
     var code;
     try{
@@ -4778,7 +5018,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(box){
       box.innerHTML =
         '<div class="sheet-header"><span>「' + escapeHtml(tpl.name) + '」を共有</span></div>' +
-        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「メニュー」→「コードを受取」に貼り付けると読み込めます。</p>' +
+        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「メニュー」→ テンプレートの「コードを受取」に貼り付けると読み込めます。</p>' +
         '<label>共有コード</label>' +
         '<textarea id="shareCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" readonly rows="5"></textarea>' +
         '<div class="qr-share-wrap"><div class="qr-share-box" id="shareQRBox" hidden></div><p class="qr-share-note">相手がこの画面をカメラで読み取ると取り込めます</p></div>' +
@@ -6089,7 +6329,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
   async function decodeShiftCode(code){
     var trimmed = fixCodePrefix((code || "").replace(/\s+/g, ""));   // チャットで折り返されていても読めるように
-    if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0){
+    if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0 || trimmed.indexOf(PLACEMENT_CODE_PREFIX) === 0){
       throw new Error("これはテンプレート／配置のコードです。シフトの共有コード（P5: で始まる）を貼り付けてください。");
     }
     if(trimmed.indexOf("P6:") === 0){
@@ -6179,7 +6419,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(trimmed.indexOf(SHIFT_CODE_PREFIX) === 0){
       throw new Error("これはシフト（休み）の共有コードです。「シフト」に切り替えてから読み込んでください。");
     }
-    if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0){
+    if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0 || trimmed.indexOf(PLACEMENT_CODE_PREFIX) === 0){
       throw new Error("これはテンプレート／配置のコードです。残業の共有コード（P6: で始まる）を貼り付けてください。");
     }
     if(trimmed.indexOf(OT_CODE_PREFIX) !== 0){
