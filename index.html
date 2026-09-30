@@ -2863,6 +2863,28 @@ body[data-theme="apple"] .btn-ghost{
 .shift-table td.shift-cell{cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;color:var(--accent);font-size:16px;}
 .shift-table td.shift-cell.board-col{background:rgba(127,127,127,.10);}
 .shift-range{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;font-size:12px;color:var(--ink-soft);line-height:1.6;}
+/* ---- 表の全画面表示 ---- */
+.shift-fs-row{display:flex;align-items:flex-start;gap:8px;}
+.shift-fs-row .shift-range{flex:1;min-width:0;}
+.shift-fs-btn{
+  flex:none;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;margin:0 0 8px;
+  border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
+  font:inherit;font-size:12px;font-weight:700;letter-spacing:0;cursor:pointer;
+}
+.shift-fs-btn svg{width:14px;height:14px;color:var(--accent);}
+.shift-fs-title{display:none;}
+#shiftSheet.table-fs{
+  max-width:none;width:100%;height:100vh;height:100dvh;max-height:none;border-radius:0;overflow:hidden;
+  padding:calc(10px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+  display:flex;flex-direction:column;
+}
+#shiftSheet.table-fs > .sheet-header{display:none;}
+#shiftSheet.table-fs #shiftBody{flex:1;min-height:0;display:flex;flex-direction:column;}
+#shiftSheet.table-fs #shiftBody > :not(.shift-fs-wrap){display:none;}
+#shiftSheet.table-fs .shift-fs-wrap{flex:1;min-height:0;display:flex;flex-direction:column;}
+#shiftSheet.table-fs .shift-fs-title{display:block;flex:none;font-size:15px;font-weight:700;margin:2px 2px 6px;}
+#shiftSheet.table-fs .shift-fs-row{flex:none;}
+#shiftSheet.table-fs .shift-scroll{flex:1;min-height:0;max-height:none;}
 .shift-range b{color:var(--ink);}
 .shift-table td.shift-cell.in-range{background:rgba(127,127,127,.12);}
 .shift-table td.shift-cell.locked{cursor:default;}
@@ -2941,7 +2963,7 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
 #templateSheet .shift-tools + .template-list{margin-top:10px;}
 .menu-empty{margin:0;padding:14px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;line-height:1.7;color:var(--ink-soft);}
-/* ---- 個人カレンダー（シフト表の「個人」） ---- */
+/* ---- 自分のカレンダー（シフト表の「自分」） ---- */
 .my-pick{display:flex;align-items:center;gap:10px;margin:0 0 10px;}
 .my-pick-label{flex:none;margin:0;font-size:13px;font-weight:700;color:var(--ink-soft);}
 .my-pick-select{
@@ -5441,6 +5463,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // 何も選んでいないときは全マス入力可能。
   var shiftSelRows = Object.create(null);  // { 名前: true }
   var shiftSelCols = Object.create(null);  // { "YYYY-MM-DD": true }
+  var shiftFs = false;     // シフト表の表だけを全画面で見ているとき true
   var shiftMode = "off";   // シフト表の表示: "off" = 休み / "ot" = 残業 / "me" = 個人カレンダー
 
   function stepBoardDate(delta){
@@ -5459,7 +5482,13 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     shiftOverlay.classList.add("open");
     renderShiftSheet(false);
   }
-  function closeShiftSheet(){ shiftOverlay.classList.remove("open"); }
+  function closeShiftSheet(){ setShiftFs(false, true); shiftOverlay.classList.remove("open"); }
+  // 表の全画面表示。noRender なら見た目のクラスだけ切り替える
+  function setShiftFs(on, noRender){
+    shiftFs = !!on;
+    document.getElementById("shiftSheet").classList.toggle("table-fs", shiftFs);
+    if(!noRender) renderShiftSheet(true);
+  }
 
   // シフト表の読み込み・共有バーのボタン（線のアイコン＋短い文字）
   var SHIFT_TOOL_ICONS = {
@@ -5498,7 +5527,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<div class="shift-mode-row" role="tablist">' +
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "off" ? ' selected' : '') + '" data-mode="off" aria-selected="' + (shiftMode === "off") + '">シフト</button>' +
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "ot" ? ' selected' : '') + '" data-mode="ot" aria-selected="' + (shiftMode === "ot") + '">残業</button>' +
-        '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "me" ? ' selected' : '') + '" data-mode="me" aria-selected="' + (shiftMode === "me") + '">個人</button>' +
+        '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "me" ? ' selected' : '') + '" data-mode="me" aria-selected="' + (shiftMode === "me") + '">自分</button>' +
       '</div>' +
       (shiftMode === "me" ? '' :
       // 読み込み・共有は1本のバーにまとめる（ボタンの枠を並べるより目に入る情報を減らすため）
@@ -5515,12 +5544,22 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
     if(shiftPeople.length === 0){
       html += '<p class="confirm-msg">ネームプレートがありません。先に「＋」から追加してください。</p>';
+      setShiftFs(false, true);
       shiftBody.innerHTML = html;
       return;
     }
-    if(shiftMode === "me"){ shiftBody.innerHTML = html + renderMyCalendarHtml(y, m, boardIso); return; }
+    if(shiftMode === "me"){ setShiftFs(false, true); shiftBody.innerHTML = html + renderMyCalendarHtml(y, m, boardIso); return; }
 
-    var t = '<div class="shift-range" id="shiftRange"></div><div class="shift-scroll"><table class="shift-table"><thead><tr><th class="name-col">名前</th>';
+    // 表は全画面にできるよう、見出し・案内・表をひとまとめにする
+    var t = '<div class="shift-fs-wrap">' +
+      '<div class="shift-fs-title">' + y + '年' + m + '月の' + (shiftMode === "ot" ? '残業' : 'シフト') + '</div>' +
+      '<div class="shift-fs-row"><div class="shift-range" id="shiftRange"></div>' +
+        '<button type="button" class="shift-fs-btn" id="shiftFsBtn" aria-pressed="' + (shiftFs ? 'true' : 'false') + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            (shiftFs ? '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>' : '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>') +
+          '</svg><span>' + (shiftFs ? '閉じる' : '全画面') + '</span></button>' +
+      '</div>' +
+      '<div class="shift-scroll"><table class="shift-table"><thead><tr><th class="name-col">名前</th>';
     for(var d = 1; d <= n; d++){
       var wd = new Date(y, m - 1, d).getDay();
       var iso = isoOf(y, m, d);
@@ -5548,9 +5587,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
     t += '</tbody><tfoot><tr><th class="name-col">' + (shiftMode === "ot" ? '残業計' : '出勤') + '</th>';
     for(var c = 1; c <= n; c++){ t += '<td class="cnt" data-d="' + isoOf(y, m, c) + '"></td>'; }
-    t += '</tr></tfoot></table></div>';
+    t += '</tr></tfoot></table></div></div>';
 
     shiftBody.innerHTML = html + t;
+    document.getElementById("shiftSheet").classList.toggle("table-fs", shiftFs);
     refreshShiftCounts();
     refreshShiftSelection();
 
@@ -7360,8 +7400,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       scheduleSave(); renderShiftSheet(true);
     }
   });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && shiftFs){ setShiftFs(false); }
+  });
   shiftBody.addEventListener("click", function(e){
     var t = e.target;
+    if(t.closest("#shiftFsBtn")){ setShiftFs(!shiftFs); return; }
     var modeBtn = t.closest(".shift-mode-btn");
     if(modeBtn){
       if(modeBtn.dataset.mode !== shiftMode){ shiftMode = modeBtn.dataset.mode; renderShiftSheet(true); }
