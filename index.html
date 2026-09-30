@@ -3026,9 +3026,23 @@ html body .ot-lv-over{background:#D93A2F;color:#fff;}
 html body .shift-table .name-col .off.ot-lv{padding:1px 4px;}
 html body .shift-table .name-col .off.ot-lv-warn{color:#9A6200;}
 html body .shift-table .name-col .off.ot-lv-over{color:#fff;}
-html body .stat-ot{cursor:pointer;padding:2px 6px;}
-html body .stat-ot b{color:inherit;}
-html body .stat-ot:active{opacity:.6;}
+.info-stats{white-space:nowrap;}
+/* 残業アラート：情報バーの2行目。背景はテーマのまま、注意色は薄い色付けとアイコンだけに使う */
+html body .ot-alert-strip{
+  --ot-c:#E6A000;
+  flex:1 0 100%;display:flex;align-items:center;gap:6px;margin:0 0 2px;
+  padding:5px 10px;border:1px solid color-mix(in srgb, var(--ot-c) 50%, transparent);
+  border-radius:min(var(--radius, 8px), 8px);box-shadow:none;
+  background:color-mix(in srgb, var(--ot-c) 12%, transparent);
+  color:inherit;font:inherit;font-size:12px;font-weight:600;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+html body .ot-alert-strip.is-over{--ot-c:#D93A2F;}
+html body .ot-alert-strip[hidden]{display:none;}
+html body .ot-alert-strip svg{width:15px;height:15px;flex:none;color:var(--ot-c);}
+.ot-alert-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.ot-alert-more{flex:none;font-weight:700;color:var(--accent);}
+html body .ot-alert-strip:active{background:color-mix(in srgb, var(--ot-c) 22%, transparent);}
 html body .nameplate-chip.has-ot-alert{padding-right:11px;}
 html body .location-left-slot .nameplate-chip.has-ot-alert{padding-right:3px;padding-top:10px;}
 html body .nameplate-chip .ot-alert-dot{position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;box-shadow:0 0 0 1px #fff;}
@@ -3089,6 +3103,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   <div class="info-bar">
     <span class="date-nav"><button class="date-step" id="datePrevBtn" type="button" aria-label="前の日">◀</button><span class="info-date" id="dateBar"></span><button class="date-step" id="dateNextBtn" type="button" aria-label="次の日">▶</button></span>
     <span class="info-stats" id="statsBar"></span>
+    <!-- 残業アラートは情報バーの中の2行目に出す（S・M・L・合計が折り返されず、テーマの背景もそのまま使える） -->
+    <button type="button" class="ot-alert-strip" id="otAlertStrip" hidden></button>
   </div>
 
   <main class="board-wrap">
@@ -3130,7 +3146,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
       <div class="menu-section-title sheet-section-title"><span>テンプレート</span><span class="menu-count" id="templateCount"></span></div>
       <div class="shift-tools" role="group" aria-label="テンプレートの保存と受け取り">
-        <button type="button" class="shift-tool" id="saveTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>今の配置を保存</span></button>
+        <button type="button" class="shift-tool" id="saveTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>テンプレートとして保存</span></button>
         <button type="button" class="shift-tool" id="importTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>コードを受取</span></button>
       </div>
       <div class="template-list" id="templateList"></div>
@@ -3659,7 +3675,6 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function renderStats(){
     var statsBar = document.getElementById("statsBar");
     var placed = state.nameplates.filter(function(n){ return !!n.locationId && isVisibleOnBoard(n); });
-    var hiddenCount = state.nameplates.filter(function(n){ return !isVisibleOnBoard(n); }).length;
     var counts = { S:0, M:0, L:0 };
     placed.forEach(function(n){
       (n.categories || []).forEach(function(c){
@@ -3670,18 +3685,26 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<span class="stat-cat" data-cat="S">S:<b>' + counts.S + '</b></span>' +
       '<span class="stat-cat" data-cat="M">M:<b>' + counts.M + '</b></span>' +
       '<span class="stat-cat" data-cat="L">L:<b>' + counts.L + '</b></span>' +
-      '<span class="stat-sep">合計<b>' + placed.length + '</b>人</span>' +
-      (hiddenCount > 0 ? '<span class="stat-sep">休み<b>' + hiddenCount + '</b>人</span>' : '') +
-      otStatHtml();
+      '<span class="stat-sep">合計<b>' + placed.length + '</b>人</span>';
+    renderOtAlertStrip();
   }
 
   // 情報バー：今月（表示中の日付の月）の残業アラートの人数。タップで一覧
-  function otStatHtml(){
+  function renderOtAlertStrip(){
+    var strip = document.getElementById("otAlertStrip");
     var ym = boardYM(), list = otAlertPeople(ym.y, ym.m);
-    if(!list.length) return "";
-    var anyOver = list.some(function(pp){ return pp.level === "over"; });
-    return '<span class="stat-sep stat-ot ot-lv ot-lv-' + (anyOver ? 'over' : 'warn') + '">残業アラート<b>' + list.length + '</b>人</span>';
+    if(!list.length){ strip.hidden = true; strip.innerHTML = ""; return; }
+    var overCount = list.filter(function(pp){ return pp.level === "over"; }).length;
+    strip.className = "ot-alert-strip " + (overCount ? "is-over" : "is-warn");
+    strip.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4"/><path d="M12 17.5v.01"/></svg>' +
+      // info-stats を付けて、数字の色をテーマの情報バーと同じにする
+      '<span class="info-stats ot-alert-text">' + ym.m + '月の残業アラート <b>' + list.length + '</b>人' +
+        (overCount ? '（上限超え <b>' + overCount + '</b>人）' : '') + '</span>' +
+      '<span class="ot-alert-more">確認 ›</span>';
+    strip.hidden = false;
   }
+
 
   function colorClass(color){
     return color === "red" ? "plate-red" : color === "blue" ? "plate-blue" : "plate-white";
@@ -4572,7 +4595,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(state.templates.length === 0){
       var p = document.createElement("p");
       p.className = "menu-empty";
-      p.textContent = "保存したテンプレートはまだありません。「今の配置を保存」で、いまの配置場所とネームプレートを保存できます。";
+      p.textContent = "保存したテンプレートはまだありません。「テンプレートとして保存」で、いまの配置場所とネームプレートの一覧を保存できます。";
       list.appendChild(p);
       return;
     }
@@ -4817,7 +4840,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     }
     openModal(function(box){
       box.innerHTML =
-        '<div class="sheet-header"><span>テンプレート名</span></div>' +
+        '<div class="sheet-header"><span>テンプレートとして保存</span></div>' +
+        '<p class="confirm-msg">配置場所とネームプレートの一覧を保存します。誰をどこに配置したかは保存されません。</p>' +
         '<label>テンプレート名</label>' +
         '<input type="text" id="tplNameInput" placeholder="例：平日レイアウト" maxlength="20">' +
         '<div class="modal-actions">' +
@@ -7080,8 +7104,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       box.querySelector("#closeBtn").addEventListener("click", closeModal);
     });
   }
+  document.getElementById("otAlertStrip").addEventListener("click", function(){
+    var ym = boardYM(); openOvertimeAlertModal(ym.y, ym.m);
+  });
   document.getElementById("statsBar").addEventListener("click", function(e){
-    if(e.target.closest(".stat-ot")){ var ym = boardYM(); openOvertimeAlertModal(ym.y, ym.m); return; }
     var el = e.target.closest(".stat-cat");
     if(el) openCategoryMembersModal(el.dataset.cat);
   });
