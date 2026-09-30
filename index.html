@@ -7158,7 +7158,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(my !== token) return;
         code = c; area.value = c;
         info.textContent = people.length + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "（コードの長さ " + c.length + "文字）";
-        renderShareQR(qrBox, c, { kind: isOT ? "残業" : "シフト（休み）", detail: mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "・" + people.length + "人分" });
+        renderShareQR(qrBox, c, { kind: isOT ? "残業" : "シフト", detail: mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "・" + people.length + "人分" });
         setActionsEnabled(true);
       }
       box.querySelectorAll("#scopeChoice .choice-btn").forEach(function(btn){
