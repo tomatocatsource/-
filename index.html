@@ -2941,6 +2941,47 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
 #templateSheet .shift-tools + .template-list{margin-top:10px;}
 .menu-empty{margin:0;padding:14px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;line-height:1.7;color:var(--ink-soft);}
+/* ---- 個人カレンダー（シフト表の「個人」） ---- */
+.my-pick{display:flex;align-items:center;gap:10px;margin:0 0 10px;}
+.my-pick-label{flex:none;margin:0;font-size:13px;font-weight:700;color:var(--ink-soft);}
+.my-pick-select{
+  flex:1;min-width:0;height:44px;padding:0 36px 0 12px;
+  border:1px solid var(--line);border-radius:10px;background-color:var(--surface);color:var(--ink);
+  font:inherit;font-size:15px;font-weight:700;
+  -webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg, transparent 50%, currentColor 50%),linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+}
+.my-pick-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.my-empty{margin-top:4px;}
+.my-sum{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 2px 10px;font-size:13px;color:var(--ink-soft);}
+.my-sum b{color:var(--ink);font-size:15px;}
+.shift-scroll.my-cal-wrap{max-height:none;overflow:hidden;}
+.shift-table.my-cal{width:100%;table-layout:fixed;}
+.shift-table.my-cal th,.shift-table.my-cal td{min-width:0;}
+.shift-table.my-cal tr > :last-child{border-right:0;}
+.shift-table.my-cal tbody tr:last-child td{border-bottom:0;}
+.shift-table.my-cal thead th{height:30px;font-size:12px;position:static;}
+.shift-table.my-cal td{height:64px;vertical-align:top;padding:3px 2px 4px;}
+html body .shift-table.my-cal td.shift-cell{font-size:12px;cursor:pointer;}
+html body .shift-table.my-cal td.shift-cell:not(.on){background:transparent;}
+html body .shift-table.my-cal td.shift-cell.board-col:not(.on){background:rgba(127,127,127,.10);}
+.shift-table.my-cal td.my-out{background:rgba(127,127,127,.05);}
+.my-cal .my-d{display:block;font-size:11px;font-weight:600;color:var(--ink-soft);text-align:left;padding-left:3px;line-height:1.3;}
+.my-cal .my-sun .my-d{color:var(--danger);}
+.my-cal .my-sat .my-d{color:var(--plate-blue);}
+.my-cal .my-today .my-d{
+  display:inline-block;min-width:18px;padding:0 3px;border-radius:9px;margin-left:1px;text-align:center;
+  background:var(--accent);color:var(--surface);
+}
+.my-cal .my-s{display:block;margin-top:2px;font-weight:700;line-height:1.3;}
+.my-cal td:not(.on) .my-s{font-size:11px;font-weight:600;color:var(--ink-soft);}
+html body .my-cal td.work-mark .my-s{color:#2A7FB8;font-size:12px;font-weight:700;}
+.my-cal .my-loc{
+  display:block;margin-top:2px;font-size:10px;font-weight:700;line-height:1.3;color:var(--accent);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.my-cal .my-ot{display:inline-block;margin-top:2px;padding:0 3px;border-radius:4px;font-size:9.5px;font-weight:700;line-height:1.5;background:#E07A2E;color:#fff;}
 .qr-scan-wrap{display:flex;flex-direction:column;gap:8px;margin:10px 0 14px;}
 .qr-image-btn{
   display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 14px;
@@ -3175,7 +3216,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3466,7 +3507,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false;
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null;
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -3627,6 +3668,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         }
         state.dayPlacements = (parsed.dayPlacements && typeof parsed.dayPlacements === "object" && !Array.isArray(parsed.dayPlacements)) ? parsed.dayPlacements : {};
         state.shiftFilter = parsed.shiftFilter === true;   // 初期状態はオフ
+        state.myName = (typeof parsed.myName === "string" && parsed.myName) ? parsed.myName.slice(0, 40) : null;   // 個人カレンダーで選んだ名前
         state.overtime = isObj(parsed.overtime) ? cleanStoredOvertime(parsed.overtime) : {};
         state.workMarks = isObj(parsed.workMarks) ? cleanStoredMarks(parsed.workMarks) : {};
         state.otAlert = cleanOtAlert(parsed.otAlert);
@@ -5174,6 +5216,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
   function migrateShiftName(oldName, newName){
     migrateOvertimeName(oldName, newName);
+    if(state.myName === oldName) state.myName = newName;   // 個人カレンダーの選択も新しい名前に付け替える
     if(Object.prototype.hasOwnProperty.call(state.workMarks, oldName)){
       if(!Object.prototype.hasOwnProperty.call(state.workMarks, newName)) state.workMarks[newName] = JSON.parse(JSON.stringify(state.workMarks[oldName]));
       if(!state.nameplates.some(function(n){ return n.name === oldName; })) delete state.workMarks[oldName];
@@ -5398,7 +5441,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // 何も選んでいないときは全マス入力可能。
   var shiftSelRows = Object.create(null);  // { 名前: true }
   var shiftSelCols = Object.create(null);  // { "YYYY-MM-DD": true }
-  var shiftMode = "off";   // シフト表の表示: "off" = 休み / "ot" = 残業
+  var shiftMode = "off";   // シフト表の表示: "off" = 休み / "ot" = 残業 / "me" = 個人カレンダー
 
   function stepBoardDate(delta){
     var p = (state.boardDate || todayISO()).split("-");
@@ -5455,13 +5498,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<div class="shift-mode-row" role="tablist">' +
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "off" ? ' selected' : '') + '" data-mode="off" aria-selected="' + (shiftMode === "off") + '">シフト</button>' +
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "ot" ? ' selected' : '') + '" data-mode="ot" aria-selected="' + (shiftMode === "ot") + '">残業</button>' +
+        '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "me" ? ' selected' : '') + '" data-mode="me" aria-selected="' + (shiftMode === "me") + '">個人</button>' +
       '</div>' +
+      (shiftMode === "me" ? '' :
       // 読み込み・共有は1本のバーにまとめる（ボタンの枠を並べるより目に入る情報を減らすため）
       '<div class="shift-tools" role="group" aria-label="読み込みと共有">' +
         shiftToolBtn(shiftMode === "off" ? "shiftImportBtn" : "shiftOtImportBtn", "file", "ファイル読込") +
         shiftToolBtn("shiftShareBtn", "send", "コードを送る") +
         shiftToolBtn("shiftReceiveBtn", "receive", "コードを受取") +
-      '</div>' +
+      '</div>') +
       (shiftMode === "ot"
         ? '<div class="ot-alert-row"><span class="ot-dot ot-dot-warn"></span>注意 ' + fmtHours(state.otAlert.warn) + 'h' +
           '<span class="ot-dot ot-dot-over"></span>上限 ' + fmtHours(state.otAlert.limit) + 'h' +
@@ -5473,6 +5518,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       shiftBody.innerHTML = html;
       return;
     }
+    if(shiftMode === "me"){ shiftBody.innerHTML = html + renderMyCalendarHtml(y, m, boardIso); return; }
 
     var t = '<div class="shift-range" id="shiftRange"></div><div class="shift-scroll"><table class="shift-table"><thead><tr><th class="name-col">名前</th>';
     for(var d = 1; d <= n; d++){
@@ -5515,6 +5561,69 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       var target = scroller.querySelector("thead th.board-col");
       scroller.scrollLeft = target ? Math.max(0, target.offsetLeft - 165) : 0;
     }
+  }
+
+  // ---------- 個人カレンダー ----------
+  // 選んだ1人の、その月の出勤・休み・残業・配置場所を月のカレンダーで見る（閲覧のみ）。
+  // 表は shift-table の部品を使うので、休みの色・土日の色はシフト表と同じテーマの見た目になる。
+  function myPlacementFinder(name){
+    syncPlacementsToDay();
+    var ids = Object.create(null), locById = Object.create(null);
+    state.nameplates.forEach(function(n){ if(n.name === name) ids[n.id] = true; });
+    state.locations.forEach(function(l){ locById[l.id] = l; });
+    return function(iso){
+      var list = state.dayPlacements[iso];
+      if(!Array.isArray(list)) return null;
+      for(var i = 0; i < list.length; i++){
+        if(ids[list[i][0]] && locById[list[i][1]]) return locById[list[i][1]].name;
+      }
+      return null;
+    };
+  }
+  function renderMyCalendarHtml(y, m, boardIso){
+    var names = shiftPeople;
+    var name = (state.myName && names.indexOf(state.myName) !== -1) ? state.myName : null;
+    var h = '<div class="my-pick">' +
+      '<label class="my-pick-label" for="myCalName">名前</label>' +
+      '<select id="myCalName" class="my-pick-select">' +
+        (name ? '' : '<option value="" selected>名前を選んでください</option>') +
+        names.map(function(nm){ return '<option value="' + escapeHtml(nm) + '"' + (nm === name ? ' selected' : '') + '>' + escapeHtml(nm) + '</option>'; }).join('') +
+      '</select></div>';
+    if(!name){
+      return h + '<p class="menu-empty my-empty">自分の名前を選ぶと、その月のシフトをカレンダーで見られます。選んだ名前は次回も残ります。</p>';
+    }
+    var n = daysInMonth(y, m), today = todayISO(), locOf = myPlacementFinder(name);
+    var work = 0, offs = 0, kinds = Object.create(null), ot = 0;
+    var first = new Date(y, m - 1, 1).getDay();
+    var t = '<div class="shift-scroll my-cal-wrap"><table class="shift-table my-cal"><thead><tr>';
+    WEEKDAYS.forEach(function(w, i){ t += '<th class="' + (i === 0 ? 'sun' : i === 6 ? 'sat' : '') + '">' + w + '</th>'; });
+    t += '</tr></thead><tbody><tr>';
+    for(var b = 0; b < first; b++) t += '<td class="my-out"></td>';
+    for(var d = 1; d <= n; d++){
+      var iso = isoOf(y, m, d), wd = (first + d - 1) % 7;
+      if(wd === 0 && d !== 1) t += '</tr><tr>';
+      var kind = offKind(name, iso), mk = kind ? null : markOf(name, iso), oh = otHours(name, iso), loc = kind ? null : locOf(iso);
+      if(kind){ offs++; if(kind !== "休") kinds[kind] = (kinds[kind] || 0) + 1; } else work++;
+      ot += oh;
+      var cls = 'shift-cell my-day' + (kind ? ' on' + kindClass(kind) : '') + (iso === boardIso ? ' board-col' : '') + (iso === today ? ' my-today' : '') + (mk ? ' work-mark' : '') +
+        (wd === 0 ? ' my-sun' : wd === 6 ? ' my-sat' : '');
+      t += '<td class="' + cls + '" data-d="' + iso + '">' +
+        '<span class="my-d">' + d + '</span>' +
+        '<span class="my-s">' + (kind ? kind : escapeHtml(mk || '出勤')) + '</span>' +
+        (loc ? '<span class="my-loc">' + escapeHtml(loc) + '</span>' : '') +
+        (oh ? '<span class="my-ot">残' + fmtHours(oh) + '</span>' : '') +
+        '</td>';
+    }
+    var last = (first + n) % 7;
+    if(last) for(var a = last; a < 7; a++) t += '<td class="my-out"></td>';
+    t += '</tr></tbody></table></div>';
+    var kindTxt = Object.keys(kinds).map(function(k){ return k + kinds[k]; }).join('・');
+    var sum = '<div class="my-sum">' +
+      '<span>出勤 <b>' + work + '</b>日</span>' +
+      '<span>休み <b>' + offs + '</b>日' + (kindTxt ? '（うち' + kindTxt + '）' : '') + '</span>' +
+      (ot ? '<span>残業 <b>' + fmtHours(ot) + '</b>h</span>' : '') +
+    '</div>';
+    return h + sum + t + '<p class="shift-note">休みを入れていない日は「出勤」として表示します。配置場所は、その日のボードに置いたときだけ出ます。日付をタップすると、その日のボードを開きます。</p>';
   }
 
   function kindClass(kind){ return OFF_KIND_CLASS[kind] || ""; }
@@ -7245,6 +7354,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
+  shiftBody.addEventListener("change", function(e){
+    if(e.target.id === "myCalName"){
+      state.myName = e.target.value || null;
+      scheduleSave(); renderShiftSheet(true);
+    }
+  });
   shiftBody.addEventListener("click", function(e){
     var t = e.target;
     var modeBtn = t.closest(".shift-mode-btn");
@@ -7257,6 +7372,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(t.closest("#otAlertSettingBtn")){ openOvertimeAlertSettings(); return; }
     if(t.closest("#shiftShareBtn")){ openShiftShareModal(shiftMode); return; }
     if(t.closest("#shiftReceiveBtn")){ openShiftReceiveModal(shiftMode); return; }
+    var myDay = t.closest(".my-cal td.my-day");
+    if(myDay){ setBoardDate(myDay.dataset.d); closeShiftSheet(); return; }   // 個人カレンダー：その日のボードへ
+    if(t.closest(".my-cal")) return;
     var cell = t.closest(".shift-cell");
     if(cell){
       if(cell.classList.contains("locked")){          // 入力範囲の外は変更しない
