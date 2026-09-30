@@ -2934,10 +2934,14 @@ html body .qr-share-box .qr-zoom-btn{background:#fff;color:#23241F;border:1px so
   box-sizing:border-box;
 }
 .qr-zoom-overlay img{
-  width:min(96vw, calc(100vh - 170px));height:auto;max-width:720px;
+  width:min(96vw, calc(100vh - 230px));height:auto;max-width:720px;
   image-rendering:pixelated;image-rendering:crisp-edges;
 }
 .qr-zoom-note{margin:0;font-size:13px;color:#555;text-align:center;line-height:1.5;}
+.qr-zoom-label{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:-4px;text-align:center;color:#23241F;}
+.qr-zoom-kind{font-size:22px;font-weight:800;letter-spacing:.02em;}
+.qr-zoom-kind::after{content:"の共有コード";font-size:15px;font-weight:700;margin-left:2px;}
+.qr-zoom-detail{font-size:14px;font-weight:600;color:#555;max-width:90vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 html body .qr-zoom-overlay .qr-zoom-close{flex:none;height:auto;min-width:160px;padding:12px 28px;}
 /* ---- メニュー（シフト表の見た目にそろえる） ---- */
 #templateSheet .menu-section-title{display:flex;align-items:baseline;gap:6px;font-size:13px;margin:18px 0 8px;}
@@ -5042,7 +5046,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(my !== token) return;
         code = r.code; area.value = code;
         info.textContent = formatDateJP(iso) + "・" + r.locations + "箇所に" + r.people + "人（コードの長さ " + code.length + "文字）";
-        renderShareQR(qrBox, code);
+        renderShareQR(qrBox, code, { kind: "配置", detail: formatDateJP(iso) + "・" + r.people + "人" });
         copyBtn.disabled = false; if(sendBtn) sendBtn.disabled = false;
       }).catch(function(){
         info.textContent = "共有コードの作成に失敗しました。";
@@ -5124,7 +5128,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '</div>';
       var area = box.querySelector("#shareCodeArea");
       area.value = code;
-      renderShareQR(box.querySelector("#shareQRBox"), code);
+      renderShareQR(box.querySelector("#shareQRBox"), code, { kind: "テンプレート", detail: "「" + tpl.name + "」" });
       var copyBtn = box.querySelector("#copyBtn");
       box.querySelector("#closeBtn").addEventListener("click", closeModal);
       copyBtn.addEventListener("click", function(){
@@ -6773,7 +6777,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
   // ---------- QRコード（共有コードの表示・読み取り） ----------
   // QRコードを画面いっぱいに表示する。どこかをタップすると閉じる
-  function openQRZoom(src){
+  // label: 何のQRか（「シフト（休み）」など）。大きく表示したときにQRの下に出す
+  function openQRZoom(src, label){
     var old = document.getElementById("qrZoomOverlay");
     if(old) old.remove();
     var ov = document.createElement("div");
@@ -6783,6 +6788,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     ov.setAttribute("aria-label", "QRコードを大きく表示");
     ov.innerHTML =
       '<img alt="QRコード">' +
+      (label ? '<div class="qr-zoom-label"><span class="qr-zoom-kind">' + escapeHtml(label.kind) + '</span>' +
+        (label.detail ? '<span class="qr-zoom-detail">' + escapeHtml(label.detail) + '</span>' : '') + '</div>' : '') +
       '<p class="qr-zoom-note">読み取れないときは、画面を明るくして、カメラを少し離してみてください</p>' +
       '<button type="button" class="btn-primary qr-zoom-close">閉じる</button>';
     ov.querySelector("img").src = src;
@@ -6793,7 +6800,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     document.body.appendChild(ov);
   }
 
-  function renderShareQR(box, text){
+  function renderShareQR(box, text, label){
     if(!box) return;
     box.innerHTML = "";
     if(!text){ box.hidden = true; return; }
@@ -6806,7 +6813,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     var C = QRCode.CorrectLevel;
     var levels = text.length > 900 ? [C.L] : text.length > 500 ? [C.M, C.L] : [C.Q, C.M, C.L];
     for(var li = 0; li < levels.length; li++){
-      if(buildShareQR(box, text, levels[li])) return;
+      if(buildShareQR(box, text, levels[li], label)) return;
     }
     showQRMessage(box, "コードが長すぎてQRコードにできませんでした（" + text.length + "文字）。" +
       "共有する期間を「表示中の月」にすると短くなります。または、コピーか「共有…」で送ってください。");
@@ -6820,7 +6827,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     box.appendChild(p);
     box.hidden = false;
   }
-  function buildShareQR(box, text, level){
+  function buildShareQR(box, text, level, label){
     box.innerHTML = "";
     try{
       // 画面外に作ってから、白いクワイエットゾーン（余白）を付けて box に差し込む。
@@ -6844,14 +6851,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       var img = document.createElement("img");
       img.alt = "QRコード（タップで大きく表示）";
       img.src = padded.toDataURL("image/png");
-      img.addEventListener("click", function(){ openQRZoom(img.src); });
+      img.addEventListener("click", function(){ openQRZoom(img.src, label); });
       box.appendChild(img);
       // 細かいQRは小さいままだと読み取れないので、画面いっぱいに出すボタンを付ける
       var zoomBtn = document.createElement("button");
       zoomBtn.type = "button";
       zoomBtn.className = "btn-secondary btn-sm qr-zoom-btn";
       zoomBtn.textContent = "QRを大きく表示";
-      zoomBtn.addEventListener("click", function(){ openQRZoom(img.src); });
+      zoomBtn.addEventListener("click", function(){ openQRZoom(img.src, label); });
       box.appendChild(zoomBtn);
       box.hidden = false;
     }catch(e){
@@ -7151,7 +7158,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(my !== token) return;
         code = c; area.value = c;
         info.textContent = people.length + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "（コードの長さ " + c.length + "文字）";
-        renderShareQR(qrBox, c);
+        renderShareQR(qrBox, c, { kind: isOT ? "残業" : "シフト（休み）", detail: mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "・" + people.length + "人分" });
         setActionsEnabled(true);
       }
       box.querySelectorAll("#scopeChoice .choice-btn").forEach(function(btn){
