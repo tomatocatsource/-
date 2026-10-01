@@ -6534,7 +6534,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         backupMarks = JSON.parse(JSON.stringify(state.workMarks)), backupDayMarks = JSON.parse(JSON.stringify(state.dayMarks));
     // 日付の印は、表に印の行があったときだけ、その日付の範囲を置き換える（印の行がない表で手入力の印を消さないため）
     var dmCount = Object.keys(res.dayMarks || {}).length;
-    if(dmCount){
+    if(dmCount || res.dayMarksReplace){   // 共有コードに印が入っていたときは、その期間の印をコードの内容にそろえる
       res.cols.forEach(function(dc){ setDayMark(dc.iso, res.dayMarks[dc.iso] || null); });
     }
     res.people.forEach(function(pp){
@@ -6594,6 +6594,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
     return out;
   }
+  // 共有コードに入れる日付の印（期間内のもの）
+  function shiftCodeDayMarks(startISO, endISO){
+    return Object.keys(state.dayMarks).filter(function(iso){ return iso >= startISO && iso <= endISO; }).sort()
+      .map(function(iso){ return { iso: iso, v: state.dayMarks[iso] }; });
+  }
   async function encodeShiftCode(startISO, endISO, people){
     var s = isoToDayNum(startISO), e = isoToDayNum(endISO), recs = [];
     (people || distinctShiftNames()).forEach(function(name){
@@ -6619,6 +6624,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         .concat(marks.filter(function(o){ return o.t; }).map(function(o){ return o.n + "=" + o.t; })).join(","));
     });
     var payload = startISO + FS + endISO + GS + recs.join(RS);
+    // 日付の印は3つめの区切りに「日数 FS 文字」で入れる（古い版は2つめまでしか読まないので影響しない）
+    var dms = shiftCodeDayMarks(startISO, endISO);
+    if(dms.length) payload += GS + dms.map(function(d){ return (isoToDayNum(d.iso) - s) + FS + d.v; }).join(RS);
     if(typeof CompressionStream !== "undefined"){
       var stream = new Blob([new TextEncoder().encode(payload)]).stream().pipeThrough(new CompressionStream("gzip"));
       var compressed = new Uint8Array(await new Response(stream).arrayBuffer());
@@ -6672,7 +6680,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       });
       return { name: f[0], offs: offs, marks: marks };
     }).filter(function(pp){ return pp.name; });
-    return { start: head[0], end: head[1], people: people };
+    var dayMarks = Object.create(null), hasDm = sections.length > 2;
+    if(hasDm && sections[2]){
+      sections[2].split(RS).forEach(function(rec){
+        var f = rec.split(FS), n = parseInt(f[0], 10), v = cleanDayMark(f[1]);
+        if(n >= 0 && s + n <= e && v) dayMarks[dayNumToISO(s + n)] = v;
+      });
+    }
+    return { start: head[0], end: head[1], people: people, dayMarks: dayMarks, hasDayMarks: hasDm };
   }
 
   // コピーできたら done、できなかったら fail（省略時はボタンの近くに案内を出さず何もしない）
@@ -7157,7 +7172,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         catch(err){ if(my === token) showEmpty("共有コードの作成に失敗しました。"); return; }
         if(my !== token) return;
         code = c; area.value = c;
-        info.textContent = people.length + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "（コードの長さ " + c.length + "文字）";
+        var dmN = isOT ? 0 : shiftCodeDayMarks(range.start, range.end).length;
+        info.textContent = people.length + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + (dmN ? "・日付の印 " + dmN + "日分" : "") + "（コードの長さ " + c.length + "文字）";
         renderShareQR(qrBox, c, { kind: isOT ? "残業" : "シフト", detail: mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "・" + people.length + "人分" });
         setActionsEnabled(true);
       }
@@ -7228,11 +7244,16 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         var cols = [], s = isoToDayNum(code.start), e = isoToDayNum(code.end);
         for(var n = s; n <= e; n++){ cols.push({ iso: dayNumToISO(n) }); }
         decoded = { cols: cols, people: people, offCount: offCount, otTotal: otTotal };
+        if(!isOT && code.hasDayMarks){ decoded.dayMarks = code.dayMarks; decoded.dayMarksReplace = true; }
         okBtn.disabled = false;
         var html = '<b>' + people.length + '人</b> × <b>' + cols.length + '日</b>（' + mdOfISO(code.start) + '〜' + mdOfISO(code.end) + '）／' + what + ' <b>' + offCount + '</b>マス' +
           (isOT ? '・合計 <b>' + fmtHours(otTotal) + '</b>時間' : '');
         if(fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(fuzzy, 3);
         if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + expandableList(unmatched, 6);
+        if(decoded.dayMarksReplace){
+          var dmN = Object.keys(decoded.dayMarks).length;
+          html += '<br>日付の印: <b>' + dmN + '日分</b>（この期間の印は置き換わります）';
+        }
         html += '<br>読み込んだ人の、この期間の' + what + 'が置き換わります。';
         setPreview(html, false);
       });
