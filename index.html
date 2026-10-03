@@ -3031,6 +3031,36 @@ html body .my-cal td.work-mark .my-s{color:#2A7FB8;font-size:12px;font-weight:70
   padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);
   font:inherit;font-size:13px;font-weight:700;cursor:pointer;
 }
+/* ---- 出勤時間（合計を押したとき） ---- */
+.stat-total{font-weight:inherit;}
+.wt-sub{margin:0 0 10px;font-size:12px;line-height:1.6;color:var(--ink-soft);}
+.wt-groups{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+.wt-group{display:grid;grid-template-columns:auto auto 1fr;align-items:start;gap:4px 10px;padding:9px 12px;}
+.wt-group + .wt-group{border-top:1px solid var(--line);}
+.wt-time{font-size:17px;font-weight:800;line-height:1.5;font-variant-numeric:tabular-nums;min-width:52px;}
+.wt-time small{font-size:12px;font-weight:600;color:var(--ink-soft);margin-left:1px;}
+.wt-count{font-size:13px;color:var(--ink-soft);line-height:1.9;white-space:nowrap;}
+.wt-count b{font-size:17px;color:var(--accent);}
+.wt-names{display:flex;flex-wrap:wrap;gap:5px;min-width:0;}
+.wt-unset{margin-bottom:6px;}
+.wt-name{
+  display:inline-flex;align-items:baseline;gap:3px;padding:3px 8px;border-radius:999px;
+  border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer;
+}
+.wt-name small{font-size:10.5px;font-weight:600;color:var(--ink-soft);}
+.wt-title{margin:0 0 6px;font-size:13px;font-weight:700;color:var(--ink-soft);}
+.wt-bars{display:flex;flex-direction:column;gap:3px;margin-bottom:14px;}
+.wt-bar-row{display:grid;grid-template-columns:38px 1fr 26px;align-items:center;gap:8px;font-size:12px;}
+.wt-bar-h{text-align:right;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+.wt-bar{height:14px;border-radius:4px;background:color-mix(in srgb, var(--accent) 10%, transparent);overflow:hidden;}
+.wt-bar span{display:block;height:100%;background:var(--accent);border-radius:4px;}
+.wt-bar-c{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
+.wt-edit{display:flex;align-items:flex-end;gap:8px;margin-bottom:8px;}
+.wt-edit label{flex:1;display:flex;flex-direction:column;gap:4px;margin:0;font-size:12px;font-weight:700;color:var(--ink-soft);}
+.wt-edit input{width:100%;height:44px;font-size:17px;}
+.wt-dash{padding-bottom:10px;color:var(--ink-soft);}
+.any-err{margin:0 0 8px;font-size:12px;color:var(--danger);}
+.any-err[hidden]{display:none;}
 .qr-scan-wrap{display:flex;flex-direction:column;gap:8px;margin:10px 0 14px;}
 .qr-image-btn{
   display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 14px;
@@ -3265,7 +3295,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {} };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {} };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3556,7 +3586,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {};
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {};
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -3663,6 +3693,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     return out;
   }
   // 出勤の記号（「冷」など）: { 名前: { "YYYY-MM-DD": "冷" } }
+  function cleanStoredWorkTimes(obj){
+    var out = {};
+    Object.keys(obj).forEach(function(name){
+      var t = obj[name];
+      if(name && name.length <= 40 && t && typeof t.s === "number" && typeof t.e === "number" &&
+         t.s >= 0 && t.s < 1440 && t.e > t.s && t.e <= 2880) out[name] = { s: Math.round(t.s), e: Math.round(t.e) };
+    });
+    return out;
+  }
   function cleanStoredDayMarks(obj){
     var out = {};
     Object.keys(obj).forEach(function(iso){
@@ -3728,6 +3767,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.overtime = isObj(parsed.overtime) ? cleanStoredOvertime(parsed.overtime) : {};
         state.workMarks = isObj(parsed.workMarks) ? cleanStoredMarks(parsed.workMarks) : {};
         state.dayMarks = isObj(parsed.dayMarks) ? cleanStoredDayMarks(parsed.dayMarks) : {};
+        state.workTimes = isObj(parsed.workTimes) ? cleanStoredWorkTimes(parsed.workTimes) : {};
         state.otAlert = cleanOtAlert(parsed.otAlert);
       }catch(e){
         // 読めないデータを空の状態で上書きしてしまわないよう、先に退避する
@@ -3795,7 +3835,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<span class="stat-cat" data-cat="S">S:<b>' + counts.S + '</b></span>' +
       '<span class="stat-cat" data-cat="M">M:<b>' + counts.M + '</b></span>' +
       '<span class="stat-cat" data-cat="L">L:<b>' + counts.L + '</b></span>' +
-      '<span class="stat-sep">合計<b>' + placed.length + '</b>人</span>';
+      '<span class="stat-sep"><span class="stat-cat stat-total" role="button">合計<b>' + placed.length + '</b>人</span></span>';
     renderOtAlertStrip();
   }
 
@@ -5239,6 +5279,39 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // ---------- 出勤の記号（「冷」など） ----------
   // Excelから読んだ「出勤として読む記号」を、シフト表にそのまま表示するために名前・日付ごとに持つ。休みの日には持たない。
   function cleanMark(v){ return String(v).replace(/[\u0000-\u001F,=]/g, "").trim().slice(0, 3); }
+  // ---------- 勤務時間（開始・終了） ----------
+  // state.workTimes = { 名前: { s: 開始の分, e: 終了の分 } }。Excelの「開始」「終了」の列から読むほか、手で設定できる。
+  // 日をまたぐ勤務は終了を 24:00 より後（例 26:00 = 1560分）で持つ。
+  function parseWorkTime(v){
+    if(v == null) return null;
+    var t = String(v).normalize("NFKC").replace(/\s+/g, "");
+    if(t === "") return null;
+    var m;
+    if(/^\d*\.\d+$/.test(t) || t === "0" || t === "1"){            // Excelの時刻（1日 = 1）
+      var f = parseFloat(t);
+      if(f >= 0 && f <= 2 && (f < 1 || t === "1" || /^1\.\d+$/.test(t))) return Math.round(f * 1440);
+    }
+    if((m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(t))) return toMin(+m[1], +m[2]);
+    if((m = /^(\d{1,2})時(?:(\d{1,2})分?|半)?$/.exec(t))) return toMin(+m[1], /半$/.test(t) ? 30 : (m[2] ? +m[2] : 0));
+    if((m = /^(\d{3,4})$/.exec(t))){ var n = +m[1]; return toMin(Math.floor(n / 100), n % 100); }
+    if((m = /^(\d{1,2})(?:\.(\d+))?$/.exec(t))){ var h = parseFloat(t); if(h >= 0 && h <= 30) return Math.round(h * 60); }
+    return null;
+    function toMin(h, mi){ return (h >= 0 && h <= 30 && mi >= 0 && mi < 60) ? h * 60 + mi : null; }
+  }
+  function normWorkTime(sv, ev){
+    if(sv === null || ev === null) return null;
+    if(sv >= 1440) sv -= 1440;
+    if(ev <= sv) ev += 1440;          // 日をまたぐ
+    if(ev - sv > 1440) return null;
+    return { s: sv, e: ev };
+  }
+  function fmtClock(min){
+    var h = Math.floor(min / 60), m = min % 60;
+    return h + ":" + (m < 10 ? "0" : "") + m;
+  }
+  function fmtEndClock(min){ return min >= 1440 ? "翌" + fmtClock(min - 1440) : fmtClock(min); }
+  function workTimeOf(name){ return Object.prototype.hasOwnProperty.call(state.workTimes, name) ? state.workTimes[name] : null; }
+
   // ---------- 日付の印（「棚」「特」など、その日全体に付ける文字） ----------
   // state.dayMarks = { "YYYY-MM-DD": "棚" }。Excelの日付の上（または下）の行から読むほか、シフト表で手入力もできる。
   var DAY_MARK_MAX = 4;
@@ -5284,6 +5357,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function migrateShiftName(oldName, newName){
     migrateOvertimeName(oldName, newName);
     if(state.myName === oldName) state.myName = newName;   // 個人カレンダーの選択も新しい名前に付け替える
+    if(Object.prototype.hasOwnProperty.call(state.workTimes, oldName)){   // 勤務時間も新しい名前へ
+      if(!Object.prototype.hasOwnProperty.call(state.workTimes, newName)) state.workTimes[newName] = state.workTimes[oldName];
+      if(!state.nameplates.some(function(n){ return n.name === oldName; })) delete state.workTimes[oldName];
+    }
     if(Object.prototype.hasOwnProperty.call(state.workMarks, oldName)){
       if(!Object.prototype.hasOwnProperty.call(state.workMarks, newName)) state.workMarks[newName] = JSON.parse(JSON.stringify(state.workMarks[oldName]));
       if(!state.nameplates.some(function(n){ return n.name === oldName; })) delete state.workMarks[oldName];
@@ -6248,6 +6325,19 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       cols = cols.filter(function(dc){ return +dc.iso.slice(5, 7) === sheetMonth.m; });
     }
     if(cols.length < 5 || cols[0].c < 1) return null;
+    // 「開始」「終了」の列（日付より左）。見出しの行とその上下を見る
+    var timeCols = null;
+    if(!opts.readValue){
+      var tS = -1, tE = -1;
+      for(var tr = Math.max(0, hdr - 2); tr <= Math.min(rows.length - 1, hdr + 1); tr++){
+        for(var tc = 0; tc < cols[0].c; tc++){
+          var tl = normText((rows[tr] || [])[tc]);
+          if(tS < 0 && /^(開始|始業|出勤時間|出勤時刻|出社|勤務開始|IN)$/i.test(tl)) tS = tc;
+          if(tE < 0 && /^(終了|終業|退勤時間|退勤時刻|退勤|退社|勤務終了|OUT)$/i.test(tl)) tE = tc;
+        }
+      }
+      if(tS >= 0 && tE >= 0 && tS !== tE) timeCols = { s: tS, e: tE };
+    }
 
     // 名前の列の候補: 日付列より左で、ボードの名前と一致するセルがある列。
     // 同じシートの下のほうに勤務時間の表など別の表があり、そこでは名前が別の列にあることがあるので、
@@ -6285,6 +6375,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(!person){
           person = byName[hit.name] = { name: hit.name, offs: Object.create(null), marks: Object.create(null), labels: [] };
           people.push(person);
+        }
+        if(timeCols && !person.time){
+          person.time = normWorkTime(parseWorkTime(row[timeCols.s]), parseWorkTime(row[timeCols.e]));
         }
         // 同じ表記の行が続くのは結合セル（1人2行など）なので正常。表記の違う行が同じ人に当たったときだけ知らせる
         if(person.labels.indexOf(label) === -1){
@@ -6339,6 +6432,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
          (res.offCount === best.offCount && res.people.length > best.people.length)) best = res;
     });
     if(best){
+      best.timeCols = timeCols;
       var dm = detectDayMarks(rows, hdr, cols, monthOf);
       best.dayMarks = dm.marks; best.dayMarkRows = dm.rows; best.dayMarkCell = dm.cell;
     }
@@ -6485,7 +6579,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       res.cols.forEach(function(dc){ allIso[dc.iso] = true; });
       res.people.forEach(function(pp){
         if(!byName[pp.name]){ byName[pp.name] = []; order.push(pp.name); }
-        byName[pp.name].push({ idx: idx, offs: pp.offs, marks: pp.marks, cols: res.cols });
+        byName[pp.name].push({ idx: idx, offs: pp.offs, marks: pp.marks, cols: res.cols, time: pp.time || null });
       });
       res.unmatched.forEach(function(n){ if(unmatched.indexOf(n) === -1) unmatched.push(n); });
       res.fuzzy.forEach(function(n){ if(fuzzy.indexOf(n) === -1) fuzzy.push(n); });
@@ -6496,14 +6590,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     order.forEach(function(name){
       var list = byName[name];
       if(list.length === 1){
-        people.push({ name: name, offs: list[0].offs, marks: list[0].marks, cols: list[0].cols });
+        people.push({ name: name, offs: list[0].offs, marks: list[0].marks, cols: list[0].cols, time: list[0].time });
         offCount += Object.keys(list[0].offs).length;
         return;
       }
       if(!isOT){
         var chosen = list.filter(function(x){ return parts[x.idx].entryIdx === masterEntryIdx; })[0] || list[0];
         multiNames.push(name + "（" + list.map(function(x){ return parts[x.idx].label; }).join("・") + " → " + parts[chosen.idx].label + "を使用）");
-        people.push({ name: name, offs: chosen.offs, marks: chosen.marks, cols: chosen.cols });
+        people.push({ name: name, offs: chosen.offs, marks: chosen.marks, cols: chosen.cols, time: chosen.time || (list.filter(function(x){ return x.time; })[0] || {}).time || null });
         offCount += Object.keys(chosen.offs).length;
         return;
       }
@@ -6537,6 +6631,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(dmCount || res.dayMarksReplace){   // 共有コードに印が入っていたときは、その期間の印をコードの内容にそろえる
       res.cols.forEach(function(dc){ setDayMark(dc.iso, res.dayMarks[dc.iso] || null); });
     }
+    var backupTimes = JSON.parse(JSON.stringify(state.workTimes));
+    res.people.forEach(function(pp){ if(pp.time) state.workTimes[pp.name] = { s: pp.time.s, e: pp.time.e }; });
     res.people.forEach(function(pp){
       (pp.cols || res.cols).forEach(function(dc){   // 複数ファイルのときは、その人が載っていたファイルの日付だけ
         var v = pp.offs[dc.iso];
@@ -6559,7 +6655,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '</div>';
       b2.querySelector("#doneBtn").addEventListener("click", closeModal);
       b2.querySelector("#undoBtn").addEventListener("click", function(){
-        state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks; state.dayMarks = backupDayMarks;
+        state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks; state.dayMarks = backupDayMarks; state.workTimes = backupTimes;
         loadPlacementsForDay(state.boardDate); renderDateBar();
         scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
       });
@@ -7403,6 +7499,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(res.dupNames.length) html += '<br><b>別々の名前の行が同じ人に当たりました（' + (isOT ? '先に出てきた行の値を使います' : '休みを合わせて読みます') + '）:</b> ' + expandableList(res.dupNames, 6) +
           '（別の人が混ざっていないか確認してください）';
         if(res.unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない行: ' + expandableList(res.unmatched, 6);
+        var withTime = (res.people || []).filter(function(pp){ return pp.time; });
+        if(!isOT && withTime.length){
+          html += '<br>勤務時間: <b>' + withTime.length + '人分</b>' +
+            (res.timeCols && !res.swapped ? '（開始 ' + colLetter(res.timeCols.s) + '列・終了 ' + colLetter(res.timeCols.e) + '列）' : '');
+        }
         var dmKeys = Object.keys(res.dayMarks || {}).sort();
         if(!isOT && dmKeys.length){
           var dmTypes = Object.create(null);
@@ -7673,6 +7774,90 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   document.getElementById("dateNextBtn").addEventListener("click", function(){ stepBoardDate(1); });
 
   // ---------- S/M/L の該当者を表示 ----------
+  // 「合計」を押したとき: ボードに配置した人が、何時に何人出勤するか（と時間帯ごとの人数）
+  function openWorkTimeModal(){
+    var iso = state.boardDate || todayISO(), seen = Object.create(null), names = [];
+    state.nameplates.forEach(function(n){
+      if(n.locationId && isVisibleOnBoard(n) && !seen[n.name]){ seen[n.name] = true; names.push(n.name); }
+    });
+    openModal(function(box){
+      function render(){
+        var withT = [], noT = [];
+        names.forEach(function(nm){ var t = workTimeOf(nm); if(t) withT.push({ name: nm, s: t.s, e: t.e }); else noT.push(nm); });
+        var h = '<div class="sheet-header"><span>' + escapeHtml(formatDateJP(iso)) + 'の出勤時間</span></div>';
+        if(!names.length){
+          h += '<p class="confirm-msg">ボードにまだ誰も配置されていません。</p>';
+        } else {
+          h += '<p class="wt-sub">ボードに配置した ' + names.length + '人（名前を押すと時間を変えられます）</p>';
+          if(withT.length){
+            // 出勤時刻ごと
+            var groups = Object.create(null), keys = [];
+            withT.sort(function(a, b){ return a.s - b.s || a.e - b.e; }).forEach(function(p){
+              if(!groups[p.s]){ groups[p.s] = []; keys.push(p.s); }
+              groups[p.s].push(p);
+            });
+            h += '<div class="wt-groups">' + keys.map(function(k){
+              return '<div class="wt-group"><div class="wt-time">' + fmtClock(k) + '<small>〜</small></div><div class="wt-count"><b>' + groups[k].length + '</b>人</div>' +
+                '<div class="wt-names">' + groups[k].map(function(p){
+                  return '<button type="button" class="wt-name" data-name="' + escapeHtml(p.name) + '">' + escapeHtml(p.name) + '<small>〜' + fmtEndClock(p.e) + '</small></button>';
+                }).join('') + '</div></div>';
+            }).join('') + '</div>';
+            // 時間帯ごとの人数
+            var minH = Math.floor(Math.min.apply(null, withT.map(function(p){ return p.s; })) / 60);
+            var maxH = Math.ceil(Math.max.apply(null, withT.map(function(p){ return p.e; })) / 60);
+            var rowsH = [], peak = 0;
+            for(var hh = minH; hh < maxH; hh++){
+              var c = withT.filter(function(p){ return p.s < (hh + 1) * 60 && p.e > hh * 60; }).length;
+              rowsH.push({ h: hh, c: c }); if(c > peak) peak = c;
+            }
+            h += '<div class="wt-title">時間帯ごとの人数</div><div class="wt-bars">' + rowsH.map(function(r){
+              return '<div class="wt-bar-row"><span class="wt-bar-h">' + (r.h % 24) + '時</span>' +
+                '<span class="wt-bar"><span style="width:' + (peak ? Math.round(r.c / peak * 100) : 0) + '%"></span></span>' +
+                '<span class="wt-bar-c">' + r.c + '</span></div>';
+            }).join('') + '</div>';
+          }
+          if(noT.length){
+            h += '<div class="wt-title">時間が未設定（' + noT.length + '人）</div><div class="wt-names wt-unset">' +
+              noT.map(function(nm){ return '<button type="button" class="wt-name" data-name="' + escapeHtml(nm) + '">' + escapeHtml(nm) + '<small>設定</small></button>'; }).join('') +
+              '</div><p class="wt-sub">シフト表の「ファイル読込」でExcelの「開始」「終了」の列から読み込むか、名前を押して設定します。</p>';
+          }
+        }
+        h += '<div class="modal-actions"><button class="btn-primary" id="closeBtn" type="button">閉じる</button></div>';
+        box.innerHTML = h;
+        box.querySelector("#closeBtn").addEventListener("click", closeModal);
+        box.querySelectorAll(".wt-name").forEach(function(b){
+          b.addEventListener("click", function(){ editTime(b.dataset.name); });
+        });
+      }
+      function editTime(name){
+        var t = workTimeOf(name);
+        box.innerHTML =
+          '<div class="sheet-header"><span>' + escapeHtml(name) + 'の勤務時間</span></div>' +
+          '<div class="wt-edit"><label>開始<input type="time" id="wtS" step="300" value="' + (t ? pad2(Math.floor(t.s / 60) % 24) + ':' + pad2(t.s % 60) : '') + '"></label>' +
+          '<span class="wt-dash">〜</span>' +
+          '<label>終了<input type="time" id="wtE" step="300" value="' + (t ? pad2(Math.floor(t.e / 60) % 24) + ':' + pad2(t.e % 60) : '') + '"></label></div>' +
+          '<p class="wt-sub">終了が開始より前なら、日をまたぐ勤務として扱います。</p>' +
+          '<p class="any-err" id="wtErr" hidden></p>' +
+          '<div class="modal-actions">' +
+            '<button class="btn-secondary" id="backBtn" type="button">戻る</button>' +
+            (t ? '<button class="btn-secondary" id="clearBtn" type="button">未設定にする</button>' : '') +
+            '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
+          '</div>';
+        box.querySelector("#backBtn").addEventListener("click", render);
+        var cb = box.querySelector("#clearBtn");
+        if(cb) cb.addEventListener("click", function(){ delete state.workTimes[name]; scheduleSave(); render(); });
+        box.querySelector("#okBtn").addEventListener("click", function(){
+          var wt = normWorkTime(parseWorkTime(box.querySelector("#wtS").value), parseWorkTime(box.querySelector("#wtE").value));
+          var err = box.querySelector("#wtErr");
+          if(!wt){ err.textContent = "開始と終了の時刻を入れてください。"; err.hidden = false; return; }
+          state.workTimes[name] = wt; scheduleSave(); render();
+        });
+      }
+      function pad2(n){ return (n < 10 ? "0" : "") + n; }
+      render();
+    });
+  }
+
   function openCategoryMembersModal(cat){
     var members = sortByNumber(state.nameplates.filter(function(n){
       return !!n.locationId && isVisibleOnBoard(n) && (n.categories || []).indexOf(cat) !== -1;
@@ -7695,6 +7880,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   });
   document.getElementById("statsBar").addEventListener("click", function(e){
     var el = e.target.closest(".stat-cat");
+    if(e.target.closest(".stat-total")){ openWorkTimeModal(); return; }
     if(el) openCategoryMembersModal(el.dataset.cat);
   });
 
