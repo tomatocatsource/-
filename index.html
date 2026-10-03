@@ -6648,7 +6648,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(b2){
       b2.innerHTML =
         '<div class="sheet-header"><span>読み込みました</span></div>' +
-        '<p class="confirm-msg">' + res.people.length + '人・' + res.cols.length + '日分の休み（' + res.offCount + 'マス）' + (dmCount ? 'と、日付の印' + dmCount + '日分' : '') + 'を反映しました。</p>' +
+        '<p class="confirm-msg">' + res.people.length + '人・' + res.cols.length + '日分の休み（' + res.offCount + 'マス）' + (dmCount ? '・日付の印' + dmCount + '日分' : '') +
+          (res.people.filter(function(pp){ return pp.time; }).length ? '・勤務時間' + res.people.filter(function(pp){ return pp.time; }).length + '人分' : '') + 'を反映しました。</p>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="undoBtn" type="button">元に戻す</button>' +
           '<button class="btn-primary" id="doneBtn" type="button">閉じる</button>' +
@@ -6716,8 +6717,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         });
       }
       marks.sort(function(a, b){ return a.n - b.n; });
+      // 勤務時間は3つめの項目に「開始の分-終了の分」で入れる（古い版は2つめまでしか読まないので影響しない）
+      var wt = workTimeOf(name);
       recs.push(name + FS + offs.map(function(o){ return o.n + (o.k === "休" ? "" : o.k); })
-        .concat(marks.filter(function(o){ return o.t; }).map(function(o){ return o.n + "=" + o.t; })).join(","));
+        .concat(marks.filter(function(o){ return o.t; }).map(function(o){ return o.n + "=" + o.t; })).join(",") +
+        (wt ? FS + wt.s + "-" + wt.e : ""));
     });
     var payload = startISO + FS + endISO + GS + recs.join(RS);
     // 日付の印は3つめの区切りに「日数 FS 文字」で入れる（古い版は2つめまでしか読まないので影響しない）
@@ -6774,7 +6778,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         var n = parseInt(mt[1], 10);
         if(n >= 0 && s + n <= e) offs[dayNumToISO(s + n)] = mt[2] || "休";
       });
-      return { name: f[0], offs: offs, marks: marks };
+      var tm = /^(\d{1,4})-(\d{1,4})$/.exec(f[2] || ""), time = null;
+      if(tm){ var ts = +tm[1], te = +tm[2]; if(ts >= 0 && ts < 1440 && te > ts && te <= 2880) time = { s: ts, e: te }; }
+      return { name: f[0], offs: offs, marks: marks, time: time };
     }).filter(function(pp){ return pp.name; });
     var dayMarks = Object.create(null), hasDm = sections.length > 2;
     if(hasDm && sections[2]){
@@ -7269,7 +7275,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(my !== token) return;
         code = c; area.value = c;
         var dmN = isOT ? 0 : shiftCodeDayMarks(range.start, range.end).length;
-        info.textContent = people.length + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + (dmN ? "・日付の印 " + dmN + "日分" : "") + "（コードの長さ " + c.length + "文字）";
+        var wtN = isOT ? 0 : people.filter(function(nm){ return workTimeOf(nm); }).length;
+        info.textContent = people.length + "人分・" + mdOfISO(range.start) + "〜" + mdOfISO(range.end) + (dmN ? "・日付の印 " + dmN + "日分" : "") + (wtN ? "・勤務時間 " + wtN + "人分" : "") + "（コードの長さ " + c.length + "文字）";
         renderShareQR(qrBox, c, { kind: isOT ? "残業" : "シフト", detail: mdOfISO(range.start) + "〜" + mdOfISO(range.end) + "・" + people.length + "人分" });
         setActionsEnabled(true);
       }
@@ -7331,7 +7338,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           if(hit.fuzzy) fuzzy.push(pp.name + "→" + hit.name);
           offCount += Object.keys(pp.offs).length;
           if(isOT) Object.keys(pp.offs).forEach(function(k){ otTotal += pp.offs[k]; });
-          people.push({ name: hit.name, offs: pp.offs, marks: pp.marks });
+          people.push({ name: hit.name, offs: pp.offs, marks: pp.marks, time: pp.time || null });
         });
         if(!people.length){
           setPreview("ボードの名前と一致する人がいませんでした。" + (unmatched.length ? "<br>コードの名前: <b>" + expandableList(unmatched, 6) + "</b>" : ""), true);
@@ -7346,6 +7353,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           (isOT ? '・合計 <b>' + fmtHours(otTotal) + '</b>時間' : '');
         if(fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(fuzzy, 3);
         if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + expandableList(unmatched, 6);
+        var wtN = people.filter(function(pp){ return pp.time; }).length;
+        if(!isOT && wtN) html += '<br>勤務時間: <b>' + wtN + '人分</b>（その人の時間が置き換わります）';
         if(decoded.dayMarksReplace){
           var dmN = Object.keys(decoded.dayMarks).length;
           html += '<br>日付の印: <b>' + dmN + '日分</b>（この期間の印は置き換わります）';
