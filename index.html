@@ -3295,7 +3295,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {} };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {} };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3586,7 +3586,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {};
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {};
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -3768,6 +3768,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.workMarks = isObj(parsed.workMarks) ? cleanStoredMarks(parsed.workMarks) : {};
         state.dayMarks = isObj(parsed.dayMarks) ? cleanStoredDayMarks(parsed.dayMarks) : {};
         state.workTimes = isObj(parsed.workTimes) ? cleanStoredWorkTimes(parsed.workTimes) : {};
+        // ボードの名前 → シフトのExcelでの表記（「佐藤」→「佐藤 花子」など）。残業の読み込みで別人を当てないために使う
+        state.nameAliases = {};
+        if(isObj(parsed.nameAliases)) Object.keys(parsed.nameAliases).forEach(function(k){
+          var v = parsed.nameAliases[k];
+          if(k && k.length <= 40 && typeof v === "string" && v && v.length <= 60) state.nameAliases[k] = v;
+        });
         state.otAlert = cleanOtAlert(parsed.otAlert);
       }catch(e){
         // 読めないデータを空の状態で上書きしてしまわないよう、先に退避する
@@ -5357,6 +5363,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function migrateShiftName(oldName, newName){
     migrateOvertimeName(oldName, newName);
     if(state.myName === oldName) state.myName = newName;   // 個人カレンダーの選択も新しい名前に付け替える
+    if(Object.prototype.hasOwnProperty.call(state.nameAliases, oldName)){
+      if(!Object.prototype.hasOwnProperty.call(state.nameAliases, newName)) state.nameAliases[newName] = state.nameAliases[oldName];
+      delete state.nameAliases[oldName];
+    }
     if(Object.prototype.hasOwnProperty.call(state.workTimes, oldName)){   // 勤務時間も新しい名前へ
       if(!Object.prototype.hasOwnProperty.call(state.workTimes, newName)) state.workTimes[newName] = state.workTimes[oldName];
       if(!state.nameplates.some(function(n){ return n.name === oldName; })) delete state.workTimes[oldName];
@@ -6196,6 +6206,24 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   //  4. 表の名前の先頭か末尾がボードの名前と一致（空白なしの「山田花子」など、2文字以上）
   // 名字と名前で別の人に当たったときは名前のほうを選ぶ（名字が同じ人を区別するため、名前で登録していることが多い）。
   // それ以外で候補が2人以上に分かれたら決めずに「照合できない」とする（取り違えを防ぐため）
+  // 読み込み用の名前照合。
+  // 残業は、Excelに名前がない人に別の行（同じ名字の別人や「所定時間」などの行）の値が入らないよう、
+  // 次のどれかのときだけ読み込む:
+  //   1. ボードの名前と完全に一致
+  //   2. シフト（休み）のExcelで覚えた、その人のExcelでの書き方と一致（ボード「佐藤」= Excel「佐藤 花子」）
+  //   3. ボードの名前が「山田(Y)」の形で、名字と頭文字が合う
+  function buildImportMatcher(isOT){
+    var base = buildNameMatcher();
+    if(!isOT) return base;
+    return function(sheetName){
+      var hit = base(sheetName);
+      if(!hit || !hit.fuzzy) return hit;
+      var known = state.nameAliases[hit.name];
+      if(known && nameKey(known) === nameKey(sheetName)) return hit;
+      if(!known && parsePlateName(hit.name)) return hit;
+      return null;
+    };
+  }
   function buildNameMatcher(){
     var byKey = Object.create(null), keys = [], parenList = [];
     state.nameplates.forEach(function(np){
@@ -6579,7 +6607,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       res.cols.forEach(function(dc){ allIso[dc.iso] = true; });
       res.people.forEach(function(pp){
         if(!byName[pp.name]){ byName[pp.name] = []; order.push(pp.name); }
-        byName[pp.name].push({ idx: idx, offs: pp.offs, marks: pp.marks, cols: res.cols, time: pp.time || null });
+        byName[pp.name].push({ idx: idx, offs: pp.offs, marks: pp.marks, cols: res.cols, time: pp.time || null, labels: pp.labels || [] });
       });
       res.unmatched.forEach(function(n){ if(unmatched.indexOf(n) === -1) unmatched.push(n); });
       res.fuzzy.forEach(function(n){ if(fuzzy.indexOf(n) === -1) fuzzy.push(n); });
@@ -6590,14 +6618,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     order.forEach(function(name){
       var list = byName[name];
       if(list.length === 1){
-        people.push({ name: name, offs: list[0].offs, marks: list[0].marks, cols: list[0].cols, time: list[0].time });
+        people.push({ name: name, offs: list[0].offs, marks: list[0].marks, cols: list[0].cols, time: list[0].time, labels: list[0].labels });
         offCount += Object.keys(list[0].offs).length;
         return;
       }
       if(!isOT){
         var chosen = list.filter(function(x){ return parts[x.idx].entryIdx === masterEntryIdx; })[0] || list[0];
         multiNames.push(name + "（" + list.map(function(x){ return parts[x.idx].label; }).join("・") + " → " + parts[chosen.idx].label + "を使用）");
-        people.push({ name: name, offs: chosen.offs, marks: chosen.marks, cols: chosen.cols, time: chosen.time || (list.filter(function(x){ return x.time; })[0] || {}).time || null });
+        people.push({ name: name, offs: chosen.offs, marks: chosen.marks, cols: chosen.cols, time: chosen.time || (list.filter(function(x){ return x.time; })[0] || {}).time || null, labels: chosen.labels });
         offCount += Object.keys(chosen.offs).length;
         return;
       }
@@ -6631,7 +6659,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(dmCount || res.dayMarksReplace){   // 共有コードに印が入っていたときは、その期間の印をコードの内容にそろえる
       res.cols.forEach(function(dc){ setDayMark(dc.iso, res.dayMarks[dc.iso] || null); });
     }
-    var backupTimes = JSON.parse(JSON.stringify(state.workTimes));
+    var backupTimes = JSON.parse(JSON.stringify(state.workTimes)), backupAliases = JSON.parse(JSON.stringify(state.nameAliases));
+    // Excelでの表記を覚えておく（残業の読み込みで、同じ名字の別人を当てないため）
+    res.people.forEach(function(pp){ if(pp.labels && pp.labels.length === 1) state.nameAliases[pp.name] = pp.labels[0]; });
     res.people.forEach(function(pp){ if(pp.time) state.workTimes[pp.name] = { s: pp.time.s, e: pp.time.e }; });
     res.people.forEach(function(pp){
       (pp.cols || res.cols).forEach(function(dc){   // 複数ファイルのときは、その人が載っていたファイルの日付だけ
@@ -6656,7 +6686,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '</div>';
       b2.querySelector("#doneBtn").addEventListener("click", closeModal);
       b2.querySelector("#undoBtn").addEventListener("click", function(){
-        state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks; state.dayMarks = backupDayMarks; state.workTimes = backupTimes;
+        state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks; state.dayMarks = backupDayMarks; state.workTimes = backupTimes; state.nameAliases = backupAliases;
         loadPlacementsForDay(state.boardDate); renderDateBar();
         scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
       });
@@ -7521,6 +7551,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
             (res.dayMarkRows && res.dayMarkRows.length && !res.swapped ? '・' + res.dayMarkRows.map(function(r){ return (res.dayMarkCell ? res.dayMarkCell + 'の行' : (r + 1) + '行目'); }).join('・') + 'から' : '') +
             '<br>この日付の範囲の印も置き換わります。';
         }
+        if(isOT && (res.unmatched || []).length){
+          html += '<br><span class="imp-note">残業は、ボードの名前と一致する人（シフトのExcelでの名前を含む）だけ読み込みます。</span>';
+        }
         html += '<br>読み込んだ人の、この日付の範囲の' + what + 'が置き換わります。';
         return html;
       }
@@ -7553,7 +7586,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
       function recomputeSingle(rows, headHtml){
         if(!rows){ setPreview("ファイルを選ぶか、Excelでコピーしたセルを貼り付けてください。"); return; }
-        var opts = getOpts(), match = buildNameMatcher();
+        var opts = getOpts(), match = buildImportMatcher(isOT);
         var res = analyzeRows(rows, opts, match);
         if(!res){
           setPreview(headHtml + "日付の並び（1, 2, 3… や 9/1 など）が5日分以上ある行が見つかりませんでした。日付の見出しを含めてください。", true);
@@ -7580,7 +7613,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       }
 
       function recomputeMulti(){
-        var opts = getOpts(), match = buildNameMatcher(), parts = [], lines = [];
+        var opts = getOpts(), match = buildImportMatcher(isOT), parts = [], lines = [];
         entries.forEach(function(e, i){
           if(!e.enabled) return;
           var res = analyzeRows(e.rows, opts, match);
@@ -7629,7 +7662,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(!(head[0] === 0x50 && head[1] === 0x4B)){                      // CSV / TSV
           return [{ fileKey: fileKey, file: f.name, sheet: null, rows: parseDelimited(decodeText(buf)), enabled: true }];
         }
-        var wb = await openXlsx(buf), opts = getOpts(), match = buildNameMatcher(), found = [], fallback = null;
+        var wb = await openXlsx(buf), opts = getOpts(), match = buildImportMatcher(isOT), found = [], fallback = null;
         for(var i = 0; i < wb.names.length && i < 40; i++){
           var r;
           try{ r = await wb.getRows(i); }catch(e){ continue; }
