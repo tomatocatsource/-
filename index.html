@@ -3026,6 +3026,19 @@ html body .my-cal td.work-mark .my-s{color:#2A7FB8;font-size:12px;font-weight:70
   color:#8A5A00;background:#FFE7A8;
 }
 .my-cal .my-d{display:inline-block;}
+.choice-row-sub{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.choice-hint{font-size:12px;color:var(--ink-soft);}
+.rei-box{margin:12px 0 4px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.rei-title{display:flex;align-items:center;gap:6px;padding:8px 12px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);}
+.rei-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-size:13px;color:#2A7FB8;background:color-mix(in srgb, #2A7FB8 14%, transparent);}
+.rei-row{display:flex;align-items:flex-start;gap:10px;padding:7px 12px;font-size:13px;}
+.rei-row + .rei-row{border-top:1px solid var(--line);}
+.rei-row.is-today{background:color-mix(in srgb, var(--accent) 8%, transparent);}
+.rei-date{flex:none;width:62px;font-weight:700;font-variant-numeric:tabular-nums;}
+.rei-date small{font-size:11px;font-weight:600;color:var(--ink-soft);}
+.rei-names{display:flex;flex-wrap:wrap;gap:4px 6px;min-width:0;}
+.rei-name{padding:1px 8px;border-radius:999px;border:1px solid var(--line);font-weight:700;font-size:12.5px;}
+.rei-none{font-size:12px;color:var(--ink-soft);}
 .dm-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;}
 .dm-chip{
   padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);
@@ -3396,7 +3409,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     var npStr = (tpl.nameplates || []).map(function(np){
       var number = (np.number === null || np.number === undefined) ? "" : np.number;
       var time = (np.time === null || np.time === undefined) ? "" : np.time;
-      return np.name + FS + number + FS + time + FS + colorToCode(np.color) + FS + categoriesToCode(np.categories);
+      // 6つめの項目は冷凍の属性（古い版は5つめまでしか読まないので影響しない）
+      return np.name + FS + number + FS + time + FS + colorToCode(np.color) + FS + categoriesToCode(np.categories) + FS + (np.frozen === true ? 1 : 0);
     }).join(RS);
     var payload = tpl.name + GS + locStr + GS + npStr;
     var bytes = new TextEncoder().encode(payload);
@@ -3456,7 +3470,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         number: toIntOrNull(f[1]),
         time: toHourOrNull(f[2]),
         color: codeToColor(parseInt(f[3], 10)),
-        categories: codeToCategories(parseInt(f[4], 10))
+        categories: codeToCategories(parseInt(f[4], 10)),
+        frozen: f[5] === "1" || undefined
       };
     }).filter(function(n){ return n.name; });
     if(locationNames.length > LIMITS.locations || nameplates.length > LIMITS.nameplates){
@@ -3656,6 +3671,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     n.time = toHourOrNull(n.time);
     if(typeof n.locationId !== "string" || !n.locationId) n.locationId = null;
     if(SLOT_VALUES.indexOf(n.slot) === -1) n.slot = null;
+    if(n.frozen !== true) delete n.frozen;   // 冷凍の属性
     if(Array.isArray(n.categories)){
       n.categories = n.categories.filter(function(c){ return CATEGORY_LETTERS.indexOf(c) !== -1; });
     } else if(n.categories != null){
@@ -4602,6 +4618,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '<div class="choice-btn" data-cat="M">M</div>' +
         '<div class="choice-btn" data-cat="L">L</div>' +
         '</div>' +
+        '<div class="choice-row choice-row-sub"><div class="choice-btn" id="frozenBtn" role="button" aria-pressed="false">冷凍</div>' +
+        '<span class="choice-hint">シフト表の出勤日を「冷」で表示</span></div>' +
         (isEdit
           ? '<div class="modal-actions">' +
             (np.locationId ? '<button class="btn-secondary" id="unassignBtn" type="button">未配置に戻す</button>' : '') +
@@ -4666,6 +4684,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       });
       refreshSwatches();
       refreshCategories();
+      var frozen = isEdit && np.frozen === true, frozenBtn = box.querySelector("#frozenBtn");
+      function refreshFrozen(){ frozenBtn.classList.toggle("selected", frozen); frozenBtn.setAttribute("aria-pressed", frozen ? "true" : "false"); }
+      frozenBtn.addEventListener("click", function(){ frozen = !frozen; refreshFrozen(); });
+      refreshFrozen();
 
       function submit(){
         var name = input.value.trim();
@@ -4679,14 +4701,16 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           np.name = name; np.color = selectedColor; np.time = time;
           np.number = newNumber;
           np.categories = selectedCategories.slice();
+          if(frozen) np.frozen = true; else delete np.frozen;
           if(oldName !== name) migrateShiftName(oldName, name);
         } else {
           state.nameplates.push({
             id: uid(), name: name, color: selectedColor, locationId: null,
-            number: newNumber, time: time, categories: selectedCategories.slice()
+            number: newNumber, time: time, categories: selectedCategories.slice(), frozen: frozen || undefined
           });
         }
         scheduleSave(); renderAll(); closeModal();
+        if(shiftOverlay.classList.contains("open")) renderShiftSheet(true);
       }
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
       box.querySelector("#okBtn").addEventListener("click", submit);
@@ -4805,7 +4829,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
                 id: uid(), name: np.name, color: np.color || "white", locationId: null, slot: null,
                 number: (np.number === null || np.number === undefined) ? null : np.number,
                 time: (np.time === null || np.time === undefined) ? null : np.time,
-                categories: Array.isArray(np.categories) ? np.categories : []
+                categories: Array.isArray(np.categories) ? np.categories : [],
+                frozen: np.frozen === true || undefined
               };
             });
           } else {
@@ -5245,7 +5270,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           name: name,
           locationNames: state.locations.map(function(l){ return { name: l.name, type: l.type || "2行", leftSlot: !!l.leftSlot }; }),
           nameplates: state.nameplates.map(function(np){
-            return { name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories };
+            return { name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories, frozen: np.frozen === true || undefined };
           })
         });
         scheduleSave(); closeModal(); renderTemplateList();
@@ -5327,6 +5352,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     v = cleanDayMark(v);
     if(v) state.dayMarks[iso] = v; else delete state.dayMarks[iso];
   }
+  // 冷凍の属性がついた人は、出勤の日をすべて「冷」と表示する（Excelの記号より優先）
+  function isFrozenName(name){ return state.nameplates.some(function(n){ return n.name === name && n.frozen === true; }); }
+  function displayMarkOf(name, iso){ return isFrozenName(name) ? "冷" : markOf(name, iso); }
   function markOf(name, iso){
     var m = Object.prototype.hasOwnProperty.call(state.workMarks, name) ? state.workMarks[name] : null;
     return (m && m[iso]) || null;
@@ -5715,7 +5743,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
                '" data-i="' + i + '" data-d="' + isoD + '">' + (oh ? fmtHours(oh) : (kind || '')) + '</td>';
           continue;
         }
-        var mk = kind ? null : markOf(name, isoD);   // 出勤の記号（「冷」など）
+        var mk = kind ? null : displayMarkOf(name, isoD);   // 出勤の記号（「冷」など。冷凍の人は毎日「冷」）
         t += '<td class="shift-cell' + (kind ? ' on' + kindClass(kind) : '') + (mk ? ' work-mark' : '') + (isoD === boardIso ? ' board-col' : '') +
              '" data-i="' + i + '" data-d="' + isoD + '">' + (kind || escapeHtml(mk || '')) + '</td>';
       }
@@ -5779,7 +5807,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     for(var d = 1; d <= n; d++){
       var iso = isoOf(y, m, d), wd = (first + d - 1) % 7;
       if(wd === 0 && d !== 1) t += '</tr><tr>';
-      var kind = offKind(name, iso), mk = kind ? null : markOf(name, iso), oh = otHours(name, iso), loc = kind ? null : locOf(iso);
+      var kind = offKind(name, iso), mk = kind ? null : displayMarkOf(name, iso), oh = otHours(name, iso), loc = kind ? null : locOf(iso);
       if(kind){ offs++; if(kind !== "休") kinds[kind] = (kinds[kind] || 0) + 1; } else work++;
       ot += oh;
       var cls = 'shift-cell my-day' + (kind ? ' on' + kindClass(kind) : '') + (iso === boardIso ? ' board-col' : '') + (iso === today ? ' my-today' : '') + (mk ? ' work-mark' : '') +
@@ -5800,7 +5828,18 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<span>休み <b>' + offs + '</b>日' + (kindTxt ? '（うち' + kindTxt + '）' : '') + '</span>' +
       (ot ? '<span>残業 <b>' + fmtHours(ot) + '</b>h</span>' : '') +
     '</div>';
-    return h + sum + t + '<p class="shift-note">休みを入れていない日は「出勤」として表示します。配置場所は、その日のボードに置いたときだけ出ます。日付をタップすると、その日のボードを開きます。</p>';
+    // 自分が「冷」の日に、同じく「冷」で出勤する人
+    var reiRows = [];
+    for(var dd = 1; dd <= n; dd++){
+      var isoR = isoOf(y, m, dd);
+      if(offKind(name, isoR) || displayMarkOf(name, isoR) !== "冷") continue;
+      var mates = names.filter(function(nm){ return nm !== name && !offKind(nm, isoR) && displayMarkOf(nm, isoR) === "冷"; });
+      reiRows.push('<div class="rei-row' + (isoR === today ? ' is-today' : '') + '"><span class="rei-date">' + escapeHtml(mdOfISO(isoR)) +
+        '<small>（' + WEEKDAYS[new Date(y, m - 1, dd).getDay()] + '）</small></span>' +
+        '<span class="rei-names">' + (mates.length ? mates.map(function(nm){ return '<span class="rei-name">' + escapeHtml(nm) + '</span>'; }).join('') : '<span class="rei-none">ほかにいません</span>') + '</span></div>');
+    }
+    var rei = reiRows.length ? '<div class="rei-box"><div class="rei-title"><span class="rei-badge">冷</span>の日に一緒の人</div>' + reiRows.join('') + '</div>' : '';
+    return h + sum + t + rei + '<p class="shift-note">休みを入れていない日は「出勤」として表示します。配置場所は、その日のボードに置いたときだけ出ます。日付をタップすると、その日のボードを開きます。</p>';
   }
 
   function kindClass(kind){ return OFF_KIND_CLASS[kind] || ""; }
@@ -6660,6 +6699,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       res.cols.forEach(function(dc){ setDayMark(dc.iso, res.dayMarks[dc.iso] || null); });
     }
     var backupTimes = JSON.parse(JSON.stringify(state.workTimes)), backupAliases = JSON.parse(JSON.stringify(state.nameAliases));
+    var backupFrozen = state.nameplates.map(function(n){ return [n, n.frozen === true]; });
+    // 共有コードに冷凍の属性が入っていれば、その名前のネームプレートにそろえる
+    res.people.forEach(function(pp){
+      if(pp.frozen === undefined) return;
+      state.nameplates.forEach(function(n){ if(n.name === pp.name){ if(pp.frozen) n.frozen = true; else delete n.frozen; } });
+    });
     // Excelでの表記を覚えておく（残業の読み込みで、同じ名字の別人を当てないため）
     res.people.forEach(function(pp){ if(pp.labels && pp.labels.length === 1) state.nameAliases[pp.name] = pp.labels[0]; });
     res.people.forEach(function(pp){ if(pp.time) state.workTimes[pp.name] = { s: pp.time.s, e: pp.time.e }; });
@@ -6687,6 +6732,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       b2.querySelector("#doneBtn").addEventListener("click", closeModal);
       b2.querySelector("#undoBtn").addEventListener("click", function(){
         state.dayoffs = backup; state.dayPlacements = backupPl; state.workMarks = backupMarks; state.dayMarks = backupDayMarks; state.workTimes = backupTimes; state.nameAliases = backupAliases;
+        backupFrozen.forEach(function(b){ if(b[1]) b[0].frozen = true; else delete b[0].frozen; });
         loadPlacementsForDay(state.boardDate); renderDateBar();
         scheduleSave(); renderShiftSheet(true); renderAll(); closeModal();
       });
@@ -6751,7 +6797,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       var wt = workTimeOf(name);
       recs.push(name + FS + offs.map(function(o){ return o.n + (o.k === "休" ? "" : o.k); })
         .concat(marks.filter(function(o){ return o.t; }).map(function(o){ return o.n + "=" + o.t; })).join(",") +
-        (wt ? FS + wt.s + "-" + wt.e : ""));
+        FS + (wt ? wt.s + "-" + wt.e : "") +
+        FS + (isFrozenName(name) ? 1 : 0));   // 4つめの項目は冷凍の属性
     });
     var payload = startISO + FS + endISO + GS + recs.join(RS);
     // 日付の印は3つめの区切りに「日数 FS 文字」で入れる（古い版は2つめまでしか読まないので影響しない）
@@ -6810,7 +6857,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       });
       var tm = /^(\d{1,4})-(\d{1,4})$/.exec(f[2] || ""), time = null;
       if(tm){ var ts = +tm[1], te = +tm[2]; if(ts >= 0 && ts < 1440 && te > ts && te <= 2880) time = { s: ts, e: te }; }
-      return { name: f[0], offs: offs, marks: marks, time: time };
+      // 冷凍の属性: "1"/"0"。項目がない古いコードは undefined（受け取った側の属性を変えない）
+      var frozen = f[3] === "1" ? true : (f[3] === "0" ? false : undefined);
+      return { name: f[0], offs: offs, marks: marks, time: time, frozen: frozen };
     }).filter(function(pp){ return pp.name; });
     var dayMarks = Object.create(null), hasDm = sections.length > 2;
     if(hasDm && sections[2]){
@@ -7368,7 +7417,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           if(hit.fuzzy) fuzzy.push(pp.name + "→" + hit.name);
           offCount += Object.keys(pp.offs).length;
           if(isOT) Object.keys(pp.offs).forEach(function(k){ otTotal += pp.offs[k]; });
-          people.push({ name: hit.name, offs: pp.offs, marks: pp.marks, time: pp.time || null });
+          people.push({ name: hit.name, offs: pp.offs, marks: pp.marks, time: pp.time || null, frozen: pp.frozen });
         });
         if(!people.length){
           setPreview("ボードの名前と一致する人がいませんでした。" + (unmatched.length ? "<br>コードの名前: <b>" + expandableList(unmatched, 6) + "</b>" : ""), true);
@@ -7384,6 +7433,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         if(fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(fuzzy, 3);
         if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + expandableList(unmatched, 6);
         var wtN = people.filter(function(pp){ return pp.time; }).length;
+        var fzN = people.filter(function(pp){ return pp.frozen === true; }).length;
+        if(!isOT && fzN) html += '<br>冷凍の属性: <b>' + fzN + '人</b>';
         if(!isOT && wtN) html += '<br>勤務時間: <b>' + wtN + '人分</b>（その人の時間が置き換わります）';
         if(decoded.dayMarksReplace){
           var dmN = Object.keys(decoded.dayMarks).length;
@@ -7758,7 +7809,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       setOff(name, cell.dataset.d, on, "休");
       cell.classList.toggle("on", on);
       cell.classList.remove("k-yu", "k-shi", "k-ketsu", "k-ken", "k-ast", "work-mark");
-      cell.textContent = on ? "休" : "";
+      var mk2 = on ? null : displayMarkOf(name, cell.dataset.d);   // 休みを外した日は、冷凍の人なら「冷」に戻す
+      cell.textContent = on ? "休" : (mk2 || "");
+      if(mk2) cell.classList.add("work-mark");
       refreshShiftCounts();
       scheduleSave(); renderAll();
       return;
