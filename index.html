@@ -6206,24 +6206,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   //  4. 表の名前の先頭か末尾がボードの名前と一致（空白なしの「山田花子」など、2文字以上）
   // 名字と名前で別の人に当たったときは名前のほうを選ぶ（名字が同じ人を区別するため、名前で登録していることが多い）。
   // それ以外で候補が2人以上に分かれたら決めずに「照合できない」とする（取り違えを防ぐため）
-  // 読み込み用の名前照合。
-  // 残業は、Excelに名前がない人に別の行（同じ名字の別人や「所定時間」などの行）の値が入らないよう、
-  // 次のどれかのときだけ読み込む:
-  //   1. ボードの名前と完全に一致
-  //   2. シフト（休み）のExcelで覚えた、その人のExcelでの書き方と一致（ボード「佐藤」= Excel「佐藤 花子」）
-  //   3. ボードの名前が「山田(Y)」の形で、名字と頭文字が合う
-  function buildImportMatcher(isOT){
-    var base = buildNameMatcher();
-    if(!isOT) return base;
-    return function(sheetName){
-      var hit = base(sheetName);
-      if(!hit || !hit.fuzzy) return hit;
-      var known = state.nameAliases[hit.name];
-      if(known && nameKey(known) === nameKey(sheetName)) return hit;
-      if(!known && parsePlateName(hit.name)) return hit;
-      return null;
-    };
-  }
+  // 読み込み用の名前照合（休み・残業とも同じ照合を使う）
+  function buildImportMatcher(isOT){ return buildNameMatcher(); }
   function buildNameMatcher(){
     var byKey = Object.create(null), keys = [], parenList = [];
     state.nameplates.forEach(function(np){
@@ -6391,7 +6375,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       // 同じ人に複数の行が当たったとき（「予定」「実績」の2段や、同じ名字の別人など）は、
       // 後の行で前の行の休みを消さないよう、休みを合わせる
       var people = [], byName = Object.create(null), dupNames = [];
-      var unmatched = [], fuzzy = [], offCount = 0, firstDataRow = -1;
+      var unmatched = [], fuzzy = [], offCount = 0, firstDataRow = -1, constRows = [];
       var tokenHits = Object.create(null), otherMarks = Object.create(null), workHits = Object.create(null);
       for(var r3 = hdr + 1; r3 < rows.length; r3++){
         var row = rows[r3] || [], raw = row[nameCol];
@@ -6399,6 +6383,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         var label = String(raw).trim(), hit = match(raw);
         if(firstDataRow < 0) firstDataRow = r3;
         if(!hit){ if(unmatched.indexOf(label) === -1) unmatched.push(label); continue; }
+        // 残業: 近い名前で当たった行に、ほぼ毎日同じ時間（「所定 8:00」など）が並んでいるときは
+        // 残業の行ではなく、ボードのその人とも別の行とみなして読まない（Excelにいない人に毎日8時間が入るのを防ぐ）
+        if(opts.readValue && hit.fuzzy && looksLikeConstantRow(row, cols, opts.readValue)){
+          if(constRows.indexOf(label) === -1) constRows.push(label);
+          continue;
+        }
         var person = byName[hit.name];
         if(!person){
           person = byName[hit.name] = { name: hit.name, offs: Object.create(null), marks: Object.create(null), labels: [] };
@@ -6448,7 +6438,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           }
         });
       }
-      return { cols: cols, people: people, unmatched: unmatched, fuzzy: fuzzy, offCount: offCount,
+      return { cols: cols, people: people, unmatched: unmatched, fuzzy: fuzzy, offCount: offCount, constRows: constRows,
                hdr: hdr, nameCol: nameCol, firstDataRow: firstDataRow, sheetMonth: sheetMonth,
                tokenHits: tokenHits, otherMarks: otherMarks, workHits: workHits, dupNames: dupNames };
     }
@@ -6517,6 +6507,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // ---------- 残業の表を読む ----------
   // マスの値を時間にする。読めなければ null、0や「-」は 0。
   // 対応: 2 / 1.5 / 1:30 / 1時間30分 / 90分 / 1.5h / Excelの時刻（1日=1の小数。あとでまとめて判定）
+  // 行の値が、ほぼ毎日同じ時間か（10日以上値があり、9割以上が同じ値）
+  function looksLikeConstantRow(row, cols, readValue){
+    var vals = [];
+    cols.forEach(function(dc){ var v = readValue(row[dc.c]); if(v) vals.push(Math.round(v * 1000)); });
+    if(vals.length < 10) return false;
+    var cnt = Object.create(null), top = 0;
+    vals.forEach(function(v){ cnt[v] = (cnt[v] || 0) + 1; if(cnt[v] > top) top = cnt[v]; });
+    return top >= vals.length * 0.9;
+  }
   function readOvertimeCell(v){
     var t = normText(v).toLowerCase().replace(/[hｈ]$/, "");
     if(t === "" || t === "-" || t === "ー" || t === "―") return 0;
@@ -6646,7 +6645,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       cols: Object.keys(allIso).sort().map(function(iso){ return { iso: iso }; }),
       people: people, offCount: offCount, unmatched: unmatched, fuzzy: fuzzy, dupNames: dupNames,
       tokenHits: tokenHits, otherMarks: otherMarks, workHits: workHits,
-      multiNames: multiNames, conflicts: conflicts, multi: true, dayMarks: dayMarks, dayMarkRows: dayMarkRows, dayMarkCell: dayMarkCell
+      multiNames: multiNames, conflicts: conflicts, multi: true, dayMarks: dayMarks, dayMarkRows: dayMarkRows, dayMarkCell: dayMarkCell,
+      constRows: parts.reduce(function(a, pt){ (pt.res.constRows || []).forEach(function(l){ if(a.indexOf(l) === -1) a.push(l); }); return a; }, [])
     };
   }
 
@@ -7551,8 +7551,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
             (res.dayMarkRows && res.dayMarkRows.length && !res.swapped ? '・' + res.dayMarkRows.map(function(r){ return (res.dayMarkCell ? res.dayMarkCell + 'の行' : (r + 1) + '行目'); }).join('・') + 'から' : '') +
             '<br>この日付の範囲の印も置き換わります。';
         }
-        if(isOT && (res.unmatched || []).length){
-          html += '<br><span class="imp-note">残業は、ボードの名前と一致する人（シフトのExcelでの名前を含む）だけ読み込みます。</span>';
+        if(isOT && (res.constRows || []).length){
+          html += '<br>毎日同じ時間が入っていて残業ではなさそうなので、読み込まない行: ' + expandableList(res.constRows, 6);
         }
         html += '<br>読み込んだ人の、この日付の範囲の' + what + 'が置き換わります。';
         return html;
