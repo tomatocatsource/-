@@ -2885,6 +2885,20 @@ body[data-theme="apple"] .btn-ghost{
 #shiftSheet.table-fs .shift-fs-title{display:block;flex:none;font-size:15px;font-weight:700;margin:2px 2px 6px;}
 #shiftSheet.table-fs .shift-fs-row{flex:none;}
 #shiftSheet.table-fs .shift-scroll{flex:1;min-height:0;max-height:none;}
+/* ↓ PC（横幅700px以上）だけ。スマホはシート全体をスクロールする従来の表示のまま */
+@media (min-width: 700px){
+/* 表の下の端（左右のスクロールバー）がいつも画面内に見えるよう、シート全体ではなく表が縮んで収まるようにする */
+#shiftSheet:not(.table-fs){display:flex;flex-direction:column;}
+#shiftSheet:not(.table-fs) > .sheet-header{flex:none;}
+#shiftSheet:not(.table-fs) #shiftBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+#shiftSheet:not(.table-fs) #shiftBody > *{flex:none;}
+#shiftSheet:not(.table-fs) #shiftBody > .shift-fs-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+#shiftSheet:not(.table-fs) .shift-fs-wrap > *{flex:none;}
+#shiftSheet:not(.table-fs) .shift-fs-wrap > .shift-scroll{flex:0 1 auto;min-height:180px;}
+/* 表があるときは、表の高さの上限（60%）をなくし、画面に入るだけ大きく表示する（人数が少なければ表の分だけ）。PCでは横幅も広げる */
+#shiftSheet.has-table:not(.table-fs){max-width:min(1400px, 100%);}
+#shiftSheet.has-table:not(.table-fs) .shift-fs-wrap > .shift-scroll{flex:0 1 auto;max-height:none;}
+}
 .shift-range b{color:var(--ink);}
 .shift-table td.shift-cell.in-range{background:rgba(127,127,127,.12);}
 .shift-table td.shift-cell.locked{cursor:default;}
@@ -4132,8 +4146,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
 
   function renderDateBar(){
-    var iso = state.boardDate || todayISO(), dmk = dayMarkOf(iso);
-    document.getElementById("dateBar").innerHTML = escapeHtml(formatDateJP(iso)) + (dmk ? '<span class="date-dm">' + escapeHtml(dmk) + '</span>' : '');
+    document.getElementById("dateBar").textContent = formatDateJP(state.boardDate || todayISO());   // 日付の印はボードには出さない
   }
 
   // ---------- drag & drop (long press then move) ----------
@@ -5705,10 +5718,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(shiftPeople.length === 0){
       html += '<p class="confirm-msg">ネームプレートがありません。先に「＋」から追加してください。</p>';
       setShiftFs(false, true);
+      document.getElementById("shiftSheet").classList.remove("has-table");
       shiftBody.innerHTML = html;
       return;
     }
-    if(shiftMode === "me"){ setShiftFs(false, true); shiftBody.innerHTML = html + renderMyCalendarHtml(y, m, boardIso); return; }
+    if(shiftMode === "me"){ setShiftFs(false, true); document.getElementById("shiftSheet").classList.remove("has-table"); shiftBody.innerHTML = html + renderMyCalendarHtml(y, m, boardIso); return; }
 
     // 表は全画面にできるよう、見出し・案内・表をひとまとめにする
     var t = '<div class="shift-fs-wrap">' +
@@ -5756,6 +5770,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(hasDm) t = t.replace('<table class="shift-table">', '<table class="shift-table has-dm">');
     shiftBody.innerHTML = html + t;
     document.getElementById("shiftSheet").classList.toggle("table-fs", shiftFs);
+    document.getElementById("shiftSheet").classList.add("has-table");
     refreshShiftCounts();
     refreshShiftSelection();
 
@@ -6546,14 +6561,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // ---------- 残業の表を読む ----------
   // マスの値を時間にする。読めなければ null、0や「-」は 0。
   // 対応: 2 / 1.5 / 1:30 / 1時間30分 / 90分 / 1.5h / Excelの時刻（1日=1の小数。あとでまとめて判定）
-  // 行の値が、ほぼ毎日同じ時間か（10日以上値があり、9割以上が同じ値）
+  // 所定時間の行らしいか: 10日以上値があり、9割以上が同じ値で、その値が6時間以上（残業ではまずない長さ）。
+  // 毎日1時間ずつのような、本当に毎日同じ残業をしている人の行は対象にしない。
   function looksLikeConstantRow(row, cols, readValue){
     var vals = [];
     cols.forEach(function(dc){ var v = readValue(row[dc.c]); if(v) vals.push(Math.round(v * 1000)); });
     if(vals.length < 10) return false;
-    var cnt = Object.create(null), top = 0;
-    vals.forEach(function(v){ cnt[v] = (cnt[v] || 0) + 1; if(cnt[v] > top) top = cnt[v]; });
-    return top >= vals.length * 0.9;
+    var cnt = Object.create(null), top = 0, topV = 0;
+    vals.forEach(function(v){ cnt[v] = (cnt[v] || 0) + 1; if(cnt[v] > top){ top = cnt[v]; topV = v; } });
+    return top >= vals.length * 0.9 && topV >= 6000;
   }
   function readOvertimeCell(v){
     var t = normText(v).toLowerCase().replace(/[hｈ]$/, "");
@@ -7603,7 +7619,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
             '<br>この日付の範囲の印も置き換わります。';
         }
         if(isOT && (res.constRows || []).length){
-          html += '<br>毎日同じ時間が入っていて残業ではなさそうなので、読み込まない行: ' + expandableList(res.constRows, 6);
+          html += '<br>毎日6時間以上の同じ時間が入っていて所定時間の行と思われるので、読み込まない行: ' + expandableList(res.constRows, 6);
         }
         html += '<br>読み込んだ人の、この日付の範囲の' + what + 'が置き換わります。';
         return html;
