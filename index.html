@@ -46,11 +46,22 @@
   }
   .title-main{font-size:17px;font-weight:700;letter-spacing:-.01em;}
   .title-sub{font-size:12px;color:var(--ink-soft);margin-left:6px;}
+  .topbar{gap:8px;}
+  .title-wrap{flex:1;min-width:0;white-space:nowrap;}
+  .top-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
   .btn-ghost{
     background:transparent;border:1px solid var(--line);border-radius:8px;
     padding:7px 13px;font-size:13px;color:var(--ink);cursor:pointer;
   }
   .btn-ghost:active{background:var(--bg);}
+  #undoBtn:disabled{opacity:.3;cursor:default;}
+  .undo-toast{
+    position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));z-index:120;
+    transform:translateX(-50%) translateY(8px);opacity:0;pointer-events:none;
+    background:rgba(35,36,31,.92);color:#fff;font-size:13px;padding:8px 14px;border-radius:999px;
+    white-space:nowrap;transition:opacity .18s, transform .18s;
+  }
+  .undo-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .top-icon-btn{width:38px;height:38px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;border-radius:9px;}
 
   /* ---------- info bar (date + headcount, compact) ---------- */
@@ -3242,10 +3253,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <body>
 
   <header class="topbar">
-    <div>
-      <span class="title-main">配置ボード</span><span class="title-sub" id="templateNameLabel"></span>
+    <div class="title-wrap">
+      <span class="title-main">配置ボード</span>
     </div>
-    <div style="display:flex;gap:6px;align-items:center;"><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
+    <div class="top-actions"><button class="btn-ghost top-icon-btn" id="undoBtn" type="button" aria-label="元に戻す" title="元に戻す" disabled><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
   </header>
 
   <div class="save-warn" id="saveWarn" role="alert" hidden><span id="saveWarnText"></span><button type="button" id="saveWarnClose" aria-label="閉じる">×</button></div>
@@ -3289,10 +3300,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       </div>
 
       <!-- シフト表と同じ見た目（枠線の中にアイコン＋短い文字のボタン）にそろえる。よく使う操作を上に置く -->
+      <!-- 共有コードの受け取りはここ1か所。配置・テンプレート・シフト・残業のどのコードでも種類を見分けて読み込む -->
+      <div class="shift-tools" role="group" aria-label="共有コードの受け取り">
+        <button type="button" class="shift-tool" id="receiveAnyCodeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/><path d="M13 13h1.5M17 13v1.5M13 17h4"/></svg><span>コードを受取（QR・貼り付け）</span></button>
+      </div>
+
       <div class="menu-section-title sheet-section-title">ボード</div>
       <div class="shift-tools" role="group" aria-label="配置の共有">
         <button type="button" class="shift-tool" id="sharePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を送る</span></button>
-        <button type="button" class="shift-tool" id="receivePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を受取</span></button>
       </div>
       <div class="shift-tools menu-bar-gap" role="group" aria-label="ボードの操作">
         <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
@@ -3300,9 +3315,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
       <div class="sheet-divider menu-divider" role="separator"></div>
       <div class="menu-section-title sheet-section-title"><span>テンプレート</span><span class="menu-count" id="templateCount"></span></div>
-      <div class="shift-tools" role="group" aria-label="テンプレートの保存と受け取り">
+      <div class="shift-tools" role="group" aria-label="テンプレートの保存">
         <button type="button" class="shift-tool" id="saveTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>テンプレートとして保存</span></button>
-        <button type="button" class="shift-tool" id="importTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>コードを受取</span></button>
       </div>
       <div class="template-list" id="templateList"></div>
     </div>
@@ -3445,7 +3459,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   async function decodeTemplateCode(code){
     var trimmed = fixCodePrefix((code || "").trim());
     if(trimmed.indexOf(PLACEMENT_CODE_PREFIX) === 0){
-      throw new Error("これは配置の共有コードです。メニューの「配置を受取」から読み込んでください。");
+      throw new Error("これは配置の共有コードです。メニューの「コードを受取」から読み込んでください。");
     }
     if(trimmed.indexOf(TEMPLATE_CODE_PREFIX) !== 0){
       throw new Error("このコードは読み込めませんでした。コピーした共有コード全体を貼り付けてください。");
@@ -3522,8 +3536,71 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     }
   }
   var SAVE_FAIL_MESSAGE = "⚠ 保存できていません。保存領域がいっぱいか、保存が許可されていない可能性があります。このまま閉じると入力した内容が消えます。";
+  // ---------- 元に戻す ----------
+  // 保存のたびに、変更前の状態を控えておく。150ms 以内の連続した変更は1回分にまとまる。
+  // 見た目だけの設定（着せ替え・シフト絞り込み）は対象外で、戻しても今の設定のまま。
+  var UNDO_LIMIT = 30;
+  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true };
+  var undoStack = [];
+  var lastSnapshot = null;
+  function snapshotState(){
+    syncPlacementsToDay();
+    return JSON.stringify(state, function(k, v){ return (this === state && UNDO_SKIP_KEYS[k]) ? undefined : v; });
+  }
+  function recordHistory(){
+    if(!loaded || changedInOtherTab) return;
+    var now = snapshotState();
+    if(lastSnapshot !== null && now !== lastSnapshot){
+      undoStack.push(lastSnapshot);
+      if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+    }
+    lastSnapshot = now;
+    updateUndoButton();
+  }
+  function updateUndoButton(){
+    var btn = document.getElementById("undoBtn");
+    if(btn) btn.disabled = undoStack.length === 0 || changedInOtherTab;
+  }
+  var undoToastTimer = null;
+  function showUndoToast(text){
+    var el = document.getElementById("undoToast");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "undoToast"; el.className = "undo-toast";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(undoToastTimer);
+    undoToastTimer = setTimeout(function(){ el.classList.remove("show"); }, 1600);
+  }
+  function undoLast(){
+    if(!loaded || changedInOtherTab) return;
+    if(document.querySelector(".drag-ghost") || document.body.classList.contains("physics-active")) return;
+    // まだ控えていない直前の変更があれば、先に1回分として控える
+    clearTimeout(saveTimer);
+    recordHistory();
+    if(undoStack.length === 0){ updateUndoButton(); return; }
+    var prev = JSON.parse(undoStack.pop());
+    var dateBefore = state.boardDate;
+    var keep = {};
+    Object.keys(UNDO_SKIP_KEYS).forEach(function(k){ keep[k] = state[k]; });
+    Object.keys(state).forEach(function(k){ delete state[k]; });
+    Object.keys(prev).forEach(function(k){ state[k] = prev[k]; });
+    Object.keys(keep).forEach(function(k){ state[k] = keep[k]; });
+    var dateChanged = !!state.boardDate && state.boardDate !== dateBefore;
+    lastSnapshot = snapshotState();
+    updateTemplateLabel();
+    renderDateBar();
+    renderAll();
+    saveState();
+    updateUndoButton();
+    showUndoToast(dateChanged ? ("元に戻しました（" + formatDateJP(state.boardDate) + "）") : "元に戻しました");
+  }
   function saveState(){
     if(!loaded) return;
+    recordHistory();
     if(changedInOtherTab) return;   // ほかのタブの新しい内容を、この画面の古い内容で上書きしない
     if(saveBlocked){ setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。"); return; }
     syncPlacementsToDay();
@@ -3603,9 +3680,13 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function setBoardDate(iso){
     if(!iso) return;
     if(iso !== state.boardDate){
+      // 日付の切り替えは「元に戻す」の1回分に数えない。直前の変更だけ先に控えておく
+      clearTimeout(saveTimer);
+      recordHistory();
       syncPlacementsToDay();
       state.boardDate = iso;
       loadPlacementsForDay(iso);
+      if(loaded && !changedInOtherTab) lastSnapshot = snapshotState();
       scheduleSave();
     }
     renderDateBar(); renderAll();
@@ -3842,6 +3923,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     renderDateBar();
     renderAll();
     loaded = true;
+    lastSnapshot = snapshotState();   // 元に戻すの起点（開いた時点の状態）
     if(storageBroken) setSaveWarning(true, SAVE_FAIL_MESSAGE);
     else if(saveBlocked) setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。");
     if(loadProblem) showLoadProblem();
@@ -4141,7 +4223,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
 
   function updateTemplateLabel(){
+    // テンプレート名は上の行に出さない（使用中のテンプレートはメニューで確認する）
     var lbl = document.getElementById("templateNameLabel");
+    if(!lbl) return;
     lbl.textContent = state.currentTemplateName ? ("／ " + state.currentTemplateName) : "";
   }
 
@@ -4772,6 +4856,44 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
+  // テンプレートを今のボードに反映する。
+  // 名前が同じ配置場所・人は元のIDを引き継ぐので、表示中の日付も含めて配置はそのまま残る
+  function applyTemplate(tpl){
+    var hasNameplates = Array.isArray(tpl.nameplates) && tpl.nameplates.length > 0;
+    syncPlacementsToDay();   // 表示中の日付の配置を dayPlacements に書き出しておく
+    var oldLocations = state.locations, oldNameplates = state.nameplates;
+    state.locations = tpl.locationNames.map(function(item){
+      var name = (typeof item === "string") ? item : item.name;
+      var type = (typeof item === "string" || !item.type) ? "2行" : item.type;
+      var leftSlot = (typeof item === "string") ? false : !!item.leftSlot;
+      return { id: uid(), name: name, type: type, leftSlot: leftSlot };
+    });
+    if(hasNameplates){
+      state.nameplates = tpl.nameplates.map(function(np){
+        return {
+          id: uid(), name: np.name, color: np.color || "white", locationId: null, slot: null,
+          number: (np.number === null || np.number === undefined) ? null : np.number,
+          time: (np.time === null || np.time === undefined) ? null : np.time,
+          categories: Array.isArray(np.categories) ? np.categories : [],
+          frozen: np.frozen === true || undefined
+        };
+      });
+    }
+    // 名前が同じものは元のIDを引き継ぐ。IDが変わると、ほかの日付の配置が保存時にすべて消えてしまうため
+    reuseIdsByName(state.locations, oldLocations);
+    if(hasNameplates) reuseIdsByName(state.nameplates, oldNameplates);
+    // 表示中の日付の配置を、新しい配置場所・人に合わせて読み直す（なくなった場所・人の分だけ外れる）
+    loadPlacementsForDay(state.boardDate);
+    state.currentTemplateName = tpl.name;
+    updateTemplateLabel();
+    scheduleSave(); renderAll();
+  }
+
+  // テンプレートは1つだけ持つ。保存・受取のたびに前のものと置き換える
+  function replaceTemplate(tpl){
+    state.templates = [tpl];
+  }
+
   // メニューのボタン用アイコン（シフト表の SHIFT_TOOL_ICONS と同じ線の太さ・大きさ）
   var MENU_ICONS = {
     apply: '<path d="M20 6 9 17l-5-5"/>',
@@ -4825,38 +4947,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       applyBtn.addEventListener("click", function(){
         var hasNameplates = Array.isArray(tpl.nameplates) && tpl.nameplates.length > 0;
         var msg = hasNameplates
-          ? '「' + tpl.name + '」を適用します。現在の配置場所とネームプレートの一覧は、このテンプレートに保存された内容に置き換わります。ほかの日付の配置は、名前が同じ配置場所・人の分だけ残ります。よろしいですか？'
-          : '「' + tpl.name + '」を適用します。現在の配置場所は置き換わり、配置中のネームプレートは未配置に戻ります。ほかの日付の配置は、名前が同じ配置場所の分だけ残ります。よろしいですか？';
+          ? '「' + tpl.name + '」を適用します。現在の配置場所とネームプレートの一覧は、このテンプレートに保存された内容に置き換わります。配置は、名前が同じ配置場所・人の分だけ残ります。よろしいですか？'
+          : '「' + tpl.name + '」を適用します。現在の配置場所は置き換わります。配置は、名前が同じ配置場所の分だけ残ります。よろしいですか？';
         openConfirmModal(msg, function(){
-          syncPlacementsToDay();   // 表示中の日付の配置を dayPlacements に書き出しておく
-          var oldLocations = state.locations, oldNameplates = state.nameplates;
-          state.locations = tpl.locationNames.map(function(item){
-            var name = (typeof item === "string") ? item : item.name;
-            var type = (typeof item === "string" || !item.type) ? "2行" : item.type;
-            var leftSlot = (typeof item === "string") ? false : !!item.leftSlot;
-            return { id: uid(), name: name, type: type, leftSlot: leftSlot };
-          });
-          if(hasNameplates){
-            state.nameplates = tpl.nameplates.map(function(np){
-              return {
-                id: uid(), name: np.name, color: np.color || "white", locationId: null, slot: null,
-                number: (np.number === null || np.number === undefined) ? null : np.number,
-                time: (np.time === null || np.time === undefined) ? null : np.time,
-                categories: Array.isArray(np.categories) ? np.categories : [],
-                frozen: np.frozen === true || undefined
-              };
-            });
-          } else {
-            state.nameplates.forEach(function(n){ n.locationId = null; n.slot = null; });
-          }
-          // 名前が同じものは元のIDを引き継ぐ。IDが変わると、ほかの日付の配置が保存時にすべて消えてしまうため
-          reuseIdsByName(state.locations, oldLocations);
-          if(hasNameplates) reuseIdsByName(state.nameplates, oldNameplates);
-          // 表示中の日付は、これまでどおり全員未配置から始める
-          delete state.dayPlacements[state.boardDate];
-          state.currentTemplateName = tpl.name;
-          updateTemplateLabel();
-          scheduleSave(); renderAll(); closeTemplateSheet();
+          applyTemplate(tpl);
+          closeTemplateSheet();
         });
       });
 
@@ -4996,10 +5091,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   async function decodePlacementCode(code){
     var trimmed = fixCodePrefix((code || "").replace(/\s+/g, ""));   // チャットで折り返されていても読めるように
     if(trimmed.indexOf(TEMPLATE_CODE_PREFIX) === 0 || trimmed.indexOf("P4:") === 0){
-      throw new Error("これはテンプレートの共有コードです。メニューのテンプレートにある「コードを受取」から読み込んでください。");
+      throw new Error("これはテンプレートの共有コードです。メニューの「コードを受取」から読み込んでください。");
     }
     if(trimmed.indexOf(SHIFT_CODE_PREFIX) === 0 || trimmed.indexOf(OT_CODE_PREFIX) === 0){
-      throw new Error("これはシフト表の共有コードです。シフト表の「コードを受取」から読み込んでください。");
+      throw new Error("これはシフト表の共有コードです。メニューの「コードを受取」から読み込んでください。");
     }
     if(trimmed.indexOf(PLACEMENT_CODE_PREFIX) !== 0){
       throw new Error("配置の共有コード（P7: で始まる）を全体貼り付けてください。");
@@ -5096,7 +5191,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(box){
       box.innerHTML =
         '<div class="sheet-header"><span>配置の共有コードを作る</span></div>' +
-        '<p class="confirm-msg">' + formatDateJP(iso) + 'の配置（どの配置場所に誰がいるか）をコードにします。相手が下のQRを読み取るか、「メニュー」→「配置を受取」にコードを貼り付けると取り込めます。</p>' +
+        '<p class="confirm-msg">' + formatDateJP(iso) + 'の配置（どの配置場所に誰がいるか）をコードにします。相手が「メニュー」→「コードを受取」で下のQRを読み取るか、コードを貼り付けると取り込めます。</p>' +
         '<label class="lbl-tight">共有コード</label>' +
         '<textarea id="placeShareArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" class="ta-sm" readonly rows="2"></textarea>' +
         '<div class="imp-hint" id="placeShareInfo">コードを作っています…</div>' +
@@ -5138,21 +5233,19 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
-  function openReceivePlacementModal(){
+  function openReceivePlacementModal(initialText){
     var matched = null, token = 0;
     openModal(function(box){
       box.innerHTML =
         '<div class="sheet-header"><span>共有コードから配置を読み込む</span></div>' +
         '<label>共有コードを貼り付け</label>' +
         '<textarea id="placeCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="4" placeholder="P7: で始まるコード"></textarea>' +
-        '<div id="placeScanQRRow"></div>' +
         '<div class="imp-preview" id="placeCodePreview">配置の共有コードを貼り付けてください。</div>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
           '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
         '</div>';
       var area = box.querySelector("#placeCodeArea"), pv = box.querySelector("#placeCodePreview"), okBtn = box.querySelector("#okBtn");
-      addQRScanButton(box.querySelector("#placeScanQRRow"), function(text){ area.value = text; area.dispatchEvent(new Event("input")); });
       function setPreview(html, isErr){ pv.innerHTML = html; pv.classList.toggle("err", !!isErr); }
       area.addEventListener("input", async function(){
         var my = ++token;
@@ -5181,6 +5274,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       });
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
       okBtn.addEventListener("click", function(){ if(matched) applyPlacementImport(matched); });
+      if(initialText){ area.value = initialText; area.dispatchEvent(new Event("input")); }
     });
   }
 
@@ -5189,7 +5283,6 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(!placed){ openNoticeModal("お知らせ", formatDateJP(state.boardDate) + "は、まだ誰も配置されていません。"); return; }
     openSharePlacementModal();
   });
-  document.getElementById("receivePlacementBtn").addEventListener("click", openReceivePlacementModal);
 
   async function openShareTemplateModal(tpl){
     var code;
@@ -5202,7 +5295,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(box){
       box.innerHTML =
         '<div class="sheet-header"><span>「' + escapeHtml(tpl.name) + '」を共有</span></div>' +
-        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「メニュー」→ テンプレートの「コードを受取」に貼り付けると読み込めます。</p>' +
+        '<p class="confirm-msg">このコードを相手に送ってください。相手はこのツールの「メニュー」→「コードを受取」で、QRを読み取るかコードを貼り付けると読み込めます。</p>' +
         '<label>共有コード</label>' +
         '<textarea id="shareCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" readonly rows="5"></textarea>' +
         '<div class="qr-share-wrap"><div class="qr-share-box" id="shareQRBox" hidden></div><p class="qr-share-note">相手がこの画面をカメラで読み取ると取り込めます</p></div>' +
@@ -5224,30 +5317,30 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
-  function openImportTemplateModal(){
+  function openImportTemplateModal(initialText){
     openModal(function(box){
       box.innerHTML =
-        '<div class="sheet-header"><span>共有コードからテンプレートを追加</span></div>' +
+        '<div class="sheet-header"><span>共有コードからテンプレートを受取</span></div>' +
+        '<p class="confirm-msg">受け取ったテンプレートは、いまのテンプレートと置き換えてすぐに適用します。配置は、名前が同じ配置場所・人の分だけ残ります。</p>' +
         '<label>共有コードを貼り付け</label>' +
         '<textarea id="importCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="P3: で始まるコード"></textarea>' +
-        '<div id="importQRRow"></div>' +
         '<p class="confirm-msg" id="importError" style="display:none;color:var(--danger);"></p>' +
         '<div class="modal-actions">' +
         '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
-        '<button class="btn-primary" id="okBtn" type="button">追加</button>' +
+        '<button class="btn-primary" id="okBtn" type="button">受取して適用</button>' +
         '</div>';
       var area = box.querySelector("#importCodeArea");
       var errorEl = box.querySelector("#importError");
-      addQRScanButton(box.querySelector("#importQRRow"), function(text){ area.value = text; });
-      // 開いた直後にキーボードが出てQR読み取りボタンが隠れないよう、自動でフォーカスしない
+      if(initialText) area.value = initialText;
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
       box.querySelector("#okBtn").addEventListener("click", async function(){
         try{
           var payload = await decodeTemplateCode(area.value);
-          state.templates.push({ id: uid(), name: payload.name, locationNames: payload.locationNames, nameplates: payload.nameplates || [] });
-          scheduleSave();
+          var tpl = { id: uid(), name: payload.name, locationNames: payload.locationNames, nameplates: payload.nameplates || [] };
+          replaceTemplate(tpl);
+          applyTemplate(tpl);
           closeModal();
-          renderTemplateList();
+          closeTemplateSheet();
         }catch(err){
           errorEl.textContent = err.message || "読み込めませんでした。";
           errorEl.style.display = "block";
@@ -5256,7 +5349,6 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
-  document.getElementById("importTemplateBtn").addEventListener("click", openImportTemplateModal);
   document.getElementById("saveTemplateBtn").addEventListener("click", function(){
     if(state.locations.length === 0){
       openNoticeModal("お知らせ", "配置場所がありません。先に配置場所を追加してください。");
@@ -5265,7 +5357,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     openModal(function(box){
       box.innerHTML =
         '<div class="sheet-header"><span>テンプレートとして保存</span></div>' +
-        '<p class="confirm-msg">配置場所とネームプレートの一覧を保存します。誰をどこに配置したかは保存されません。</p>' +
+        '<p class="confirm-msg">いまの配置場所とネームプレートの一覧で、テンプレートを上書き保存します。誰をどこに配置したかは保存されません。</p>' +
         '<label>テンプレート名</label>' +
         '<input type="text" id="tplNameInput" placeholder="例：平日レイアウト" maxlength="20">' +
         '<div class="modal-actions">' +
@@ -5273,12 +5365,13 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '<button class="btn-primary" id="okBtn" type="button">保存</button>' +
         '</div>';
       var input = box.querySelector("#tplNameInput");
+      input.value = state.currentTemplateName || (state.templates[0] && state.templates[0].name) || "";
       setTimeout(function(){ input.focus(); }, 50);
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
       function submit(){
         var name = input.value.trim();
         if(!name){ input.focus(); return; }
-        state.templates.push({
+        replaceTemplate({
           id: uid(),
           name: name,
           locationNames: state.locations.map(function(l){ return { name: l.name, type: l.type || "2行", leftSlot: !!l.leftSlot }; }),
@@ -5286,6 +5379,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
             return { name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories, frozen: np.frozen === true || undefined };
           })
         });
+        state.currentTemplateName = name;   // いまのボードの内容そのものなので、そのまま使用中にする
+        updateTemplateLabel();
         scheduleSave(); closeModal(); renderTemplateList();
       }
       box.querySelector("#okBtn").addEventListener("click", submit);
@@ -6834,7 +6929,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       throw new Error("これはテンプレート／配置のコードです。シフトの共有コード（P5: で始まる）を貼り付けてください。");
     }
     if(trimmed.indexOf("P6:") === 0){
-      throw new Error("これは残業の共有コードです。「残業」に切り替えてから読み込んでください。");
+      throw new Error("これは残業の共有コードです。メニューの「コードを受取」から読み込むと、自動で残業として読み込めます。");
     }
     if(trimmed.indexOf(SHIFT_CODE_PREFIX) !== 0){
       throw new Error("シフトの共有コード（P5: で始まる）を全体貼り付けてください。");
@@ -6929,7 +7024,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   async function decodeOvertimeCode(code){
     var trimmed = fixCodePrefix((code || "").replace(/\s+/g, ""));
     if(trimmed.indexOf(SHIFT_CODE_PREFIX) === 0){
-      throw new Error("これはシフト（休み）の共有コードです。「シフト」に切り替えてから読み込んでください。");
+      throw new Error("これはシフト（休み）の共有コードです。メニューの「コードを受取」から読み込むと、自動でシフトとして読み込めます。");
     }
     if(trimmed.indexOf("P3:") === 0 || trimmed.indexOf("P4:") === 0 || trimmed.indexOf(PLACEMENT_CODE_PREFIX) === 0){
       throw new Error("これはテンプレート／配置のコードです。残業の共有コード（P6: で始まる）を貼り付けてください。");
@@ -7327,6 +7422,59 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
 
 
+  // ---------- 共有コードの受け取り（1か所にまとめたもの） ----------
+  // 先頭の記号でコードの種類を見分け、それぞれの読み込み画面（中身の確認つき）に渡す
+  function detectCodeKind(text){
+    var t = fixCodePrefix((text || "").replace(/\s+/g, ""));
+    if(t.indexOf(PLACEMENT_CODE_PREFIX) === 0) return "placement";
+    if(t.indexOf(TEMPLATE_CODE_PREFIX) === 0 || t.indexOf("P4:") === 0) return "template";
+    if(t.indexOf(SHIFT_CODE_PREFIX) === 0) return "shift";
+    if(t.indexOf(OT_CODE_PREFIX) === 0) return "ot";
+    return null;
+  }
+  function routeReceivedCode(text, kind){
+    if(kind === "placement"){ openReceivePlacementModal(text); return; }
+    if(kind === "template"){ openImportTemplateModal(text); return; }
+    // シフト表の表示も、受け取ったコードの種類（休み／残業）に合わせておく
+    var mode = kind === "ot" ? "ot" : "off";
+    if(shiftMode !== mode){
+      shiftMode = mode;
+      if(document.getElementById("shiftOverlay").classList.contains("open")) renderShiftSheet(true);
+    }
+    openShiftReceiveModal(mode, text);
+  }
+  function openReceiveAnyCodeModal(){
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>共有コードを受け取る</span></div>' +
+        '<p class="confirm-msg">配置・テンプレート・シフト（休み）・残業の、どのコードでも読み取れます。種類は自動で見分けます。</p>' +
+        '<div id="anyCodeQRRow"></div>' +
+        '<label>またはコードを貼り付け</label>' +
+        '<textarea id="anyCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="4" placeholder="P3:〜P7: で始まるコード"></textarea>' +
+        '<p class="confirm-msg" id="anyCodeError" style="display:none;color:var(--danger);"></p>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
+        '</div>';
+      var area = box.querySelector("#anyCodeArea");
+      var errorEl = box.querySelector("#anyCodeError");
+      function handle(text, fromQR){
+        var kind = detectCodeKind(text);
+        if(kind){ routeReceivedCode(text, kind); return; }
+        var t = (text || "").trim();
+        if(!fromQR && t.length < 3){ errorEl.style.display = "none"; return; }
+        errorEl.textContent = fromQR
+          ? "このQRコードは、このツールの共有コードではありませんでした。"
+          : "このツールの共有コードではないようです。コピーしたコード全体（P3:〜P7: で始まる）を貼り付けてください。";
+        errorEl.style.display = "block";
+      }
+      // 開いた直後にキーボードが出てQR読み取りボタンが隠れないよう、自動でフォーカスしない
+      addQRScanButton(box.querySelector("#anyCodeQRRow"), function(text){ area.value = text; handle(text, true); });
+      area.addEventListener("input", function(){ handle(area.value, false); });
+      box.querySelector("#cancelBtn").addEventListener("click", closeModal);
+    });
+  }
+  document.getElementById("receiveAnyCodeBtn").addEventListener("click", openReceiveAnyCodeModal);
+
   // mode: "off"（シフトの休み・既定）/ "ot"（残業）
   function openShiftShareModal(mode){
     var isOT = mode === "ot", what = isOT ? "残業" : "休み";
@@ -7400,7 +7548,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
-  function openShiftReceiveModal(mode){
+  function openShiftReceiveModal(mode, initialText){
     var isOT = mode === "ot", what = isOT ? "残業" : "休み", kindName = isOT ? "残業" : "シフト";
     var decoded = null, token = 0;
     openModal(function(box){
@@ -7408,14 +7556,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '<div class="sheet-header"><span>共有コードから' + what + 'を読み込む</span></div>' +
         '<label>共有コードを貼り付け</label>' +
         '<textarea id="shiftCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="' + (isOT ? 'P6' : 'P5') + ': で始まるコード"></textarea>' +
-        '<div id="shiftScanQRRow"></div>' +
         '<div class="imp-preview" id="shiftCodePreview">' + kindName + 'の共有コードを貼り付けてください。</div>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
           '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
         '</div>';
       var area = box.querySelector("#shiftCodeArea"), pv = box.querySelector("#shiftCodePreview"), okBtn = box.querySelector("#okBtn");
-      addQRScanButton(box.querySelector("#shiftScanQRRow"), function(text){ area.value = text; area.dispatchEvent(new Event("input")); });
       function setPreview(html, isErr){ pv.innerHTML = html; pv.classList.toggle("err", !!isErr); }
 
       area.addEventListener("input", async function(){
@@ -7461,7 +7607,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       });
       box.querySelector("#cancelBtn").addEventListener("click", closeModal);
       okBtn.addEventListener("click", function(){ if(decoded){ if(isOT) applyOvertimeImport(decoded); else applyShiftImport(decoded); } });
-      // 開いた直後にキーボードが出てQR読み取りボタンが隠れないよう、自動でフォーカスしない
+      if(initialText){ area.value = initialText; area.dispatchEvent(new Event("input")); }
     });
   }
 
@@ -7808,7 +7954,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(t.closest("#shiftOtImportBtn")){ openShiftImportModal("ot"); return; }
     if(t.closest("#otAlertSettingBtn")){ openOvertimeAlertSettings(); return; }
     if(t.closest("#shiftShareBtn")){ openShiftShareModal(shiftMode); return; }
-    if(t.closest("#shiftReceiveBtn")){ openShiftReceiveModal(shiftMode); return; }
+    if(t.closest("#shiftReceiveBtn")){ openReceiveAnyCodeModal(); return; }
     var myDay = t.closest(".my-cal td.my-day");
     if(myDay){ setBoardDate(myDay.dataset.d); closeShiftSheet(); return; }   // 個人カレンダー：その日のボードへ
     if(t.closest(".my-cal")) return;
@@ -8168,6 +8314,17 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       navigator.serviceWorker.register("sw.js").catch(function(){});
     });
   }
+  document.getElementById("undoBtn").addEventListener("click", undoLast);
+  // パソコンでは Ctrl+Z（Mac は ⌘Z）でも戻せる。文字入力中や画面を開いているときは、入力欄の取り消しを優先する
+  document.addEventListener("keydown", function(e){
+    if(!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+    if(e.key !== "z" && e.key !== "Z") return;
+    var t = e.target;
+    if(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    if(document.querySelector(".overlay.open")) return;
+    e.preventDefault();
+    undoLast();
+  });
   document.getElementById("saveWarnClose").addEventListener("click", function(){
     document.getElementById("saveWarn").hidden = true; saveWarnDismissed = true;
   });
@@ -8203,6 +8360,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(!loaded || changedInOtherTab) return;
     changedInOtherTab = true;
     clearTimeout(saveTimer);
+    updateUndoButton();
     // 見えていない画面は、そのまま読み直せばよい
     if(document.visibilityState === "hidden"){ reloadFromStorage(); return; }
     setSaveWarning(true, "⚠ ほかの画面で内容が変更されました。この画面での変更は保存されません。読み直してください。");
