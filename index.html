@@ -155,6 +155,7 @@
     content:"";position:absolute;inset:-6px;
   }
   .nameplate-chip:active{transform:scale(.94);}
+  body.chip-holding, body.chip-holding *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   .nameplate-chip.plate-red{border-color:var(--plate-red);}
   .nameplate-chip.plate-blue{border-color:var(--plate-blue);}
   .nameplate-chip.plate-white{border-color:var(--ink);}
@@ -2990,6 +2991,8 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .shift-tools.menu-bar-gap{margin-top:8px;}
 #templateSheet .menu-divider{margin:20px 0 0;}
 #templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
+.menu-hint{margin:6px 2px 0;font-size:12px;line-height:1.6;color:var(--ink-soft);}
+#templateSheet .menu-empty + .shift-tools{margin-top:8px;}
 #templateSheet .shift-tools + .template-list{margin-top:10px;}
 .menu-empty{margin:0;padding:14px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13px;line-height:1.7;color:var(--ink-soft);}
 /* ---- 自分のカレンダー（シフト表の「自分」） ---- */
@@ -3299,26 +3302,24 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         <button class="icon-btn" id="closeTemplateSheetBtn" type="button">×</button>
       </div>
 
-      <!-- シフト表と同じ見た目（枠線の中にアイコン＋短い文字のボタン）にそろえる。よく使う操作を上に置く -->
-      <!-- 共有コードの受け取りはここ1か所。配置・テンプレート・シフト・残業のどのコードでも種類を見分けて読み込む -->
-      <div class="shift-tools" role="group" aria-label="共有コードの受け取り">
-        <button type="button" class="shift-tool" id="receiveAnyCodeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/><path d="M13 13h1.5M17 13v1.5M13 17h4"/></svg><span>コードを受取（QR・貼り付け）</span></button>
-      </div>
-
-      <div class="menu-section-title sheet-section-title">ボード</div>
-      <div class="shift-tools" role="group" aria-label="配置の共有">
+      <!-- 用途ごとに「共有」「テンプレート」「ボード」の3つにまとめる。シフト表と同じボタンの見た目を使う -->
+      <div class="menu-section-title sheet-section-title">共有</div>
+      <div class="shift-tools" role="group" aria-label="共有コード">
+        <button type="button" class="shift-tool" id="receiveAnyCodeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/><path d="M13 13h1.5M17 13v1.5M13 17h4"/></svg><span>コードを受取</span></button>
         <button type="button" class="shift-tool" id="sharePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を送る</span></button>
       </div>
-      <div class="shift-tools menu-bar-gap" role="group" aria-label="ボードの操作">
-        <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
-      </div>
+      <p class="menu-hint">QRでも貼り付けでも、どの種類のコードも読めます。</p>
 
       <div class="sheet-divider menu-divider" role="separator"></div>
-      <div class="menu-section-title sheet-section-title"><span>テンプレート</span><span class="menu-count" id="templateCount"></span></div>
-      <div class="shift-tools" role="group" aria-label="テンプレートの保存">
-        <button type="button" class="shift-tool" id="saveTemplateBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>テンプレートとして保存</span></button>
-      </div>
+      <div class="menu-section-title sheet-section-title">テンプレート</div>
       <div class="template-list" id="templateList"></div>
+
+      <div class="sheet-divider menu-divider" role="separator"></div>
+      <div class="menu-section-title sheet-section-title">ボード</div>
+      <div class="shift-tools" role="group" aria-label="ボードの操作">
+        <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
+      </div>
+      <p class="menu-hint">表示中の日付の全員を未配置に戻します。</p>
     </div>
   </div>
 
@@ -4277,6 +4278,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
 
   function makeDraggable(chipEl, nameplateId){
+    // iPhone(Safari)対策：指で押している間は、ブラウザ側の画面スクロールや文字選択に操作を取られないようにする。
+    // （touch-action だけだと、iPhoneでは途中でスクロールに取られて、ドラッグが途切れることがある）
+    chipEl.addEventListener("touchmove", function(ev){
+      if(chipEl._holding && ev.cancelable) ev.preventDefault();
+    }, { passive: false });
+    chipEl.addEventListener("contextmenu", function(ev){ ev.preventDefault(); });
     chipEl.addEventListener("pointerdown", function(e){
       if(e.pointerType === "mouse" && e.button !== 0) return;
 
@@ -4299,13 +4306,16 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       };
 
       // マウスでは長押しを待たず、押したまま少し動かした時点でつかむ（PCではこのほうが自然）。
-      // 指では画面のスクロールと区別するため、これまで通り少し長押ししてからつかむ。
+      // 指では、長押ししてからつかむ。ただし、動かした向きでスクロールではないとわかるとき
+      // （縦に動かしたとき、またはスクロールできない場所のとき）は、長押しを待たずにすぐつかむ。
       var isMouse = e.pointerType === "mouse";
       if(isMouse){
         e.preventDefault();   // 文字の選択や画像のドラッグが始まらないように（クリックは発生する）
       } else {
         chipEl.classList.add("chip-pressing");
-        ctx.timer = setTimeout(function(){ beginDrag(ctx, ctx.lastX, ctx.lastY); }, 220);
+        chipEl._holding = true;
+        document.body.classList.add("chip-holding");
+        ctx.timer = setTimeout(function(){ beginDrag(ctx, ctx.lastX, ctx.lastY); }, 160);
       }
 
       function onMove(ev){
@@ -4332,9 +4342,26 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 
         if(!ctx.dragging){
           var dx = ev.clientX - ctx.startX, dy = ev.clientY - ctx.startY;
+          var adx = Math.abs(dx), ady = Math.abs(dy);
+          // ネームプレートの置き場所（未配置の欄・配置場所の行）は横にしかスクロールしない。
+          // 縦に動かしたとき、またはそもそも横にスクロールできないときは、スクロールではなく
+          // 「動かしたい」という操作なので、長押しを待たずにすぐつかむ（iPhoneでも1回目のドラッグで動く）。
+          if(adx > 8 || ady > 8){
+            var scEl = findScrollAncestor(chipEl);
+            var canScrollX = !!scEl && scEl.scrollWidth > scEl.clientWidth + 1;
+            var grabNow = (ady > 10 && ady > adx * 1.2) || (!canScrollX && (adx > 10 || ady > 10));
+            if(grabNow){
+              clearTimeout(ctx.timer);
+              chipEl.classList.remove("chip-pressing");
+              beginDrag(ctx, ev.clientX, ev.clientY);
+              ev.preventDefault();
+              updateDropTarget(ctx, ev.clientX, ev.clientY);
+              return;
+            }
+          }
           // A small finger wobble is still a tap. Only turn it into scrolling/dragging
           // after a clearly intentional movement.
-          if(Math.abs(dx) > 28 || Math.abs(dy) > 28){
+          if(adx > 28 || ady > 28){
             clearTimeout(ctx.timer);
             chipEl.classList.remove("chip-pressing");
             var scrollEl = findScrollAncestor(chipEl);
@@ -4402,6 +4429,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       }
 
       function cleanup(){
+        chipEl._holding = false;
+        document.body.classList.remove("chip-holding");
         document.body.classList.remove("mouse-dragging");
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
@@ -4903,84 +4932,62 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function menuIcon(name){
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + MENU_ICONS[name] + '</svg>';
   }
+  // テンプレートは1つだけなので、カード1枚に「上書き保存」「コードを送る」「削除」をまとめる
+  var SAVE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>';
+  function menuToolBtn(iconHtml, label, extraClass, onClick){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "shift-tool" + (extraClass ? " " + extraClass : "");
+    b.innerHTML = iconHtml + "<span>" + label + "</span>";
+    b.addEventListener("click", onClick);
+    return b;
+  }
   function renderTemplateList(){
     var list = document.getElementById("templateList");
-    var countEl = document.getElementById("templateCount");
     list.innerHTML = "";
-    countEl.textContent = state.templates.length ? state.templates.length + "件" : "";
-    if(state.templates.length === 0){
+    var tpl = state.templates[0];
+    if(!tpl){
       var p = document.createElement("p");
       p.className = "menu-empty";
-      p.textContent = "保存したテンプレートはまだありません。「テンプレートとして保存」で、いまの配置場所とネームプレートの一覧を保存できます。";
+      p.textContent = "まだ保存していません。いまの配置場所とネームプレートの一覧を保存しておくと、人に送ったり、別の端末で使ったりできます。";
       list.appendChild(p);
+      var group = document.createElement("div");
+      group.className = "shift-tools";
+      group.setAttribute("role", "group");
+      group.appendChild(menuToolBtn(SAVE_ICON, "テンプレートとして保存", "", openSaveTemplateModal));
+      list.appendChild(group);
       return;
     }
-    state.templates.forEach(function(tpl){
-      // 1件ずつ枠で囲み、下にシフト表と同じ形のボタンバーを付ける
-      var inUse = state.currentTemplateName === tpl.name;
-      var row = document.createElement("div");
-      row.className = "shift-toggle-row menu-card" + (inUse ? " in-use" : "");
-      var head = document.createElement("div");
-      head.className = "menu-card-head";
-      var name = document.createElement("div");
-      name.className = "menu-card-name";
-      name.textContent = tpl.name;
-      var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
-      var meta = document.createElement("div");
-      meta.className = "menu-card-meta";
-      meta.textContent = "配置場所 " + tpl.locationNames.length + "箇所・ネームプレート " + npCount + "人";
-      head.appendChild(name);
-      if(inUse){
-        var badge = document.createElement("span");
-        badge.className = "menu-badge";
-        badge.textContent = "使用中";
-        name.appendChild(badge);
-      }
-      head.appendChild(meta);
-      var actions = document.createElement("div");
-      actions.className = "menu-card-actions";
-
-      var applyBtn = document.createElement("button");
-      applyBtn.type = "button";
-      applyBtn.className = "shift-tool";
-      applyBtn.innerHTML = menuIcon("apply") + "<span>適用</span>";
-      applyBtn.addEventListener("click", function(){
-        var hasNameplates = Array.isArray(tpl.nameplates) && tpl.nameplates.length > 0;
-        var msg = hasNameplates
-          ? '「' + tpl.name + '」を適用します。現在の配置場所とネームプレートの一覧は、このテンプレートに保存された内容に置き換わります。配置は、名前が同じ配置場所・人の分だけ残ります。よろしいですか？'
-          : '「' + tpl.name + '」を適用します。現在の配置場所は置き換わります。配置は、名前が同じ配置場所の分だけ残ります。よろしいですか？';
-        openConfirmModal(msg, function(){
-          applyTemplate(tpl);
-          closeTemplateSheet();
-        });
+    var row = document.createElement("div");
+    row.className = "shift-toggle-row menu-card";
+    var head = document.createElement("div");
+    head.className = "menu-card-head";
+    var name = document.createElement("div");
+    name.className = "menu-card-name";
+    name.textContent = tpl.name;
+    var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
+    var meta = document.createElement("div");
+    meta.className = "menu-card-meta";
+    meta.textContent = "配置場所 " + tpl.locationNames.length + "か所・ネームプレート " + npCount + "人";
+    head.appendChild(name);
+    head.appendChild(meta);
+    var actions = document.createElement("div");
+    actions.className = "menu-card-actions";
+    actions.appendChild(menuToolBtn(SAVE_ICON, "上書き保存", "", openSaveTemplateModal));
+    actions.appendChild(menuToolBtn(menuIcon("send"), "コードを送る", "", function(){ openShareTemplateModal(tpl); }));
+    actions.appendChild(menuToolBtn(menuIcon("trash"), "削除", "menu-danger", function(){
+      openConfirmModal('テンプレート「' + tpl.name + '」を削除しますか？', function(){
+        state.templates = [];
+        scheduleSave(); renderTemplateList();
       });
-
-      var shareBtn = document.createElement("button");
-      shareBtn.type = "button";
-      shareBtn.className = "shift-tool";
-      shareBtn.innerHTML = menuIcon("send") + "<span>コードを送る</span>";
-      shareBtn.addEventListener("click", function(){
-        openShareTemplateModal(tpl);
-      });
-
-      var delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "shift-tool menu-danger";
-      delBtn.innerHTML = menuIcon("trash") + "<span>削除</span>";
-      delBtn.addEventListener("click", function(){
-        openConfirmModal('テンプレート「' + tpl.name + '」を削除しますか？', function(){
-          state.templates = state.templates.filter(function(t){ return t.id !== tpl.id; });
-          scheduleSave(); renderTemplateList();
-        });
-      });
-
-      actions.appendChild(applyBtn);
-      actions.appendChild(shareBtn);
-      actions.appendChild(delBtn);
-      row.appendChild(head);
-      row.appendChild(actions);
-      list.appendChild(row);
-    });
+    }));
+    row.appendChild(head);
+    row.appendChild(actions);
+    list.appendChild(row);
+    var hint = document.createElement("p");
+    hint.className = "menu-hint";
+    hint.textContent = "上書き保存すると、いまの配置場所と人で置き換わります。";
+    list.appendChild(hint);
   }
 
   document.getElementById("poolAddBtn").addEventListener("click", openAddNameplateModal);
@@ -5349,7 +5356,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   }
 
-  document.getElementById("saveTemplateBtn").addEventListener("click", function(){
+  function openSaveTemplateModal(){
     if(state.locations.length === 0){
       openNoticeModal("お知らせ", "配置場所がありません。先に配置場所を追加してください。");
       return;
@@ -5386,7 +5393,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       box.querySelector("#okBtn").addEventListener("click", submit);
       input.addEventListener("keydown", function(e){ if(isEnterSubmit(e)) submit(); });
     });
-  });
+  }
 
   // ---------- shift (休みシフト) ----------
   // state.dayoffs = { "<名前>": { "YYYY-MM-DD": 1 | "有" | "指" | "欠" | "健" | "*", ... } }   ← 休みの日を入力する
@@ -6540,7 +6547,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         }
         var person = byName[hit.name];
         if(!person){
-          person = byName[hit.name] = { name: hit.name, offs: Object.create(null), marks: Object.create(null), labels: [] };
+          person = byName[hit.name] = { name: hit.name, offs: Object.create(null), marks: Object.create(null), blanks: Object.create(null), labels: [] };
           people.push(person);
         }
         if(timeCols && !person.time){
@@ -6564,7 +6571,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
             return;
           }
           var val = normText(row[dc.c]).toLowerCase(), off = false, tk = null;
-          if(val === ""){ off = opts.blank; if(off) tk = "空欄"; }
+          if(val === ""){ off = opts.blank; if(off) tk = "空欄"; else person.blanks[dc.iso] = true; }
           else {
             opts.tokens.some(function(t){ if(val.indexOf(t) !== -1){ tk = t; return true; } return false; });
             off = !!tk;
@@ -6739,6 +6746,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   //   休み: 基準（マスター）のファイルのシフトだけを使う。基準のファイルに載っていなければ、先に選んだファイル。
   //   残業: 値があるファイルの値を使う。複数にあれば大きいほう。
   // parts = [{ label, res, entryIdx }]（res は analyzeShiftRows の結果）、masterEntryIdx = 基準のファイルの番号
+  // 同じ人の同じ日が複数のシートに載っているとき、読み込める組み合わせ（順番は問わない）。これ以外はエラー
+  var ALLOWED_SHEET_PAIRS = [["空欄", "*"], ["冷", "空欄"], ["休", "休"], ["健", "健"], ["有", "有"], ["指", "指"], ["欠", "欠"], ["空欄", "欠"]];
+  function isAllowedSheetPair(x, y){
+    return ALLOWED_SHEET_PAIRS.some(function(p){ return (p[0] === x && p[1] === y) || (p[0] === y && p[1] === x); });
+  }
   function mergeImportResults(parts, isOT, masterEntryIdx){
     var byName = Object.create(null), order = [], allIso = Object.create(null);
     var unmatched = [], fuzzy = [], dupNames = [], tokenHits = Object.create(null), otherMarks = Object.create(null), workHits = Object.create(null);
@@ -6756,7 +6768,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       res.cols.forEach(function(dc){ allIso[dc.iso] = true; });
       res.people.forEach(function(pp){
         if(!byName[pp.name]){ byName[pp.name] = []; order.push(pp.name); }
-        byName[pp.name].push({ idx: idx, offs: pp.offs, marks: pp.marks, cols: res.cols, time: pp.time || null, labels: pp.labels || [] });
+        byName[pp.name].push({ idx: idx, offs: pp.offs, marks: pp.marks, blanks: pp.blanks || {}, cols: res.cols, time: pp.time || null, labels: pp.labels || [] });
       });
       res.unmatched.forEach(function(n){ if(unmatched.indexOf(n) === -1) unmatched.push(n); });
       res.fuzzy.forEach(function(n){ if(fuzzy.indexOf(n) === -1) fuzzy.push(n); });
@@ -6764,8 +6776,37 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       addCounts(tokenHits, res.tokenHits); addCounts(otherMarks, res.otherMarks); addCounts(workHits, res.workHits);
     });
     var people = [], multiNames = [], conflicts = 0, offCount = 0;
+    // 休みの読み込みで、同じ人の同じ日が複数のシートに載っているとき、組み合わせが許可リストにない日を
+    // 表の間違いとして読み込みを止める。各シートでのその日の状態は次のどれか:
+    //   休 / 有 / 指 / 健（健診）/ * / 欠（休みの記号）、冷、空欄（その他の出勤の書き方も含む）
+    var workConflicts = [];
     order.forEach(function(name){
       var list = byName[name];
+      if(!isOT && list.length > 1){
+        var clashDays = [], clashSrc = Object.create(null);
+        var isoAll = Object.create(null);
+        list.forEach(function(x){ x.cols.forEach(function(dc){ isoAll[dc.iso] = true; }); });
+        Object.keys(isoAll).sort().forEach(function(iso){
+          var states = [];
+          list.forEach(function(x){
+            var covers = x.cols.some(function(dc){ return dc.iso === iso; });
+            if(!covers) return;
+            var st = x.offs[iso] ? x.offs[iso] : ((x.marks && x.marks[iso]) ? "冷" : "空欄");
+            states.push({ ei: parts[x.idx].entryIdx, st: st });
+          });
+          var bad = false;
+          for(var a = 0; a < states.length; a++){
+            for(var b = a + 1; b < states.length; b++){
+              if(states[a].ei === states[b].ei) continue;
+              if(!isAllowedSheetPair(states[a].st, states[b].st)){
+                bad = true; clashSrc[states[a].ei] = true; clashSrc[states[b].ei] = true;
+              }
+            }
+          }
+          if(bad) clashDays.push(iso);
+        });
+        if(clashDays.length) workConflicts.push({ name: name, days: clashDays, entries: Object.keys(clashSrc).map(Number).sort(function(a, b){ return a - b; }) });
+      }
       if(list.length === 1){
         people.push({ name: name, offs: list[0].offs, marks: list[0].marks, cols: list[0].cols, time: list[0].time, labels: list[0].labels });
         offCount += Object.keys(list[0].offs).length;
@@ -6795,7 +6836,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       cols: Object.keys(allIso).sort().map(function(iso){ return { iso: iso }; }),
       people: people, offCount: offCount, unmatched: unmatched, fuzzy: fuzzy, dupNames: dupNames,
       tokenHits: tokenHits, otherMarks: otherMarks, workHits: workHits,
-      multiNames: multiNames, conflicts: conflicts, multi: true, dayMarks: dayMarks, dayMarkRows: dayMarkRows, dayMarkCell: dayMarkCell,
+      multiNames: multiNames, conflicts: conflicts, workConflicts: workConflicts, multi: true, dayMarks: dayMarks, dayMarkRows: dayMarkRows, dayMarkCell: dayMarkCell,
       constRows: parts.reduce(function(a, pt){ (pt.res.constRows || []).forEach(function(l){ if(a.indexOf(l) === -1) a.push(l); }); return a; }, [])
     };
   }
@@ -7845,6 +7886,21 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         // 基準を選んでいなければ、一致した人数がいちばん多いもの
         autoMasterIdx = parts.slice().sort(function(a, b){ return b.res.people.length - a.res.people.length || a.entryIdx - b.entryIdx; })[0].entryIdx;
         var res = mergeImportResults(parts, isOT, effectiveMaster());
+        if(!isOT && res.workConflicts.length){
+          var CLASH_MAX = 8;
+          var clashLines = res.workConflicts.slice(0, CLASH_MAX).map(function(wc){
+            return '・<b>' + escapeHtml(wc.name) + '</b>：' + escapeHtml(wc.days.map(mdOfISO).join('、')) +
+              '（' + escapeHtml(wc.entries.map(function(ei){ return entryLabel(entries[ei], ei); }).join(' と ')) + '）';
+          });
+          if(res.workConflicts.length > CLASH_MAX) clashLines.push('ほか ' + (res.workConflicts.length - CLASH_MAX) + '人');
+          setPreview(filesHtml +
+            '<b>同じ人の同じ日が、複数のシートで読み込めない組み合わせになっています。</b>' +
+            '<br>読み込めるのは次の組み合わせだけです（順番は問いません）。' +
+            '<br>空欄と*　／　冷と空欄　／　空欄と欠　／　休と休　／　有と有　／　指と指　／　欠と欠　／　健診と健診' +
+            '<br>どちらかのシートを直すか、片方のシートを「使わない」にしてから読み込んでください。' +
+            '<br>' + clashLines.join('<br>'), true);
+          return;
+        }
         if(isOT){
           finalizeOvertimeResult(res);
           if(!res.offCount){ setPreview(filesHtml + otEmptyMessage(res), true); return; }
