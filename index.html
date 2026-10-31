@@ -6747,7 +6747,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   //   残業: 値があるファイルの値を使う。複数にあれば大きいほう。
   // parts = [{ label, res, entryIdx }]（res は analyzeShiftRows の結果）、masterEntryIdx = 基準のファイルの番号
   // 同じ人の同じ日が複数のシートに載っているとき、読み込める組み合わせ（順番は問わない）。これ以外はエラー
-  var ALLOWED_SHEET_PAIRS = [["空欄", "*"], ["冷", "空欄"], ["休", "休"], ["健", "健"], ["有", "有"], ["指", "指"], ["欠", "欠"], ["空欄", "欠"]];
+  var ALLOWED_SHEET_PAIRS = [["空欄", "*"], ["*", "休"], ["冷", "空欄"], ["休", "休"], ["健", "健"], ["有", "有"], ["指", "指"], ["欠", "欠"], ["空欄", "欠"]];
   function isAllowedSheetPair(x, y){
     return ALLOWED_SHEET_PAIRS.some(function(p){ return (p[0] === x && p[1] === y) || (p[0] === y && p[1] === x); });
   }
@@ -7896,7 +7896,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           setPreview(filesHtml +
             '<b>同じ人の同じ日が、複数のシートで読み込めない組み合わせになっています。</b>' +
             '<br>読み込めるのは次の組み合わせだけです（順番は問いません）。' +
-            '<br>空欄と*　／　冷と空欄　／　空欄と欠　／　休と休　／　有と有　／　指と指　／　欠と欠　／　健診と健診' +
+            '<br>空欄と*　／　*と休　／　冷と空欄　／　空欄と欠　／　休と休　／　有と有　／　指と指　／　欠と欠　／　健診と健診' +
             '<br>どちらかのシートを直すか、片方のシートを「使わない」にしてから読み込んでください。' +
             '<br>' + clashLines.join('<br>'), true);
           return;
