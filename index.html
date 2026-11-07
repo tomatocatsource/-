@@ -191,6 +191,50 @@
   }
   .overlay.open{display:flex;}
   #templateOverlay{z-index:90;}
+  #helpOverlay{z-index:105;}
+  /* 使い方（ヘルプ）画面 */
+  #helpSheet{max-height:92vh;max-height:92dvh;padding-top:0;}
+  #helpSheet .help-head{
+    position:sticky;top:0;z-index:3;background:var(--surface);
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:16px 0 10px;font-weight:700;font-size:16px;
+  }
+  .help-head-actions{display:flex;align-items:center;gap:8px;}
+  .help-head-actions[hidden]{display:none;}
+  #helpTitle{white-space:nowrap;}
+  .help-small-btn{
+    appearance:none;border:1px solid var(--line);background:transparent;color:inherit;
+    border-radius:999px;padding:6px 14px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  .help-small-btn.primary{background:var(--ink,#222);color:var(--surface,#fff);border-color:transparent;}
+  .help-toc{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px;}
+  .help-toc[hidden]{display:none;}
+  .help-toc-btn{
+    appearance:none;border:1px solid var(--line);background:transparent;color:inherit;
+    border-radius:999px;padding:5px 11px;font-size:12px;font-family:inherit;cursor:pointer;
+  }
+  .help-tools{
+    position:sticky;top:56px;z-index:3;background:var(--surface);
+    display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 8px;border-bottom:1px solid var(--line);margin-bottom:8px;
+  }
+  .help-tools[hidden]{display:none;}
+  #helpBody{font-size:14px;line-height:1.75;}
+  #helpContent p{margin:8px 0;}
+  #helpContent h2{
+    font-size:16px;margin:26px 0 8px;padding:6px 0 6px 10px;
+    border-left:4px solid currentColor;scroll-margin-top:56px;
+  }
+  #helpContent h3{font-size:14.5px;margin:18px 0 4px;scroll-margin-top:56px;}
+  #helpContent ul,#helpContent ol{margin:8px 0;padding-left:22px;}
+  #helpContent li{margin:4px 0;}
+  #helpContent table{border-collapse:collapse;width:100%;font-size:12.5px;line-height:1.55;margin:10px 0;}
+  #helpContent th,#helpContent td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;}
+  #helpContent th{background:rgba(127,127,127,.12);font-weight:700;}
+  #helpContent[contenteditable="true"]{
+    outline:2px dashed var(--line);outline-offset:6px;min-height:200px;
+    -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;caret-color:currentColor;
+  }
+
   #modalOverlay{z-index:110;}
   .modal,.sheet{
     background:var(--surface);width:100%;max-width:420px;
@@ -3295,6 +3339,116 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     <div class="modal" id="modalBox"></div>
   </div>
 
+  <div class="overlay" id="helpOverlay">
+    <div class="sheet" id="helpSheet" role="dialog" aria-label="使い方">
+      <div class="help-head">
+        <span id="helpTitle">使い方</span>
+        <div class="help-head-actions" id="helpViewActions">
+          <button type="button" class="help-small-btn" id="helpEditBtn">編集</button>
+          <button class="icon-btn" id="closeHelpBtn" type="button" aria-label="閉じる">×</button>
+        </div>
+        <div class="help-head-actions" id="helpEditActions" hidden>
+          <button type="button" class="help-small-btn" id="helpCancelBtn">キャンセル</button>
+          <button type="button" class="help-small-btn primary" id="helpSaveBtn">保存</button>
+        </div>
+      </div>
+      <div class="help-tools" id="helpTools" hidden>
+        <button type="button" class="help-toc-btn" data-fmt="h2">見出し</button>
+        <button type="button" class="help-toc-btn" data-fmt="h3">小見出し</button>
+        <button type="button" class="help-toc-btn" data-fmt="p">本文</button>
+        <button type="button" class="help-toc-btn" data-fmt="ul">箇条書き</button>
+        <button type="button" class="help-toc-btn" data-fmt="ol">番号つき</button>
+        <button type="button" class="help-toc-btn" data-fmt="reset">初期の内容に戻す</button>
+      </div>
+      <div id="helpBody">
+        <div class="help-toc" id="helpToc"></div>
+        <div id="helpContent">
+<h2>はじめに</h2>
+<p>配置ボードは、その日に誰をどこに配置するかを、ネームプレートを動かして決めるアプリです。日付ごとに配置を残せるほか、休みや残業を入れるシフト表、配置やシフトを人に送る共有コード（QRコード）があります。データはすべて使っている端末の中に保存され、ネットにつながっていなくても使えます。</p>
+<p>画面は上から順に、次の4つの部分でできています。</p>
+<table><thead><tr><th>場所</th><th>中身</th><th>できること</th></tr></thead><tbody><tr><td>上のバー</td><td>「配置ボード」の文字と4つのボタン</td><td>↶ 元に戻す、🎨 着せ替え、📅 シフト表、☰ メニュー</td></tr><tr><td>日付の行</td><td>◀ 日付 ▶、S・M・L・合計の人数</td><td>日付の切り替え、属性ごとの人の確認</td></tr><tr><td>ボード</td><td>配置場所のカード</td><td>ネームプレートを置く・動かす</td></tr><tr><td>下の欄</td><td>まだ配置していないネームプレート</td><td>ここから配置場所へ動かす、＋で人を追加</td></tr></tbody></table>
+<h3>まずはここから</h3>
+<p>初めて使うときは、この4つだけで配置ボードとして使えます。くわしい操作は、あとの章で説明します。</p>
+<ol><li>ボードの「＋ 配置場所を追加」で、持ち場を登録する</li><li>未配置の欄の「＋」で、人を登録する</li><li>ネームプレートを動かして、配置場所に置く</li><li>☰ メニューのテンプレート欄で保存して、登録した内容を残しておく</li></ol>
+<h2>準備：配置場所と人を登録する</h2>
+<p>最初に、配置場所（受付や窓口など）と、ネームプレート（配置する人）を登録します。一度登録すれば毎日使い回せます。登録が済んだら、テンプレートとして保存しておくと安心です。</p>
+<h3>配置場所を追加する</h3>
+<ol><li>ボードのいちばん下にある「＋ 配置場所を追加」を押します。</li><li>配置場所名（20文字まで）を入れ、タイプを選んで「追加」を押します。</li></ol>
+<table><thead><tr><th>タイプ</th><th>見た目</th><th>向いている場所</th></tr></thead><tbody><tr><td>2行</td><td>上下2段に分かれたカード</td><td>人数が多い場所、前半・後半で分けたい場所</td></tr><tr><td>2人・3人</td><td>小さめのカード。続けて並べると横に最大3つまで並ぶ</td><td>1〜3人の小さな持ち場</td></tr></tbody></table>
+<p>2行タイプでは「左に独立枠を追加」にチェックを入れると、カードの左に縦書きの枠が1つ増えます。リーダーなど、特別な1人を置くのに使えます。名前やタイプは、カード右上の ✎ からあとで変えられます。</p>
+<h3>ネームプレートを追加する</h3>
+<ol><li>画面下の未配置の欄の左にある「＋」を押します。</li><li>名前（16文字まで）を入れて「追加」を押します。ほかの項目は空欄のままでもかまいません。</li></ol>
+<table><thead><tr><th>項目</th><th>使い道</th></tr></thead><tbody><tr><td>番号（0〜99）</td><td>小さい順に並びます</td></tr><tr><td>出勤時間（0〜23時）</td><td>配置場所の中で、時間の早い順に並びます</td></tr><tr><td>枠の色</td><td>白・赤・青から選べます。役割の目印に使います</td></tr><tr><td>属性</td><td>S・M・L のどれかを付けると、日付の行の人数に数えられます</td></tr><tr><td>冷凍</td><td>シフト表の出勤日に「冷」と表示されます</td></tr></tbody></table>
+<p>登録したネームプレートを押すと、内容の変更や削除ができます。</p>
+<h2>毎日の配置</h2>
+<p>配置は、ネームプレートを指で動かして、配置場所のカードまで持っていくだけです。配置は日付ごとに保存され、アプリを閉じても残ります。</p>
+<h3>置く・動かす・戻す</h3>
+<ul><li>置く：下の未配置の欄から、配置場所のカードへ動かします。2行タイプは、上の段か下の段か、離した位置に置かれます。</li><li>別の場所へ動かす：置いたネームプレートを、そのまま別のカードへ動かします。</li><li>未配置に戻す：画面下の未配置の欄へ動かします。ネームプレートを押して「未配置に戻す」でも戻せます。</li><li>全員を戻す：☰ メニューの「ボード」にある「配置を一括解除」で、その日の全員が未配置に戻ります。配置場所は残ります。</li></ul>
+<p>ネームプレートは、縦にすばやく動かせばすぐつかめます。未配置の欄を横に動かすとスクロールになるので、横に動かしたいときは、少し長押ししてから動かします。パソコンでは、マウスで押したまま少し動かすとつかめます。</p>
+<h3>間違えたとき</h3>
+<p>上のバーの ↶ を押すと、1つ前の状態に戻ります。続けて押すと、最大30回までさかのぼれます。パソコンでは Ctrl+Z（Macは ⌘Z）でも戻せます。</p>
+<p>戻せるのはアプリを開いている間の操作だけです。着せ替えと、シフト表の「出勤者だけをボードに表示」は対象外です。</p>
+<h3>日付を切り替える</h3>
+<p>日付の左右の ◀ ▶ で1日ずつ動きます。日付の文字を押すと、カレンダーから選べます。アプリを開いたまま日付が変わると、自動で今日に切り替わります。</p>
+<p>まだ配置していない日付は、全員が未配置の状態から始まります。シフト表で休みになっている人は、その日のボードには置けません。</p>
+<h3>人数を確かめる</h3>
+<p>日付の行の右側に、その日に配置した人の数が属性ごと（S・M・L）と合計で出ます。S・M・L を押すと、その属性の人が誰かを確認できます。「合計」を押すと、配置した人の出勤時間と、時間帯ごとの人数が見られます。</p>
+<h2>テンプレート</h2>
+<p>テンプレートは、配置場所とネームプレートの一覧をまとめて保存したものです。テンプレートは1つだけ持てて、保存や受け取りのたびに前のものと置き換わります。誰をどこに配置したかは、テンプレートには含まれません。</p>
+<h3>保存する</h3>
+<p>☰ メニューのテンプレート欄で、まだ保存していないときは「テンプレートとして保存」、保存済みのときはカードの「上書き保存」を押します。名前を確かめて「保存」を押すと、前の内容と置き換わります。</p>
+<h3>人に送る・受け取る</h3>
+<p>カードの「コードを送る」で、テンプレートを共有コードとQRコードにできます。受け取った側では、今のテンプレートと置き換わり、内容がすぐにボードへ適用されます。名前が同じ配置場所と人は、その日の配置もほかの日付の配置もそのまま残ります。なくなった場所や人の分だけ外れます。</p>
+<p>送り方と受け取り方は、次の「共有コードとQRコード」の章で説明します。</p>
+<h3>削除する</h3>
+<p>カードの「削除」を押すと、保存したテンプレートが消えます。ボードの配置場所とネームプレートはそのまま残ります。</p>
+<h2>共有コードとQRコード</h2>
+<p>配置・テンプレート・シフト（休み）・残業は、共有コードにして別の人の端末へ送れます。受け取るときは、どの種類でも ☰ メニューの「共有」にある「コードを受取」1か所から読み込めます。</p>
+<h3>送る</h3>
+<table><thead><tr><th>送るもの</th><th>作る場所</th><th>中身</th></tr></thead><tbody><tr><td>配置</td><td>☰ メニュー →「配置を送る」</td><td>表示中の日付の、誰がどこにいるか</td></tr><tr><td>テンプレート</td><td>☰ メニュー → テンプレートのカード →「コードを送る」</td><td>配置場所とネームプレートの一覧</td></tr><tr><td>シフト（休み）</td><td>📅 シフト表 →「シフト」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr><tr><td>残業</td><td>📅 シフト表 →「残業」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr></tbody></table>
+<p>コードの画面が開いたら、次のどれかで相手に渡します。</p>
+<ul><li>相手に、画面のQRコードをカメラで読み取ってもらう</li><li>「コピー」でコードをコピーし、LINEやメールに貼り付けて送る</li><li>「共有…」でLINEなどのアプリを選んで送る（対応している端末のみ）</li></ul>
+<p>シフトや残業でQRコードが大きくなりすぎるときは、期間を「表示中の月」にすると小さくなります。</p>
+<h3>受け取る</h3>
+<ol><li>☰ メニューの「コードを受取」を押します。シフト表の「コードを受取」からも同じ画面が開きます。</li><li>次のどれかで読み込みます。①「QRコードを読み取る」で、相手の画面のQRコードをカメラで写す　②「画像から読み取る」で、送られてきたQRコードのスクリーンショットや写真を選ぶ　③送られてきたコードを、下の欄に貼り付ける</li><li>コードの種類は自動で見分けられ、それぞれの確認画面に進みます。中身を確かめて読み込みます。</li></ol>
+<p>受け取った内容は、名前が同じ人・配置場所にだけ反映されます。名前が少し違うときは近い名前で照合し、確認画面にどの名前と合わせたかが表示されます。</p>
+<table><thead><tr><th>受け取るもの</th><th>読み込んだあと</th></tr></thead><tbody><tr><td>配置</td><td>その日付の配置が置き換わり、ボードがその日付に切り替わる</td></tr><tr><td>テンプレート</td><td>今のテンプレートと置き換わり、すぐにボードへ適用される</td></tr><tr><td>シフト（休み）</td><td>読み込んだ人の、その期間の休みが置き換わる</td></tr><tr><td>残業</td><td>読み込んだ人の、その期間の残業が置き換わる</td></tr></tbody></table>
+<h2>シフト表</h2>
+<p>上のバーの 📅 で開くシフト表では、月ごとに休みと残業を管理できます。上の切り替えで表示を選び、◀ ▶ で月を動かします。名前は、ボードのネームプレートの名前がそのまま使われます。</p>
+<table><thead><tr><th>表示</th><th>見られるもの</th><th>入力できるもの</th></tr></thead><tbody><tr><td>シフト</td><td>全員のその月の休み</td><td>休み、日付の印</td></tr><tr><td>残業</td><td>全員のその月の残業時間と合計</td><td>残業時間</td></tr><tr><td>自分</td><td>自分1人の出勤日と休み（カレンダー形式）</td><td>なし（見るだけ）</td></tr></tbody></table>
+<h3>休みを入れる（シフト）</h3>
+<p>開いた直後は見るだけの状態です。マスを押しても変わらないので、間違えて触っても安心です。入力するときは、次の順に操作します。</p>
+<ol><li>入力したい人の名前か、日付の見出しを押します。その行（または列）が入力できる状態になります。</li><li>マスを押すと「休」が入り、もう一度押すと消えます。</li><li>終わったら「解除」を押すと、見るだけの状態に戻ります。</li></ol>
+<p>便利な機能も使えます。</p>
+<ul><li>曜日でまとめて入力：名前を選んだ状態で押すと、毎週土日など、決まった曜日の休みをその月にまとめて入れられます。</li><li>日付の印：日付を選んだ状態で押すと、その日の見出しの上に「棚」などの短い文字を付けられます。</li><li>出勤者だけをボードに表示：オンにすると、休みの人がボードと未配置の欄から隠れます。</li></ul>
+<h3>残業を入れる</h3>
+<p>「残業」表示で名前か日付を選び、マスを押すと残業時間を入れる画面が開きます。時間と、小数点以下（30分なら .5）を選びます。</p>
+<p>月の合計が注意（標準は40時間）や上限（標準は45時間）を超えた人は、色で知らせます。基準の時間は「変更」から変えられます。</p>
+<h3>自分のカレンダー</h3>
+<p>「自分」表示で自分の名前を選ぶと、その月の出勤日と休みがカレンダーで見られます。選んだ名前は次回も残ります。日付を押すと、その日のボードに移動します。</p>
+<h3>Excel・CSVから読み込む</h3>
+<p>「ファイル読込」で、Excel（.xlsx）やCSVのシフト表から休みや残業をまとめて読み込めます。名前の列と、日付（1, 2, 3… や 9/1）の見出しがある表に対応しています。Excelでセルをコピーして、欄に貼り付けることもできます。</p>
+<ul><li>休みとして読む記号：休、有（有給）、指（指定休）、欠（欠勤）、健診、*</li><li>残業として読む書き方：2、1.5、1:30、1時間30分、90分</li></ul>
+<p>ファイルは複数まとめて選べます。読み込んだあとに「元に戻す」で取り消すこともできます。</p>
+<h3>複数のシートを読み込むとき</h3>
+<p>同じ人が複数のシートに載っているときは、基準のシート（人数がいちばん多いもの。一覧で変えられます）の休みを使います。そのうえで、同じ人の同じ日が複数のシートに載っている場合は、組み合わせが正しいかを確かめます。空欄は出勤として数えます。</p>
+<p>読み込めるのは、次の組み合わせだけです（順番は問いません）。これ以外の組み合わせがあると、エラーが出て読み込めません。</p>
+<table><thead><tr><th>片方のシート</th><th>もう片方のシート</th></tr></thead><tbody><tr><td>空欄</td><td>*</td></tr><tr><td>*</td><td>休</td></tr><tr><td>冷</td><td>空欄</td></tr><tr><td>空欄</td><td>欠</td></tr><tr><td>休</td><td>休</td></tr><tr><td>有</td><td>有</td></tr><tr><td>指</td><td>指</td></tr><tr><td>欠</td><td>欠</td></tr><tr><td>健診</td><td>健診</td></tr></tbody></table>
+<p>エラーが出たときは、どの人の何日が、どのシート同士で合っていないかが表示されます。Excelのどちらかのシートを直すか、一覧で片方のシートを「使わない」にしてから、もう一度読み込んでください。</p>
+<h2>着せ替えとデータの保存</h2>
+<h3>着せ替え</h3>
+<p>上のバーの 🎨 で、画面の見た目を「標準」「シンプル」「サクラ」「墨」など20種類から選べます。変わるのは見た目だけで、配置やシフトの内容には影響しません。</p>
+<h3>データの保存について</h3>
+<p>データは、変更するたびに自動で保存されます。保存ボタンはありません。保存先は使っている端末のブラウザの中だけで、ネットやクラウドには送られません。そのため、次の点に気をつけてください。</p>
+<ul><li>ほかの端末とは同期しません。別のスマホで同じ内容を使うときは、共有コードで送ります。</li><li>ブラウザのデータを消すと、すべて消えます。履歴やWebサイトのデータの消去をするときは注意してください。</li><li>iPhoneでは、ホーム画面に追加して使うのがおすすめです。Safariで開くだけの場合、しばらく使わないとデータが消されることがあります。</li><li>同じ端末で2つ同時に開かないでください。ホーム画面のアプリとブラウザなど、2か所で開いて片方で変更すると、もう片方では保存が止まり、読み直すよう案内が出ます。内容が上書きで消えるのを防ぐためです。</li></ul>
+<p>保存できなかったときは、画面の上に赤い注意が出ます。そのまま閉じると、変更した内容が消えるので注意してください。</p>
+<h2>困ったとき</h2>
+<table><thead><tr><th>こんなとき</th><th>原因と対処</th></tr></thead><tbody><tr><td>ネームプレートがつかめない</td><td>縦にすばやく動かすとつかめます。横に動かしたいときは、少し長押ししてから動かします。</td></tr><tr><td>配置を間違えた</td><td>上のバーの ↶ で1つ前に戻せます。</td></tr><tr><td>ある人がボードにも未配置の欄にもいない</td><td>シフト表で休みになっていて、「出勤者だけをボードに表示」がオンになっています。</td></tr><tr><td>休みの人をボードに置けない</td><td>休みの日は配置できません。先にシフト表で休みを外します。</td></tr><tr><td>シフト表のマスを押しても変わらない</td><td>見るだけの状態です。先に名前か日付の見出しを押します。</td></tr><tr><td>シフトの読み込みで「読み込めない組み合わせ」と出た</td><td>同じ人の同じ日が、複数のシートで合っていません。表示された人と日付を、Excelで直します。</td></tr><tr><td>受け取ったコードで一部の人が入らない</td><td>ボードに同じ名前の人や配置場所がいない分は入りません。確認画面に、入らなかった名前が出ます。</td></tr><tr><td>QRコードの読み取りボタンが出ない</td><td>対応していない端末です。コードを貼り付けて受け取ります。</td></tr><tr><td>カメラが使えない</td><td>端末の設定で、ブラウザかアプリにカメラの使用を許可します。</td></tr><tr><td>「ほかの画面で変更されました」と出た</td><td>同じ端末の別の画面で開いています。「読み直す」を押して最新の内容にします。</td></tr><tr><td>画面の上に赤い注意が出た</td><td>保存できていません。端末の空き容量や、ブラウザの設定を確かめます。</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="templateOverlay">
     <div class="sheet" id="templateSheet">
       <div class="sheet-header">
@@ -3320,6 +3474,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
       </div>
       <p class="menu-hint">表示中の日付の全員を未配置に戻します。</p>
+
+      <div class="sheet-divider menu-divider" role="separator"></div>
+      <div class="menu-section-title sheet-section-title">ヘルプ</div>
+      <div class="shift-tools" role="group" aria-label="ヘルプ">
+        <button type="button" class="shift-tool" id="openHelpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6M9 12h6"/></svg><span>使い方を見る</span></button>
+      </div>
     </div>
   </div>
 
@@ -4874,6 +5034,144 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // ---------- templates ----------
   function openTemplateSheet(){ closeModal(); renderTemplateList(); templateOverlay.classList.add("open"); }
   function closeTemplateSheet(){ templateOverlay.classList.remove("open"); }
+
+  // ---------- 使い方（ヘルプ） ----------
+  // 説明書は、そのまま画面の中で書き換えられる。書き換えた内容はこの端末の中だけに保存する。
+  var HELP_KEY = "placement-board-help-v1";
+  var helpOverlay = document.getElementById("helpOverlay");
+  var helpContent = document.getElementById("helpContent");
+  var helpDefaultHtml = helpContent.innerHTML;   // 最初から入っている説明書
+  var helpEditing = false, helpBackup = "";
+
+  // 書き換えた内容を保存・表示する前に、使える要素だけに絞る（貼り付けなどで余計な要素が混ざらないように）
+  function sanitizeHelpHtml(html){
+    var ALLOW = { H2:1, H3:1, P:1, UL:1, OL:1, LI:1, TABLE:1, THEAD:1, TBODY:1, TR:1, TH:1, TD:1, BR:1, B:1, STRONG:1 };
+    var DROP = { SCRIPT:1, STYLE:1, IFRAME:1, OBJECT:1, EMBED:1, LINK:1, META:1, SVG:1, IMG:1, VIDEO:1, AUDIO:1, FORM:1, INPUT:1, BUTTON:1, TEXTAREA:1, SELECT:1 };
+    var doc = new DOMParser().parseFromString("<body>" + html + "</body>", "text/html");
+    function clean(node){
+      Array.prototype.slice.call(node.childNodes).forEach(function(ch){
+        if(ch.nodeType === 3) return;
+        if(ch.nodeType !== 1){ node.removeChild(ch); return; }
+        var tag = ch.tagName;
+        if(DROP[tag]){ node.removeChild(ch); return; }
+        clean(ch);
+        if(tag === "DIV" || tag === "SECTION" || tag === "ARTICLE"){
+          var p = doc.createElement("p");
+          while(ch.firstChild) p.appendChild(ch.firstChild);
+          node.replaceChild(p, ch);
+        }else if(!ALLOW[tag]){
+          while(ch.firstChild) node.insertBefore(ch.firstChild, ch);
+          node.removeChild(ch);
+        }else{
+          while(ch.attributes.length) ch.removeAttribute(ch.attributes[0].name);
+        }
+      });
+    }
+    clean(doc.body);
+    // 段落でくくられていない文字が最上位にあるときは、段落にする
+    Array.prototype.slice.call(doc.body.childNodes).forEach(function(ch){
+      if(ch.nodeType === 3 && ch.nodeValue.trim()){
+        var p = doc.createElement("p"); doc.body.replaceChild(p, ch); p.appendChild(ch);
+      }else if(ch.nodeType === 3){ doc.body.removeChild(ch); }
+    });
+    return doc.body.innerHTML;
+  }
+
+  function buildHelpToc(){
+    var toc = document.getElementById("helpToc");
+    toc.innerHTML = "";
+    Array.prototype.forEach.call(helpContent.querySelectorAll("h2"), function(h, i){
+      h.id = "help-sec-" + i;
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "help-toc-btn";
+      b.setAttribute("data-target", h.id);
+      b.textContent = (h.textContent || "").split("：")[0].trim() || "（見出し）";
+      toc.appendChild(b);
+    });
+  }
+  function loadHelp(){
+    var saved = null;
+    try{ saved = localStorage.getItem(HELP_KEY); }catch(e){}
+    if(saved) helpContent.innerHTML = sanitizeHelpHtml(saved);
+    buildHelpToc();
+  }
+  function setHelpEditing(on){
+    helpEditing = on;
+    helpContent.contentEditable = on ? "true" : "false";
+    if(!on) helpContent.removeAttribute("contenteditable");
+    document.getElementById("helpViewActions").hidden = on;
+    document.getElementById("helpEditActions").hidden = !on;
+    document.getElementById("helpTools").hidden = !on;
+    document.getElementById("helpToc").hidden = on;
+    document.getElementById("helpTitle").textContent = on ? "編集中" : "使い方";
+  }
+  function openHelp(){ helpOverlay.classList.add("open"); document.getElementById("helpSheet").scrollTop = 0; }
+  function closeHelp(){ if(helpEditing) return; helpOverlay.classList.remove("open"); }
+  document.getElementById("openHelpBtn").addEventListener("click", openHelp);
+  document.getElementById("closeHelpBtn").addEventListener("click", closeHelp);
+  // 編集中に、まわりを押して閉じてしまわないようにする
+  helpOverlay.addEventListener("pointerdown", function(e){ if(e.target === helpOverlay) closeHelp(); });
+
+  document.getElementById("helpEditBtn").addEventListener("click", function(){
+    helpBackup = helpContent.innerHTML;
+    setHelpEditing(true);
+    document.getElementById("helpSheet").scrollTop = 0;
+  });
+  document.getElementById("helpCancelBtn").addEventListener("click", function(){
+    var changed = helpContent.innerHTML !== helpBackup;
+    function discard(){ helpContent.innerHTML = helpBackup; setHelpEditing(false); buildHelpToc(); }
+    if(changed) openConfirmModal("編集した内容を破棄して、元に戻します。よろしいですか？", discard);
+    else discard();
+  });
+  document.getElementById("helpSaveBtn").addEventListener("click", function(){
+    var html = sanitizeHelpHtml(helpContent.innerHTML);
+    try{
+      localStorage.setItem(HELP_KEY, html);
+    }catch(e){
+      openNoticeModal("保存できませんでした", "端末の空き容量やブラウザの設定を確かめてください。");
+      return;
+    }
+    helpContent.innerHTML = html;
+    setHelpEditing(false);
+    buildHelpToc();
+  });
+
+  // 書式ボタン（見出し・本文・箇条書きなど）。押しても、文字の選択が外れないようにする
+  var helpTools = document.getElementById("helpTools");
+  helpTools.addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  helpTools.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest("[data-fmt]") : null;
+    if(!b || !helpEditing) return;
+    var f = b.getAttribute("data-fmt");
+    if(f === "reset"){
+      openConfirmModal("説明書を、最初に入っていた内容に戻します。編集した内容は消えます。よろしいですか？", function(){
+        try{ localStorage.removeItem(HELP_KEY); }catch(err){}
+        helpContent.innerHTML = helpDefaultHtml;
+        setHelpEditing(false);
+        buildHelpToc();
+      });
+      return;
+    }
+    helpContent.focus();
+    if(f === "ul") document.execCommand("insertUnorderedList");
+    else if(f === "ol") document.execCommand("insertOrderedList");
+    else document.execCommand("formatBlock", false, f);
+  });
+  // 貼り付けは、書式なしの文字だけにする
+  helpContent.addEventListener("paste", function(e){
+    if(!helpEditing) return;
+    e.preventDefault();
+    var t = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, t);
+  });
+
+  document.getElementById("helpBody").addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest(".help-toc-btn") : null;
+    if(!b || helpEditing) return;
+    var t = document.getElementById(b.getAttribute("data-target"));
+    if(t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  loadHelp();
 
   // 新しい一覧の各要素に、同じ名前の古い要素のIDを先頭から順に割り当てる（同名が複数あっても1対1）
   function reuseIdsByName(newItems, oldItems){
