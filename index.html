@@ -3035,6 +3035,7 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .shift-tools.menu-bar-gap{margin-top:8px;}
 #templateSheet .menu-divider{margin:20px 0 0;}
 #templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
+.choice-btn.disabled{opacity:.4;cursor:default;}
 .menu-hint{margin:6px 2px 0;font-size:12px;line-height:1.6;color:var(--ink-soft);}
 #templateSheet .menu-empty + .shift-tools{margin-top:8px;}
 #templateSheet .shift-tools + .template-list{margin-top:10px;}
@@ -3378,12 +3379,16 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <p>2行タイプでは「左に独立枠を追加」にチェックを入れると、カードの左に縦書きの枠が1つ増えます。リーダーなど、特別な1人を置くのに使えます。名前やタイプは、カード右上の ✎ からあとで変えられます。</p>
 <h3>ネームプレートを追加する</h3>
 <ol><li>画面下の未配置の欄の左にある「＋」を押します。</li><li>名前（16文字まで）を入れて「追加」を押します。ほかの項目は空欄のままでもかまいません。</li></ol>
-<table><thead><tr><th>項目</th><th>使い道</th></tr></thead><tbody><tr><td>番号（0〜99）</td><td>小さい順に並びます</td></tr><tr><td>出勤時間（0〜23時）</td><td>配置場所の中で、時間の早い順に並びます</td></tr><tr><td>枠の色</td><td>白・赤・青から選べます。役割の目印に使います</td></tr><tr><td>属性</td><td>S・M・L のどれかを付けると、日付の行の人数に数えられます</td></tr><tr><td>冷凍</td><td>シフト表の出勤日に「冷」と表示されます</td></tr></tbody></table>
+<table><thead><tr><th>項目</th><th>使い道</th></tr></thead><tbody><tr><td>番号（0〜99）</td><td>小さい順に並びます</td></tr><tr><td>出勤時間（0〜23時）</td><td>配置場所の中で、時間の早い順に並びます</td></tr><tr><td>枠の色</td><td>白・赤・青から選べます。役割の目印に使います</td></tr><tr><td>属性</td><td>S・M・L のどれかを付けると、日付の行の人数に数えられます</td></tr><tr><td>冷凍</td><td>シフト表の出勤日に「冷」と表示されます</td></tr><tr><td>いつもの配置場所</td><td>自動配置で、この人を置く場所の目安になります</td></tr><tr><td>確定</td><td>オンにすると、自動配置で必ず「いつもの配置場所」に置かれます（いつもの配置場所を決めたときだけ選べます）</td></tr></tbody></table>
 <p>登録したネームプレートを押すと、内容の変更や削除ができます。</p>
 <h2>毎日の配置</h2>
 <p>配置は、ネームプレートを指で動かして、配置場所のカードまで持っていくだけです。配置は日付ごとに保存され、アプリを閉じても残ります。</p>
 <h3>置く・動かす・戻す</h3>
 <ul><li>置く：下の未配置の欄から、配置場所のカードへ動かします。2行タイプは、上の段か下の段か、離した位置に置かれます。</li><li>別の場所へ動かす：置いたネームプレートを、そのまま別のカードへ動かします。</li><li>未配置に戻す：画面下の未配置の欄へ動かします。ネームプレートを押して「未配置に戻す」でも戻せます。</li><li>全員を戻す：☰ メニューの「ボード」にある「配置を一括解除」で、その日の全員が未配置に戻ります。配置場所は残ります。</li></ul>
+<h3>自動配置する</h3>
+<p>☰ メニューの「ボード」にある「自動配置」を押すと、休みの人を除いた、まだ配置していない人を、配置場所に振り分けます。すでに配置した人は動かしません。気に入らないところは、あとから手で動かせます。やり直したいときは、↶ で戻せます。</p>
+<ul><li>確定の人は、いつもの配置場所に必ず置きます。</li><li>属性がMの人は、各配置場所の上段・下段に1人ずつ入るように置きます。Mが足りないときは、入れない段が空き、どこが空いたかをお知らせします。</li><li>そのほかの人は、いつもの配置場所と、これまでの配置の実績をもとに選びます。特定の配置場所に人数が偏りすぎないように調整します。</li><li>2人・3人タイプの配置場所は、定員までしか入りません。入りきらなかった人は、未配置のまま残ります。</li></ul>
+<p>これまでの配置は、毎日の配置が自動で保存されたものを使います。手で直した結果もそのまま実績になるので、使うほど、実際の配置に近づきます。新しい日と、同じ曜日の配置ほど、強く反映されます。</p>
 <p>ネームプレートは、縦にすばやく動かせばすぐつかめます。未配置の欄を横に動かすとスクロールになるので、横に動かしたいときは、少し長押ししてから動かします。パソコンでは、マウスで押したまま少し動かすとつかめます。</p>
 <h3>間違えたとき</h3>
 <p>上のバーの ↶ を押すと、1つ前の状態に戻ります。続けて押すと、最大30回までさかのぼれます。パソコンでは Ctrl+Z（Macは ⌘Z）でも戻せます。</p>
@@ -3443,7 +3448,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <ul><li>ほかの端末とは同期しません。別のスマホで同じ内容を使うときは、共有コードで送ります。</li><li>ブラウザのデータを消すと、すべて消えます。履歴やWebサイトのデータの消去をするときは注意してください。</li><li>iPhoneでは、ホーム画面に追加して使うのがおすすめです。Safariで開くだけの場合、しばらく使わないとデータが消されることがあります。</li><li>同じ端末で2つ同時に開かないでください。ホーム画面のアプリとブラウザなど、2か所で開いて片方で変更すると、もう片方では保存が止まり、読み直すよう案内が出ます。内容が上書きで消えるのを防ぐためです。</li></ul>
 <p>保存できなかったときは、画面の上に赤い注意が出ます。そのまま閉じると、変更した内容が消えるので注意してください。</p>
 <h2>困ったとき</h2>
-<table><thead><tr><th>こんなとき</th><th>原因と対処</th></tr></thead><tbody><tr><td>ネームプレートがつかめない</td><td>縦にすばやく動かすとつかめます。横に動かしたいときは、少し長押ししてから動かします。</td></tr><tr><td>配置を間違えた</td><td>上のバーの ↶ で1つ前に戻せます。</td></tr><tr><td>ある人がボードにも未配置の欄にもいない</td><td>シフト表で休みになっていて、「出勤者だけをボードに表示」がオンになっています。</td></tr><tr><td>休みの人をボードに置けない</td><td>休みの日は配置できません。先にシフト表で休みを外します。</td></tr><tr><td>シフト表のマスを押しても変わらない</td><td>見るだけの状態です。先に名前か日付の見出しを押します。</td></tr><tr><td>シフトの読み込みで「読み込めない組み合わせ」と出た</td><td>同じ人の同じ日が、複数のシートで合っていません。表示された人と日付を、Excelで直します。</td></tr><tr><td>受け取ったコードで一部の人が入らない</td><td>ボードに同じ名前の人や配置場所がいない分は入りません。確認画面に、入らなかった名前が出ます。</td></tr><tr><td>QRコードの読み取りボタンが出ない</td><td>対応していない端末です。コードを貼り付けて受け取ります。</td></tr><tr><td>カメラが使えない</td><td>端末の設定で、ブラウザかアプリにカメラの使用を許可します。</td></tr><tr><td>「ほかの画面で変更されました」と出た</td><td>同じ端末の別の画面で開いています。「読み直す」を押して最新の内容にします。</td></tr><tr><td>画面の上に赤い注意が出た</td><td>保存できていません。端末の空き容量や、ブラウザの設定を確かめます。</td></tr></tbody></table>
+<table><thead><tr><th>こんなとき</th><th>原因と対処</th></tr></thead><tbody><tr><td>自動配置で、思った場所に置かれない</td><td>その人の「いつもの配置場所」と「確定」を確かめます。確定にしないと、人数の偏りを避けるために別の場所に置かれることがあります。</td></tr><tr><td>ネームプレートがつかめない</td><td>縦にすばやく動かすとつかめます。横に動かしたいときは、少し長押ししてから動かします。</td></tr><tr><td>配置を間違えた</td><td>上のバーの ↶ で1つ前に戻せます。</td></tr><tr><td>ある人がボードにも未配置の欄にもいない</td><td>シフト表で休みになっていて、「出勤者だけをボードに表示」がオンになっています。</td></tr><tr><td>休みの人をボードに置けない</td><td>休みの日は配置できません。先にシフト表で休みを外します。</td></tr><tr><td>シフト表のマスを押しても変わらない</td><td>見るだけの状態です。先に名前か日付の見出しを押します。</td></tr><tr><td>シフトの読み込みで「読み込めない組み合わせ」と出た</td><td>同じ人の同じ日が、複数のシートで合っていません。表示された人と日付を、Excelで直します。</td></tr><tr><td>受け取ったコードで一部の人が入らない</td><td>ボードに同じ名前の人や配置場所がいない分は入りません。確認画面に、入らなかった名前が出ます。</td></tr><tr><td>QRコードの読み取りボタンが出ない</td><td>対応していない端末です。コードを貼り付けて受け取ります。</td></tr><tr><td>カメラが使えない</td><td>端末の設定で、ブラウザかアプリにカメラの使用を許可します。</td></tr><tr><td>「ほかの画面で変更されました」と出た</td><td>同じ端末の別の画面で開いています。「読み直す」を押して最新の内容にします。</td></tr><tr><td>画面の上に赤い注意が出た</td><td>保存できていません。端末の空き容量や、ブラウザの設定を確かめます。</td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -3471,9 +3476,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       <div class="sheet-divider menu-divider" role="separator"></div>
       <div class="menu-section-title sheet-section-title">ボード</div>
       <div class="shift-tools" role="group" aria-label="ボードの操作">
+        <button type="button" class="shift-tool" id="autoPlaceBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 19 9-9"/><path d="m14 10 2 2"/><path d="M15 3v3M13.5 4.5h3M19 8v2M18 9h2M6 4v2M5 5h2"/></svg><span>自動配置</span></button>
         <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
       </div>
-      <p class="menu-hint">表示中の日付の全員を未配置に戻します。</p>
+      <p class="menu-hint">自動配置：休みの人を除いた未配置の人を、いつもの配置場所とこれまでの配置をもとに振り分けます。配置済みの人は動かしません。一括解除：表示中の日付の全員を未配置に戻します。</p>
 
       <div class="sheet-divider menu-divider" role="separator"></div>
       <div class="menu-section-title sheet-section-title">ヘルプ</div>
@@ -3928,6 +3934,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(typeof n.locationId !== "string" || !n.locationId) n.locationId = null;
     if(SLOT_VALUES.indexOf(n.slot) === -1) n.slot = null;
     if(n.frozen !== true) delete n.frozen;   // 冷凍の属性
+    if(typeof n.home !== "string" || !n.home) delete n.home;   // いつもの配置場所（名前）
+    if(n.fixed !== true || !n.home) delete n.fixed;            // 確定（必ずいつもの配置場所にする）
     if(Array.isArray(n.categories)){
       n.categories = n.categories.filter(function(c){ return CATEGORY_LETTERS.indexOf(c) !== -1; });
     } else if(n.categories != null){
@@ -4852,6 +4860,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       box.querySelector("#okBtn").addEventListener("click", function(){
         var name = input.value.trim();
         if(!name){ input.focus(); return; }
+        if(loc.name !== name){
+          var oldLocName = loc.name;
+          state.nameplates.forEach(function(n){ if(n.home === oldLocName) n.home = name; });
+        }
         loc.name = name;
         loc.type = selectedType;
         loc.leftSlot = leftSlotCheckbox.checked;
@@ -4906,6 +4918,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '</div>' +
         '<div class="choice-row choice-row-sub"><div class="choice-btn" id="frozenBtn" role="button" aria-pressed="false">冷凍</div>' +
         '<span class="choice-hint">シフト表の出勤日を「冷」で表示</span></div>' +
+        '<label>いつもの配置場所（自動配置で使います）</label>' +
+        '<select class="imp-select" id="npHomeSelect"></select>' +
+        '<div class="choice-row choice-row-sub"><div class="choice-btn" id="fixedBtn" role="button" aria-pressed="false">確定</div>' +
+        '<span class="choice-hint">自動配置で、必ずこの場所にする</span></div>' +
         (isEdit
           ? '<div class="modal-actions">' +
             (np.locationId ? '<button class="btn-secondary" id="unassignBtn" type="button">未配置に戻す</button>' : '') +
@@ -4974,6 +4990,25 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       function refreshFrozen(){ frozenBtn.classList.toggle("selected", frozen); frozenBtn.setAttribute("aria-pressed", frozen ? "true" : "false"); }
       frozenBtn.addEventListener("click", function(){ frozen = !frozen; refreshFrozen(); });
       refreshFrozen();
+      // いつもの配置場所・確定
+      var homeSel = box.querySelector("#npHomeSelect"), fixedBtn = box.querySelector("#fixedBtn");
+      var homeNow = (isEdit && np.home) ? np.home : "";
+      var fixed = isEdit && np.fixed === true;
+      var homeNames = [];
+      state.locations.forEach(function(l){ if(homeNames.indexOf(l.name) === -1) homeNames.push(l.name); });
+      if(homeNow && homeNames.indexOf(homeNow) === -1) homeNames.push(homeNow);   // 配置場所が見つからなくても、設定は消さない
+      homeSel.innerHTML = '<option value="">指定なし</option>' + homeNames.map(function(n){
+        return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>';
+      }).join("");
+      homeSel.value = homeNow;
+      function refreshFixed(){
+        fixedBtn.classList.toggle("selected", fixed && !!homeSel.value);
+        fixedBtn.setAttribute("aria-pressed", (fixed && !!homeSel.value) ? "true" : "false");
+        fixedBtn.classList.toggle("disabled", !homeSel.value);
+      }
+      homeSel.addEventListener("change", function(){ if(!homeSel.value) fixed = false; refreshFixed(); });
+      fixedBtn.addEventListener("click", function(){ if(!homeSel.value) return; fixed = !fixed; refreshFixed(); });
+      refreshFixed();
 
       function submit(){
         var name = input.value.trim();
@@ -4988,11 +5023,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           np.number = newNumber;
           np.categories = selectedCategories.slice();
           if(frozen) np.frozen = true; else delete np.frozen;
+          if(homeSel.value){ np.home = homeSel.value; if(fixed) np.fixed = true; else delete np.fixed; }
+          else { delete np.home; delete np.fixed; }
           if(oldName !== name) migrateShiftName(oldName, name);
         } else {
           state.nameplates.push({
             id: uid(), name: name, color: selectedColor, locationId: null,
-            number: newNumber, time: time, categories: selectedCategories.slice(), frozen: frozen || undefined
+            number: newNumber, time: time, categories: selectedCategories.slice(), frozen: frozen || undefined,
+            home: homeSel.value || undefined, fixed: (homeSel.value && fixed) ? true : undefined
           });
         }
         scheduleSave(); renderAll(); closeModal();
@@ -5202,7 +5240,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           number: (np.number === null || np.number === undefined) ? null : np.number,
           time: (np.time === null || np.time === undefined) ? null : np.time,
           categories: Array.isArray(np.categories) ? np.categories : [],
-          frozen: np.frozen === true || undefined
+          frozen: np.frozen === true || undefined,
+          home: (typeof np.home === "string" && np.home) ? np.home : undefined,
+          fixed: (np.fixed === true && np.home) ? true : undefined
         };
       });
     }
@@ -5349,6 +5389,168 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       content.classList.toggle("open", !open);
     });
   }
+
+  // ---------- 自動配置 ----------
+  // 未配置で出勤の人を、配置場所に振り分ける。考え方:
+  //  1. 「確定」の人は、いつもの配置場所に必ず置く
+  //  2. M（属性）の人は、各配置場所の上段・下段に1人ずつ入るように置く（Mが足りないときは入れない行が空く）
+  //  3. ほかの人は、「いつもの配置場所」と「これまでの配置（保存済みの過去の日付）」の近さで選び、
+  //     特定の配置場所に人数が偏りすぎないように調整する
+  // 過去の配置は、手で直した結果も含めて自動で取り込まれる（実績が増えるほど、いつもの場所よりも実際の配置が重くなる）。
+  var AUTO_HOME_WEIGHT = 2.0;      // いつもの配置場所に置く点数
+  var AUTO_HISTORY_WEIGHT = 3.0;   // これまでの配置の点数（実績が増えるほど効く）
+  var AUTO_BALANCE_PENALTY = 0.7;  // 平均より1人多いごとに引く点数（大きいほど均等にする）
+  function autoCapacity(loc){ return loc.type === "2人" ? 2 : (loc.type === "3人" ? 3 : Infinity); }
+  function autoRows(loc){ return (loc.type === "2人" || loc.type === "3人") ? ["top"] : ["top", "bottom"]; }
+
+  // 過去の配置から、人ごとの「配置場所ごとの割合」を求める。新しい日・同じ曜日ほど重くする
+  function computeAutoHistory(targetIso){
+    var res = Object.create(null);
+    var locIds = Object.create(null), npIds = Object.create(null);
+    state.locations.forEach(function(l){ locIds[l.id] = true; });
+    state.nameplates.forEach(function(n){ npIds[n.id] = true; });
+    var tNum = isoToDayNum(targetIso);
+    Object.keys(state.dayPlacements).forEach(function(iso){
+      if(iso === targetIso) return;
+      var list = state.dayPlacements[iso];
+      if(!Array.isArray(list)) return;
+      var gap = Math.abs(tNum - isoToDayNum(iso));
+      if(gap > 120) return;
+      var w = Math.exp(-gap / 30) * ((gap % 7 === 0) ? 1.6 : 1);
+      list.forEach(function(pl){
+        if(!Array.isArray(pl) || !npIds[pl[0]] || !locIds[pl[1]]) return;
+        var r = res[pl[0]] || (res[pl[0]] = { tot: 0, days: 0, byLoc: Object.create(null) });
+        r.tot += w; r.days++;
+        r.byLoc[pl[1]] = (r.byLoc[pl[1]] || 0) + w;
+      });
+    });
+    return res;
+  }
+
+  function autoPlaceDay(){
+    var iso = state.boardDate;
+    if(state.locations.length === 0){ openNoticeModal("お知らせ", "配置場所がありません。先に配置場所を追加してください。"); return; }
+    syncPlacementsToDay();
+    var hist = computeAutoHistory(iso);
+    var locs = state.locations;
+    var load = Object.create(null), rowCnt = Object.create(null), mCnt = Object.create(null);
+    locs.forEach(function(l){ load[l.id] = 0; autoRows(l).forEach(function(r){ rowCnt[l.id + "|" + r] = 0; mCnt[l.id + "|" + r] = 0; }); });
+    function isM(n){ return Array.isArray(n.categories) && n.categories.indexOf("M") !== -1; }
+    function rowOf(l, slot){ return autoRows(l).indexOf(slot) !== -1 ? slot : "top"; }
+
+    var placedNow = state.nameplates.filter(function(n){ return n.locationId && !isOff(n.name, iso) && isVisibleOnBoard(n); });
+    placedNow.forEach(function(n){
+      var l = locs.filter(function(x){ return x.id === n.locationId; })[0];
+      if(!l) return;
+      load[l.id]++;
+      if(n.slot !== "left"){ var r = rowOf(l, n.slot); rowCnt[l.id + "|" + r]++; if(isM(n)) mCnt[l.id + "|" + r]++; }
+    });
+    var cands = state.nameplates.filter(function(n){ return !n.locationId && !isOff(n.name, iso) && isVisibleOnBoard(n); });
+    if(cands.length === 0){ openNoticeModal("お知らせ", "配置する人がいません（未配置で出勤の人がいません）。"); return; }
+
+    var total = placedNow.length + cands.length;
+    var target = Math.ceil(total / locs.length);
+    function score(n, l){
+      var home = (n.home && n.home === l.name) ? 1 : 0;
+      var h = hist[n.id], freq = 0, lam = 0;
+      if(h && h.tot > 0){ freq = (h.byLoc[l.id] || 0) / h.tot; lam = h.days / (h.days + 7); }
+      return AUTO_HOME_WEIGHT * home + AUTO_HISTORY_WEIGHT * lam * freq;
+    }
+    function fits(l){ return load[l.id] < autoCapacity(l); }
+    function pick(n, l, row){
+      n.locationId = l.id; n.slot = row || null;
+      load[l.id]++;
+      if(row){ rowCnt[l.id + "|" + row]++; if(isM(n)) mCnt[l.id + "|" + row]++; }
+    }
+    function homeLoc(n){
+      if(!n.home) return null;
+      return locs.filter(function(l){ return l.name === n.home; })[0] || null;
+    }
+    var remaining = cands.slice();
+    function drop(n){ var i = remaining.indexOf(n); if(i !== -1) remaining.splice(i, 1); }
+    var pendingRow = [];   // 場所だけ決まって、上段・下段をあとで決める人
+
+    // 1. 確定のM
+    cands.filter(function(n){ return n.fixed === true && isM(n); }).forEach(function(n){
+      var l = homeLoc(n); if(!l || !fits(l)) return;
+      var rows = autoRows(l).slice().sort(function(a, b){
+        return (mCnt[l.id + "|" + a] - mCnt[l.id + "|" + b]) || (rowCnt[l.id + "|" + a] - rowCnt[l.id + "|" + b]);
+      });
+      pick(n, l, rows[0]); drop(n);
+    });
+
+    // 2. そのほかのM：Mがまだいない上段・下段に、点数の高い組み合わせから入れる
+    for(;;){
+      var ms = remaining.filter(function(n){ return isM(n) && n.fixed !== true; });
+      if(!ms.length) break;
+      var bestM = null;
+      ms.forEach(function(n){
+        locs.forEach(function(l){
+          if(!fits(l)) return;
+          autoRows(l).forEach(function(r){
+            if(mCnt[l.id + "|" + r] > 0) return;
+            var sc = score(n, l) - AUTO_BALANCE_PENALTY * Math.max(0, load[l.id] + 1 - target) - 0.01 * load[l.id];
+            if(!bestM || sc > bestM.sc) bestM = { n: n, l: l, r: r, sc: sc };
+          });
+        });
+      });
+      if(!bestM) break;
+      pick(bestM.n, bestM.l, bestM.r); drop(bestM.n);
+    }
+
+    // 3. 確定のほかの人
+    cands.filter(function(n){ return n.fixed === true && remaining.indexOf(n) !== -1; }).forEach(function(n){
+      var l = homeLoc(n); if(!l || !fits(l)) return;
+      pick(n, l, null); pendingRow.push({ n: n, l: l }); drop(n);
+    });
+
+    // 4. 残りの人（余ったMも含む）：点数の高い人から、人数が偏らないように場所を選ぶ
+    function bestScoreOf(n){ var m = 0; locs.forEach(function(l){ m = Math.max(m, score(n, l)); }); return m; }
+    var order = remaining.slice().sort(function(a, b){ return bestScoreOf(b) - bestScoreOf(a); });
+    var left = [];
+    order.forEach(function(n){
+      var bestL = null;
+      locs.forEach(function(l){
+        if(!fits(l)) return;
+        var sc = score(n, l) - AUTO_BALANCE_PENALTY * Math.max(0, load[l.id] + 1 - target) - 0.01 * load[l.id];
+        if(!bestL || sc > bestL.sc) bestL = { l: l, sc: sc };
+      });
+      if(!bestL){ left.push(n); return; }
+      pick(n, bestL.l, null); pendingRow.push({ n: n, l: bestL.l });
+    });
+
+    // 5. 上段・下段を決める（人数が少ないほう。Mはいない段に優先）
+    pendingRow.forEach(function(x){
+      var rows = autoRows(x.l), r = rows[0];
+      if(rows.length > 1){
+        var kt = x.l.id + "|top", kb = x.l.id + "|bottom";
+        if(isM(x.n) && mCnt[kt] !== mCnt[kb]) r = mCnt[kt] < mCnt[kb] ? "top" : "bottom";
+        else r = rowCnt[kt] <= rowCnt[kb] ? "top" : "bottom";
+      }
+      x.n.slot = r;
+      rowCnt[x.l.id + "|" + r]++; if(isM(x.n)) mCnt[x.l.id + "|" + r]++;
+    });
+
+    // 結果のお知らせ
+    var placedCount = cands.length - left.length;
+    var allM = state.nameplates.filter(function(n){ return isM(n) && !isOff(n.name, iso) && isVisibleOnBoard(n); }).length;
+    var lacking = [];
+    locs.forEach(function(l){
+      autoRows(l).forEach(function(r){
+        if(mCnt[l.id + "|" + r] === 0) lacking.push(l.name + (autoRows(l).length > 1 ? (r === "top" ? "の上段" : "の下段") : ""));
+      });
+    });
+    scheduleSave(); renderAll();
+    var notes = [];
+    if(left.length) notes.push("入りきらなかった人（" + left.length + "人）：" + left.map(function(n){ return n.name; }).join("、") + "。2人・3人タイプの配置場所が満員でした。");
+    if(allM > 0 && lacking.length) notes.push("Mが入っていない場所：" + lacking.join("、") + "（出勤のMは" + allM + "人です）。");
+    if(notes.length) openNoticeModal(placedCount + "人を配置しました", notes.join(" "));
+    else showUndoToast(placedCount + "人を自動で配置しました（↶で戻せます）");
+  }
+  document.getElementById("autoPlaceBtn").addEventListener("click", function(){
+    closeTemplateSheet();
+    autoPlaceDay();
+  });
 
   document.getElementById("unassignAllBtn").addEventListener("click", function(){
     var placedCount = state.nameplates.filter(function(n){ return !!n.locationId; }).length;
@@ -5681,7 +5883,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
           name: name,
           locationNames: state.locations.map(function(l){ return { name: l.name, type: l.type || "2行", leftSlot: !!l.leftSlot }; }),
           nameplates: state.nameplates.map(function(np){
-            return { name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories, frozen: np.frozen === true || undefined };
+            return { name: np.name, number: np.number, time: np.time, color: np.color, categories: np.categories, frozen: np.frozen === true || undefined,
+                     home: np.home || undefined, fixed: np.fixed === true || undefined };
           })
         });
         state.currentTemplateName = name;   // いまのボードの内容そのものなので、そのまま使用中にする
