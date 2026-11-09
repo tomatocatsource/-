@@ -3304,7 +3304,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     <div class="title-wrap">
       <span class="title-main">配置ボード</span>
     </div>
-    <div class="top-actions"><button class="btn-ghost top-icon-btn" id="undoBtn" type="button" aria-label="元に戻す" title="元に戻す" disabled><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
+    <div class="top-actions"><button class="btn-ghost top-icon-btn" id="autoPlaceBtn" type="button" aria-label="自動配置" title="自動配置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 19 9-9"/><path d="m14 10 2 2"/><path d="M15 3v3M13.5 4.5h3M19 8v2M18 9h2M6 4v2M5 5h2"/></svg></button><button class="btn-ghost top-icon-btn" id="undoBtn" type="button" aria-label="元に戻す" title="元に戻す" disabled><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
   </header>
 
   <div class="save-warn" id="saveWarn" role="alert" hidden><span id="saveWarnText"></span><button type="button" id="saveWarnClose" aria-label="閉じる">×</button></div>
@@ -3367,7 +3367,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h2>はじめに</h2>
 <p>配置ボードは、その日に誰をどこに配置するかを、ネームプレートを動かして決めるアプリです。日付ごとに配置を残せるほか、休みや残業を入れるシフト表、配置やシフトを人に送る共有コード（QRコード）があります。データはすべて使っている端末の中に保存され、ネットにつながっていなくても使えます。</p>
 <p>画面は上から順に、次の4つの部分でできています。</p>
-<table><thead><tr><th>場所</th><th>中身</th><th>できること</th></tr></thead><tbody><tr><td>上のバー</td><td>「配置ボード」の文字と4つのボタン</td><td>↶ 元に戻す、🎨 着せ替え、📅 シフト表、☰ メニュー</td></tr><tr><td>日付の行</td><td>◀ 日付 ▶、S・M・L・合計の人数</td><td>日付の切り替え、属性ごとの人の確認</td></tr><tr><td>ボード</td><td>配置場所のカード</td><td>ネームプレートを置く・動かす</td></tr><tr><td>下の欄</td><td>まだ配置していないネームプレート</td><td>ここから配置場所へ動かす、＋で人を追加</td></tr></tbody></table>
+<table><thead><tr><th>場所</th><th>中身</th><th>できること</th></tr></thead><tbody><tr><td>上のバー</td><td>「配置ボード」の文字と5つのボタン</td><td>自動配置（魔法の杖のマーク）、↶ 元に戻す、🎨 着せ替え、📅 シフト表、☰ メニュー</td></tr><tr><td>日付の行</td><td>◀ 日付 ▶、S・M・L・合計の人数</td><td>日付の切り替え、属性ごとの人の確認</td></tr><tr><td>ボード</td><td>配置場所のカード</td><td>ネームプレートを置く・動かす</td></tr><tr><td>下の欄</td><td>まだ配置していないネームプレート</td><td>ここから配置場所へ動かす、＋で人を追加</td></tr></tbody></table>
 <h3>まずはここから</h3>
 <p>初めて使うときは、この4つだけで配置ボードとして使えます。くわしい操作は、あとの章で説明します。</p>
 <ol><li>ボードの「＋ 配置場所を追加」で、持ち場を登録する</li><li>未配置の欄の「＋」で、人を登録する</li><li>ネームプレートを動かして、配置場所に置く</li><li>☰ メニューのテンプレート欄で保存して、登録した内容を残しておく</li></ol>
@@ -3386,8 +3386,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h3>置く・動かす・戻す</h3>
 <ul><li>置く：下の未配置の欄から、配置場所のカードへ動かします。2行タイプは、上の段か下の段か、離した位置に置かれます。</li><li>別の場所へ動かす：置いたネームプレートを、そのまま別のカードへ動かします。</li><li>未配置に戻す：画面下の未配置の欄へ動かします。ネームプレートを押して「未配置に戻す」でも戻せます。</li><li>全員を戻す：☰ メニューの「ボード」にある「配置を一括解除」で、その日の全員が未配置に戻ります。配置場所は残ります。</li></ul>
 <h3>自動配置する</h3>
-<p>☰ メニューの「ボード」にある「自動配置」を押すと、休みの人を除いた、まだ配置していない人を、配置場所に振り分けます。すでに配置した人は動かしません。気に入らないところは、あとから手で動かせます。やり直したいときは、↶ で戻せます。</p>
-<ul><li>確定の人は、いつもの配置場所に必ず置きます。</li><li>そのほかの人は、いつもの配置場所と、これまでの配置の実績をもとに選びます。人数の偏りは調整しません。いつもの場所も実績もない人は、人が少ない配置場所に置きます。</li><li>2人・3人タイプの配置場所は、定員までしか入りません。入りきらなかった人は、未配置のまま残ります。</li></ul>
+<p>上のバーの自動配置ボタン（魔法の杖のマーク）を押すと、休みの人を除いた、まだ配置していない人を、配置場所に振り分けます。すでに配置した人は動かしません。気に入らないところは、あとから手で動かせます。やり直したいときは、↶ で戻せます。</p>
+<ul><li>確定の人は、いつもの配置場所に必ず置きます。</li><li>そのほかの人は、いつもの配置場所と、これまでの配置の実績をもとに選びます。人数の偏りは調整しません。いつもの場所も実績もない人は、人が少ない配置場所に置きます。</li><li>配置場所の中の位置（上段・下段・左の独立枠）も、これまでの配置で多かった位置を覚えて、そこに置きます。実績がないときは、人数が少ない段に置きます。</li><li>2人・3人タイプの配置場所は、定員までしか入りません。入りきらなかった人は、未配置のまま残ります。</li></ul>
 <p>これまでの配置は、毎日の配置が自動で保存されたものを使います。手で直した結果もそのまま実績になるので、使うほど、実際の配置に近づきます。新しい日と、同じ曜日の配置ほど、強く反映されます。</p>
 <p>ネームプレートは、縦にすばやく動かせばすぐつかめます。未配置の欄を横に動かすとスクロールになるので、横に動かしたいときは、少し長押ししてから動かします。パソコンでは、マウスで押したまま少し動かすとつかめます。</p>
 <h3>間違えたとき</h3>
@@ -3476,10 +3476,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       <div class="sheet-divider menu-divider" role="separator"></div>
       <div class="menu-section-title sheet-section-title">ボード</div>
       <div class="shift-tools" role="group" aria-label="ボードの操作">
-        <button type="button" class="shift-tool" id="autoPlaceBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 19 9-9"/><path d="m14 10 2 2"/><path d="M15 3v3M13.5 4.5h3M19 8v2M18 9h2M6 4v2M5 5h2"/></svg><span>自動配置</span></button>
         <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
       </div>
-      <p class="menu-hint">自動配置：休みの人を除いた未配置の人を、いつもの配置場所とこれまでの配置をもとに振り分けます。配置済みの人は動かしません。一括解除：表示中の日付の全員を未配置に戻します。</p>
+      <p class="menu-hint">表示中の日付の全員を未配置に戻します。配置場所と人の登録は残ります。</p>
 
       <div class="sheet-divider menu-divider" role="separator"></div>
       <div class="menu-section-title sheet-section-title">ヘルプ</div>
@@ -5417,9 +5416,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       var w = Math.exp(-gap / 30) * ((gap % 7 === 0) ? 1.6 : 1);
       list.forEach(function(pl){
         if(!Array.isArray(pl) || !npIds[pl[0]] || !locIds[pl[1]]) return;
-        var r = res[pl[0]] || (res[pl[0]] = { tot: 0, days: 0, byLoc: Object.create(null) });
+        var r = res[pl[0]] || (res[pl[0]] = { tot: 0, days: 0, byLoc: Object.create(null), bySlot: Object.create(null) });
         r.tot += w; r.days++;
         r.byLoc[pl[1]] = (r.byLoc[pl[1]] || 0) + w;
+        // 配置場所の中の位置（上段・下段・左の独立枠）も覚える
+        var sl = (pl[2] === "bottom" || pl[2] === "left") ? pl[2] : "top";
+        r.bySlot[pl[1] + "|" + sl] = (r.bySlot[pl[1] + "|" + sl] || 0) + w;
       });
     });
     return res;
@@ -5486,10 +5488,25 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       pick(n, bestL.l, null); pendingRow.push({ n: n, l: bestL.l });
     });
 
-    // 3. 上段・下段を決める（人数が少ないほう。同じなら上段）
+    // 3. 配置場所の中の位置（上段・下段・左の独立枠）を決める。
+    //    その場所でこれまでいちばん多かった位置を選ぶ。実績がない（または同じ）ときは、人数が少ない段、同じなら上段
+    function slotShare(n, l, slot){
+      var h = hist[n.id];
+      var base = h ? (h.byLoc[l.id] || 0) : 0;
+      return base > 0 ? ((h.bySlot[l.id + "|" + slot] || 0) / base) : 0;
+    }
     pendingRow.forEach(function(x){
       var rows = autoRows(x.l), r = rows[0];
-      if(rows.length > 1) r = rowCnt[x.l.id + "|top"] <= rowCnt[x.l.id + "|bottom"] ? "top" : "bottom";
+      var hasLeft = !!(x.l.leftSlot && x.l.type === "2行");
+      if(rows.length > 1){
+        var pt = slotShare(x.n, x.l, "top"), pb = slotShare(x.n, x.l, "bottom"), pl = hasLeft ? slotShare(x.n, x.l, "left") : 0;
+        if(hasLeft && pl > 0 && pl >= pt && pl >= pb){
+          x.n.slot = "left";   // 左の独立枠は、段の人数には数えない
+          return;
+        }
+        if(pt !== pb) r = pt > pb ? "top" : "bottom";
+        else r = rowCnt[x.l.id + "|top"] <= rowCnt[x.l.id + "|bottom"] ? "top" : "bottom";
+      }
       x.n.slot = r;
       rowCnt[x.l.id + "|" + r]++;
     });
