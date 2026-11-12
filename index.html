@@ -2719,92 +2719,109 @@
   }
 
 
-  /* ---------- steampunk（スマート）: 真鍮の計器 ---------- */
-  body[data-theme="steampunk"]{
-    --bg:#17110C;--surface:#221912;--ink:#EDE3CC;--ink-soft:#A08C70;--line:#3E2F21;
-    --accent:#C9A45A;--accent-dark:#A8853F;--danger:#C45A3E;--plate-red:#B5703F;--plate-blue:#5F9A8A;
-    --sp-serif:"Yu Mincho","YuMincho","Hiragino Mincho ProN","Noto Serif JP",Georgia,serif;
-    --sp-rule:linear-gradient(180deg,#C9A45A 0 1px,transparent 1px 3px,#C9A45A 3px 4px);
-    --radius:3px;
-    background-color:#17110C;
-    background-image:linear-gradient(180deg,#1D150E,#140E09);
+  /* ---------- lavender（ラベンダー。やわらかな紫と牛乳色。ふわふわの光と、きらめく星） ---------- */
+  @keyframes lavDrift{from{transform:translate3d(-3%,-2%,0) scale(1);}to{transform:translate3d(3%,3%,0) scale(1.08);}}
+  @keyframes lavTwinkle{0%,100%{opacity:.4;}50%{opacity:1;}}
+  body[data-theme="lavender"]{
+    --bg:#F6F1FC;--surface:#FFFFFF;--ink:#46385E;--ink-soft:#8E82A6;--line:#E4DAF2;
+    --accent:#9B7BD4;--accent-dark:#7E5FBC;--danger:#D5607A;--plate-red:#E58FA8;--plate-blue:#86AEE6;
+    --radius:18px;
+    background-color:#F6F1FC;
+    background-image:
+      radial-gradient(ellipse 80% 45% at 90% -5%,rgba(214,190,250,.55),transparent 60%),
+      radial-gradient(ellipse 70% 45% at 0% 105%,rgba(250,196,222,.4),transparent 60%),
+      linear-gradient(170deg,#FAF7FE 0%,#F3ECFB 55%,#EEE4F9 100%);
     background-attachment:fixed;
+    overflow-x:hidden;
   }
-  body[data-theme="steampunk"] :focus-visible{outline:1px solid #C9A45A;outline-offset:2px;}
-
-  body[data-theme="steampunk"] .topbar{position:relative;background:#17110C;border-bottom:none;padding-bottom:13px;}
-  body[data-theme="steampunk"] .topbar::after{
-    content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--sp-rule);opacity:.8;
+  body[data-theme="lavender"] ::selection{background:#DCCBF6;color:#46385E;}
+  body[data-theme="lavender"]::before,body[data-theme="lavender"]::after{content:"";position:fixed;z-index:-1;pointer-events:none;}
+  /* ふわふわ漂う光のかたまり */
+  body[data-theme="lavender"]::before{
+    inset:-10%;
+    background:
+      radial-gradient(circle 160px at 18% 28%,rgba(236,214,252,.55),transparent 70%),
+      radial-gradient(circle 200px at 82% 62%,rgba(255,214,230,.45),transparent 70%),
+      radial-gradient(circle 140px at 46% 88%,rgba(205,228,252,.5),transparent 70%);
+    animation:lavDrift 16s ease-in-out infinite alternate;
   }
-  body[data-theme="steampunk"] .title-main{font-family:var(--sp-serif);color:#C9A45A;font-weight:700;letter-spacing:.16em;}
-  body[data-theme="steampunk"] .title-sub{color:#A08C70;}
-  body[data-theme="steampunk"] .btn-ghost{background:transparent;border:1px solid #5A4630;color:#C9A45A;border-radius:3px;}
-  body[data-theme="steampunk"] .btn-ghost:active{border-color:#C9A45A;}
-
-  body[data-theme="steampunk"] .info-bar{background:#1A130D;border-bottom:1px solid #3E2F21;color:#A08C70;}
-  body[data-theme="steampunk"] .info-date{font-family:var(--sp-serif);color:#EDE3CC;font-weight:700;letter-spacing:.04em;}
-  body[data-theme="steampunk"] .info-stats b{color:#C9A45A;}
-  body[data-theme="steampunk"] .date-step{border-radius:3px;border-color:#5A4630;color:#C9A45A;background:transparent;}
-
-  /* double brass frame */
-  body[data-theme="steampunk"] .location-card{
-    background:#221912;border:1px solid #3E2F21;border-radius:3px;
-    box-shadow:inset 0 0 0 3px #221912,inset 0 0 0 4px rgba(201,164,90,.26);
+  /* きらめく星 */
+  body[data-theme="lavender"]::after{
+    inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22220%22 height=%22240%22 viewBox=%220 0 220 240%22%3E%3Cg transform=%22translate(34 40)%22%3E%3Cpath d=%22M0 -8C1 -2 2 -1 8 0C2 1 1 2 0 8C-1 2 -2 1 -8 0C-2 -1 -1 -2 0 -8Z%22 fill=%22%23C7B0F0%22 fill-opacity=%22.75%22/%3E%3C/g%3E%3Cg transform=%22translate(160 84) scale(.7)%22%3E%3Cpath d=%22M0 -8C1 -2 2 -1 8 0C2 1 1 2 0 8C-1 2 -2 1 -8 0C-2 -1 -1 -2 0 -8Z%22 fill=%22%23F4B3CD%22 fill-opacity=%22.8%22/%3E%3C/g%3E%3Cg transform=%22translate(96 160) scale(1.15)%22%3E%3Cpath d=%22M0 -8C1 -2 2 -1 8 0C2 1 1 2 0 8C-1 2 -2 1 -8 0C-2 -1 -1 -2 0 -8Z%22 fill=%22%23B7D6F6%22 fill-opacity=%22.8%22/%3E%3C/g%3E%3Cg transform=%22translate(190 206) scale(.55)%22%3E%3Cpath d=%22M0 -8C1 -2 2 -1 8 0C2 1 1 2 0 8C-1 2 -2 1 -8 0C-2 -1 -1 -2 0 -8Z%22 fill=%22%23C7B0F0%22 fill-opacity=%22.75%22/%3E%3C/g%3E%3Ccircle cx=%2270%22 cy=%22214%22 r=%223%22 fill=%22%23F4B3CD%22 fill-opacity=%22.7%22/%3E%3Ccircle cx=%22196%22 cy=%2230%22 r=%222.5%22 fill=%22%23B7D6F6%22 fill-opacity=%22.8%22/%3E%3Ccircle cx=%2220%22 cy=%22120%22 r=%222.5%22 fill=%22%23C7B0F0%22 fill-opacity=%22.7%22/%3E%3C/svg%3E");
+    animation:lavTwinkle 3.6s ease-in-out infinite;
   }
-  body[data-theme="steampunk"] .location-card.drag-over{
-    border-color:#C9A45A;box-shadow:inset 0 0 0 3px #221912,inset 0 0 0 4px #C9A45A;
+  body[data-theme="lavender"] .topbar{
+    position:relative;background:rgba(255,255,255,.8);border-bottom:none;
+    box-shadow:0 4px 18px rgba(140,110,200,.12);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   }
-  body[data-theme="steampunk"] .location-name{font-family:var(--sp-serif);color:#C9A45A;font-weight:700;letter-spacing:.08em;}
-  body[data-theme="steampunk"] .location-edit-btn{color:#A08C70;}
-  body[data-theme="steampunk"] .add-location-card{border:1px dashed #5A4630;background:transparent;color:#A08C70;border-radius:3px;}
-
-  /* matte metal plates: brass / copper / verdigris */
-  body[data-theme="steampunk"] .nameplate-chip{
-    background:#2A2017;color:#E6CD95;border:1px solid #C9A45A;border-radius:2px;
-    font-weight:600;box-shadow:none;
+  body[data-theme="lavender"] .topbar::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:3px;pointer-events:none;
+    background:linear-gradient(90deg,#C7B0F0,#F4B3CD 50%,#B7D6F6);
   }
-  body[data-theme="steampunk"] .nameplate-chip.plate-red{color:#E7AA82;border-color:#B5703F;}
-  body[data-theme="steampunk"] .nameplate-chip.plate-blue{color:#A9D2C5;border-color:#5F9A8A;}
-
-  body[data-theme="steampunk"] .pool-bar{background:#1A130D;border-top:none;box-shadow:0 -10px 24px rgba(0,0,0,.35);}
-  body[data-theme="steampunk"] .pool-bar::before{
-    content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--sp-rule);opacity:.8;
+  body[data-theme="lavender"] .title-main{
+    font-family:"Hiragino Maru Gothic ProN","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;font-weight:800;letter-spacing:.1em;
+    background:linear-gradient(90deg,#8C69CF,#D77FB0);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
   }
-  body[data-theme="steampunk"] .pool-label{color:#A08C70;}
-  body[data-theme="steampunk"] .pool-label b{color:#C9A45A;}
-  body[data-theme="steampunk"] .pool-add-btn{border:1px dashed #C9A45A;background:transparent;color:#C9A45A;border-radius:3px;}
-
-  body[data-theme="steampunk"] .overlay{background:rgba(10,7,4,.7);}
-  body[data-theme="steampunk"] .modal,body[data-theme="steampunk"] .sheet{
-    background:#221912;border-top:1px solid #C9A45A;border-radius:4px 4px 0 0;
-    box-shadow:inset 0 3px 0 #221912,inset 0 4px 0 rgba(201,164,90,.45),0 -12px 36px rgba(0,0,0,.45);
+  body[data-theme="lavender"] .title-sub{color:#8E82A6;}
+  body[data-theme="lavender"] .btn-ghost{
+    border:1px solid #E4DAF2;border-radius:50%;color:#7E5FBC;background:#fff;
+    box-shadow:0 3px 10px rgba(140,110,200,.14);
   }
-  body[data-theme="steampunk"] .sheet-header{font-family:var(--sp-serif);color:#C9A45A;letter-spacing:.08em;}
-  body[data-theme="steampunk"] .sheet-section-title{color:#C9A45A;}
-  body[data-theme="steampunk"] .btn-primary{background:#C9A45A;color:#1A1208;border:none;border-radius:3px;font-weight:700;}
-  body[data-theme="steampunk"] .btn-primary:active{background:#A8853F;}
-  body[data-theme="steampunk"] .btn-primary:disabled{background:#3E2F21;color:#7A6A52;}
-  body[data-theme="steampunk"] .btn-secondary{background:transparent;border:1px solid #5A4630;color:#EDE3CC;border-radius:3px;}
-  body[data-theme="steampunk"] .btn-danger{border-radius:3px;border-color:#C45A3E;color:#E08A70;}
-  body[data-theme="steampunk"] .choice-btn{border-radius:3px;border-color:#3E2F21;background:transparent;color:#A08C70;}
-  body[data-theme="steampunk"] .choice-btn.selected{background:#C9A45A;border-color:#C9A45A;color:#1A1208;}
-  body[data-theme="steampunk"] input[type="text"],body[data-theme="steampunk"] input[type="date"],
-  body[data-theme="steampunk"] textarea,body[data-theme="steampunk"] select{
-    background:#140E09;border-color:#3E2F21;color:#EDE3CC;color-scheme:dark;border-radius:3px;
+  body[data-theme="lavender"] .btn-ghost:active{background:#F3ECFB;}
+  body[data-theme="lavender"] .info-bar{background:rgba(255,255,255,.66);border-bottom:1px solid #E4DAF2;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  body[data-theme="lavender"] .info-date{color:#46385E;}
+  body[data-theme="lavender"] .info-stats b{color:#8C69CF;}
+  body[data-theme="lavender"] .date-step{border-color:#E4DAF2;color:#7E5FBC;background:#fff;border-radius:50%;}
+  /* カードは牛乳のような白に、やさしい紫の縁。角は大きく丸く */
+  body[data-theme="lavender"] .location-card{
+    position:relative;border:1px solid #E4DAF2;border-radius:22px;
+    background:linear-gradient(165deg,#FFFFFF,#FBF8FF);
+    box-shadow:0 8px 22px -10px rgba(140,110,200,.3);
   }
-  body[data-theme="steampunk"] input[type="number"]{
-    width:100%;padding:11px 12px;font-size:15px;border:1px solid #3E2F21;border-radius:3px;
-    background:#140E09;color:#EDE3CC;color-scheme:dark;
+  body[data-theme="lavender"] .location-card.drag-over{box-shadow:0 0 0 2px rgba(155,123,212,.5),0 10px 26px -6px rgba(140,110,200,.4);background:linear-gradient(165deg,#FFFFFF,#F3EAFE);}
+  body[data-theme="lavender"] .location-name{color:#46385E;font-weight:700;letter-spacing:.04em;}
+  body[data-theme="lavender"] .location-edit-btn{color:#A094B8;}
+  body[data-theme="lavender"] .add-location-card{border:1.5px dashed #CDBDE9;background:rgba(255,255,255,.6);color:#8E82A6;border-radius:22px;}
+  /* ネームプレートは、マカロンのようなやさしい色 */
+  body[data-theme="lavender"] .nameplate-chip{
+    border:1px solid #DCCBF6;border-radius:999px;color:#46385E;
+    background:linear-gradient(180deg,#FFFFFF,#F4ECFE);
+    box-shadow:0 2px 6px rgba(140,110,200,.14);
   }
-  body[data-theme="steampunk"] input[type="text"]:focus,body[data-theme="steampunk"] input[type="date"]:focus,
-  body[data-theme="steampunk"] input[type="number"]:focus{outline:1px solid #C9A45A;outline-offset:1px;}
-
-  body[data-theme="steampunk"] .shift-toggle-row,body[data-theme="steampunk"] .shift-scroll{border-color:#3E2F21;border-radius:3px;}
-  body[data-theme="steampunk"] .shift-month{font-family:var(--sp-serif);color:#C9A45A;letter-spacing:.08em;}
-  body[data-theme="steampunk"] .shift-table th.sun,body[data-theme="steampunk"] .shift-table th.sun .wd{color:#E08A70;}
-  body[data-theme="steampunk"] .shift-table th.sat,body[data-theme="steampunk"] .shift-table th.sat .wd{color:#8CC0B1;}
-  body[data-theme="steampunk"] .shift-table td.shift-cell.on{background:rgba(181,112,63,.2);color:#E3A57C;}
-  body[data-theme="steampunk"] .shift-table td.cnt{color:#A08C70;}
+  body[data-theme="lavender"] .nameplate-chip.plate-white{background:linear-gradient(180deg,#FFFFFF,#F4ECFE);border-color:#DCCBF6;}
+  body[data-theme="lavender"] .nameplate-chip.plate-red{background:linear-gradient(180deg,#FFF4F8,#FDE0EB);border-color:#F2B6CC;color:#8A3A56;}
+  body[data-theme="lavender"] .nameplate-chip.plate-blue{background:linear-gradient(180deg,#F4F9FF,#DDEBFB);border-color:#B2CCF0;color:#33557F;}
+  body[data-theme="lavender"] .pool-bar{
+    background:rgba(255,255,255,.82);border-top:1px solid #E4DAF2;
+    box-shadow:0 -4px 20px rgba(140,110,200,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  }
+  body[data-theme="lavender"] .pool-label{color:#8E82A6;}
+  body[data-theme="lavender"] .pool-label b{color:#8C69CF;}
+  body[data-theme="lavender"] .pool-add-btn{border:1.5px dashed #BFA8E6;border-radius:50%;color:#8C69CF;background:#fff;}
+  body[data-theme="lavender"] .overlay{background:rgba(70,56,94,.26);}
+  body[data-theme="lavender"] .modal,body[data-theme="lavender"] .sheet{
+    background:linear-gradient(180deg,#FFFFFF,#FBF8FF);border-top:1px solid #E4DAF2;box-shadow:0 -10px 34px rgba(110,80,170,.18);
+  }
+  body[data-theme="lavender"] .modal{border-radius:24px;}
+  body[data-theme="lavender"] .btn-primary{
+    background:linear-gradient(135deg,#A98AE0 0%,#9B7BD4 55%,#C98ACB 100%);color:#fff;font-weight:700;border:none;border-radius:999px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 16px -6px rgba(140,100,200,.6);
+  }
+  body[data-theme="lavender"] .btn-primary:disabled{background:#DCD2EE;color:#fff;box-shadow:none;}
+  body[data-theme="lavender"] .btn-secondary{background:#fff;border:1px solid #E4DAF2;color:#46385E;border-radius:999px;}
+  body[data-theme="lavender"] .btn-danger{border-radius:999px;}
+  body[data-theme="lavender"] .choice-btn{border-color:#E4DAF2;color:#46385E;border-radius:999px;}
+  body[data-theme="lavender"] .choice-btn.selected{background:linear-gradient(135deg,#A98AE0,#9B7BD4);border-color:transparent;color:#fff;}
+  body[data-theme="lavender"] input[type="text"]:focus,body[data-theme="lavender"] input[type="number"]:focus,
+  body[data-theme="lavender"] input[type="date"]:focus,body[data-theme="lavender"] textarea:focus{outline:2px solid #9B7BD466;outline-offset:1px;}
+  body[data-theme="lavender"] .shift-table th.sun,body[data-theme="lavender"] .shift-table th.sun .wd{color:#D5607A;}
+  body[data-theme="lavender"] .shift-table th.sat,body[data-theme="lavender"] .shift-table th.sat .wd{color:#6F8FD0;}
+  body[data-theme="lavender"] .shift-table td.shift-cell.on{background:rgba(155,123,212,.15);color:#7E5FBC;}
+  @media (prefers-reduced-motion: reduce){
+    body[data-theme="lavender"]::before,body[data-theme="lavender"]::after{animation:none;}
+  }
 
 .theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:8px;}
   .theme-choice{position:relative;min-height:76px;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:left;background:var(--bg);color:var(--ink);cursor:pointer;overflow:hidden;}
@@ -4032,7 +4049,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.currentTemplateName = parsed.currentTemplateName || null;
         state.boardDate = parsed.boardDate || null;
         state.theme = parsed.theme || "default";
-        if(["mono", "iceblue", "marble"].indexOf(state.theme) !== -1) state.theme = "default";   // 削除したテーマ
+        if(["mono", "iceblue", "marble", "steampunk"].indexOf(state.theme) !== -1) state.theme = "default";   // 削除したテーマ
         if(isObj(parsed.dayoffs)){
           state.dayoffs = cleanStoredDayoffs(parsed.dayoffs);
         } else if(parsed.shifts && typeof parsed.shifts === "object"){
@@ -7632,7 +7649,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     // 誤り訂正のレベルを、長さに合わせたものから順に試す。ライブラリは長さの境目で
     // 「code length overflow」を出すことがあるので、失敗したら1段低いレベル（＝たくさん入る）で作り直す
     var C = QRCode.CorrectLevel;
-    var levels = text.length > 900 ? [C.L] : text.length > 500 ? [C.M, C.L] : [C.Q, C.M, C.L];
+    // 長いコードは、誤り訂正を弱めて（＝マス目を粗くして）作る。画面表示なら傷や汚れがなく、カメラは粗いほうが読みやすい
+    var levels = text.length > 600 ? [C.L] : text.length > 300 ? [C.M, C.L] : [C.Q, C.M, C.L];
     for(var li = 0; li < levels.length; li++){
       if(buildShareQR(box, text, levels[li], label)) return;
     }
@@ -7731,12 +7749,18 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       };
     }
     var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
+    var tick = 0;
     return function(video){
       var vw = video.videoWidth, vh = video.videoHeight;
       if(!vw || !vh) return Promise.resolve(null);
-      var scale = Math.min(1, 800 / Math.max(vw, vh));   // 大きすぎる映像は縮めて処理を軽くする
-      canvas.width = Math.round(vw * scale); canvas.height = Math.round(vh * scale);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // 細かいQRは縮めると潰れて読めなくなるので、縮めるのは大きすぎる映像だけにする。
+      // 1回おきに「画面全体」と「中央の7割（縮めずに）」を交互に調べる（QRは中央に映すことが多いため）
+      var center = (tick++ % 2 === 1);
+      var sx = 0, sy = 0, sw = vw, sh = vh;
+      if(center){ sw = Math.round(vw * 0.7); sh = Math.round(vh * 0.7); sx = Math.round((vw - sw) / 2); sy = Math.round((vh - sh) / 2); }
+      var scale = Math.min(1, 1600 / Math.max(sw, sh));
+      canvas.width = Math.round(sw * scale); canvas.height = Math.round(sh * scale);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
       var hit = window.jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
       return Promise.resolve(hit && hit.data ? hit.data : null);
@@ -7818,20 +7842,41 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(qrScanOverlay) qrScanOverlay.classList.remove("open");
     qrScanCb = null;
   }
+  // カメラを開く。細かいQRコードを読み取るため、高い解像度（横1920×縦1080まで）を頼む。
+  // iPhone(Safari)は、何も指定しないと 640×480 の粗い映像になり、細かいQRが読めなくなる。
+  // 端末が高い解像度に対応していないときは、指定なしで開き直す。
+  function getQRCameraStream(){
+    var md = navigator.mediaDevices;
+    return md.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    }).catch(function(err){
+      if(err && (err.name === "NotAllowedError" || err.name === "SecurityError")) throw err;
+      return md.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    });
+  }
   function openQRScanner(onResult){
     ensureQRScanUI();
     var session = ++qrScanSession;
     qrScanCb = onResult;
-    qrScanStatus.textContent = "カメラをQRコードに向けてください。";
+    qrScanStatus.textContent = "QRコードを画面いっぱいに映してください。ピントが合うまで、少し離すと読めます。";
     qrScanOverlay.classList.add("open");
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       qrScanStatus.textContent = "この端末ではカメラを使用できません。コードを貼り付けてください。";
       return;
     }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream){
+    getQRCameraStream().then(function(stream){
       // カメラの許可を待つ間に閉じられていたら、すぐに止める
       if(session !== qrScanSession){ stream.getTracks().forEach(function(t){ t.stop(); }); throw QR_SCAN_STALE; }
       qrScanStream = stream;
+      // 近くのQRにもピントが合い続けるよう、連続オートフォーカスを頼む（対応していない端末では何も起きない）
+      try{
+        var vt = stream.getVideoTracks()[0];
+        var cap = (vt && vt.getCapabilities) ? vt.getCapabilities() : null;
+        if(cap && cap.focusMode && cap.focusMode.indexOf("continuous") !== -1){
+          vt.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(function(){});
+        }
+      }catch(e){}
       qrScanVideo.srcObject = stream;
       return qrScanVideo.play();
     }).then(function(){
@@ -8690,7 +8735,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     {id:"desert", name:"デザート", colors:["#FBE3C6","#E0AE77","#C1592B"]},
     {id:"rosegold", name:"ローズゴールド", colors:["#FBF2EE","#F0CBBE","#B06F62"]},
     {id:"galaxy", name:"ギャラクシー", colors:["#09091F","#14142E","#8B5CF6"]},
-    {id:"steampunk", name:"スチームパンク", colors:["#17110C","#B5703F","#C9A45A"]},
+    {id:"lavender", name:"ラベンダー", colors:["#F6F1FC","#E4D6F8","#9B7BD4"]},
     {id:"shonen", name:"バトルオーラ", colors:["#07080F","#1F2235","#FFC21A"]},
   ];
   function applyTheme(id){
