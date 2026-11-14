@@ -3053,6 +3053,40 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .menu-divider{margin:20px 0 0;}
 #templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
 .choice-btn.disabled{opacity:.4;cursor:default;}
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;}
+.menu-tile{
+  appearance:none;-webkit-appearance:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  min-height:92px;padding:12px 4px;border:1px solid var(--line);border-radius:18px;background:var(--bg);color:var(--ink);
+  font-family:inherit;font-size:12px;font-weight:700;line-height:1.3;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.menu-tile svg{width:28px;height:28px;color:var(--accent);flex:none;}
+.menu-tile:active{transform:scale(.96);}
+.menu-tile.danger svg{color:var(--danger);}
+.menu-tile:disabled{opacity:.35;cursor:default;}
+.menu-tile:disabled:active{transform:none;}
+.menu-caption{margin:12px 2px 0;font-size:12px;line-height:1.6;color:var(--ink-soft);text-align:center;}
+.menu-caption:empty{display:none;}
+#salaryOverlay{z-index:105;}
+#salarySheet{max-height:92vh;max-height:92dvh;padding-top:0;}
+.salary-year{display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 12px;font-size:17px;font-weight:700;}
+.salary-summary{border:1px solid var(--line);border-radius:16px;background:var(--bg);padding:14px 16px;margin-bottom:14px;}
+.salary-total-label{font-size:12px;color:var(--ink-soft);}
+.salary-total{font-size:28px;font-weight:800;line-height:1.3;color:var(--ink);letter-spacing:.01em;word-break:break-all;}
+.salary-sub{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:10px;font-size:12.5px;color:var(--ink-soft);}
+.salary-sub b{display:block;font-size:15px;color:var(--ink);}
+.salary-diff{margin-top:10px;font-size:12.5px;color:var(--ink-soft);}
+.salary-diff b{color:var(--ink);}
+.salary-diff .up{color:#2f8f5b;}
+.salary-diff .down{color:var(--danger);}
+.salary-row{display:grid;grid-template-columns:40px 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;}
+.salary-row-head{font-size:12px;color:var(--ink-soft);margin-bottom:4px;}
+.salary-row-head span:not(:first-child){padding-left:4px;}
+.salary-m{font-size:14px;font-weight:700;color:var(--ink);}
+.salary-in{
+  width:100%;box-sizing:border-box;padding:10px 10px;border:1px solid var(--line);border-radius:10px;
+  background:var(--bg);color:var(--ink);font-size:16px;font-family:inherit;text-align:right;min-width:0;
+}
+.salary-in:focus{outline:2px solid var(--accent);outline-offset:0;}
 .menu-hint{margin:6px 2px 0;font-size:12px;line-height:1.6;color:var(--ink-soft);}
 #templateSheet .menu-empty + .shift-tools{margin-top:8px;}
 #templateSheet .shift-tools + .template-list{margin-top:10px;}
@@ -3321,7 +3355,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     <div class="title-wrap">
       <span class="title-main">配置ボード</span>
     </div>
-    <div class="top-actions"><button class="btn-ghost top-icon-btn" id="autoPlaceBtn" type="button" aria-label="自動配置" title="自動配置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 19 9-9"/><path d="m14 10 2 2"/><path d="M15 3v3M13.5 4.5h3M19 8v2M18 9h2M6 4v2M5 5h2"/></svg></button><button class="btn-ghost top-icon-btn" id="undoBtn" type="button" aria-label="元に戻す" title="元に戻す" disabled><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button class="btn-ghost top-icon-btn" id="openThemeBtn" type="button" aria-label="着せ替え" title="着せ替え">🎨</button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
+    <div class="top-actions"><button class="btn-ghost top-icon-btn" id="autoPlaceBtn" type="button" aria-label="自動配置" title="自動配置"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 19 9-9"/><path d="m14 10 2 2"/><path d="M15 3v3M13.5 4.5h3M19 8v2M18 9h2M6 4v2M5 5h2"/></svg></button><button class="btn-ghost top-icon-btn" id="undoBtn" type="button" aria-label="元に戻す" title="元に戻す" disabled><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button><button class="btn-ghost top-icon-btn" id="openShiftBtn" type="button" aria-label="シフト表" title="シフト表">📅</button><button class="btn-ghost top-icon-btn" id="openTemplateSheetBtn" type="button" aria-label="メニュー" title="メニュー">☰</button></div>
   </header>
 
   <div class="save-warn" id="saveWarn" role="alert" hidden><span id="saveWarnText"></span><button type="button" id="saveWarnClose" aria-label="閉じる">×</button></div>
@@ -3384,10 +3418,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h2>はじめに</h2>
 <p>配置ボードは、その日に誰をどこに配置するかを、ネームプレートを動かして決めるアプリです。日付ごとに配置を残せるほか、休みや残業を入れるシフト表、配置やシフトを人に送る共有コード（QRコード）があります。データはすべて使っている端末の中に保存され、ネットにつながっていなくても使えます。</p>
 <p>画面は上から順に、次の4つの部分でできています。</p>
-<table><thead><tr><th>場所</th><th>中身</th><th>できること</th></tr></thead><tbody><tr><td>上のバー</td><td>「配置ボード」の文字と5つのボタン</td><td>自動配置（魔法の杖のマーク）、↶ 元に戻す、🎨 着せ替え、📅 シフト表、☰ メニュー</td></tr><tr><td>日付の行</td><td>◀ 日付 ▶、S・M・L・合計の人数</td><td>日付の切り替え、属性ごとの人の確認</td></tr><tr><td>ボード</td><td>配置場所のカード</td><td>ネームプレートを置く・動かす</td></tr><tr><td>下の欄</td><td>まだ配置していないネームプレート</td><td>ここから配置場所へ動かす、＋で人を追加</td></tr></tbody></table>
+<table><thead><tr><th>場所</th><th>中身</th><th>できること</th></tr></thead><tbody><tr><td>上のバー</td><td>「配置ボード」の文字と4つのボタン</td><td>自動配置（魔法の杖のマーク）、↶ 元に戻す、📅 シフト表、☰ メニュー</td></tr><tr><td>日付の行</td><td>◀ 日付 ▶、S・M・L・合計の人数</td><td>日付の切り替え、属性ごとの人の確認</td></tr><tr><td>ボード</td><td>配置場所のカード</td><td>ネームプレートを置く・動かす</td></tr><tr><td>下の欄</td><td>まだ配置していないネームプレート</td><td>ここから配置場所へ動かす、＋で人を追加</td></tr></tbody></table>
 <h3>まずはここから</h3>
 <p>初めて使うときは、この4つだけで配置ボードとして使えます。くわしい操作は、あとの章で説明します。</p>
-<ol><li>ボードの「＋ 配置場所を追加」で、持ち場を登録する</li><li>未配置の欄の「＋」で、人を登録する</li><li>ネームプレートを動かして、配置場所に置く</li><li>☰ メニューのテンプレート欄で保存して、登録した内容を残しておく</li></ol>
+<ol><li>ボードの「＋ 配置場所を追加」で、持ち場を登録する</li><li>未配置の欄の「＋」で、人を登録する</li><li>ネームプレートを動かして、配置場所に置く</li><li>☰ メニューの「テンプレ保存」で、登録した内容を残しておく</li></ol>
 <h2>準備：配置場所と人を登録する</h2>
 <p>最初に、配置場所（受付や窓口など）と、ネームプレート（配置する人）を登録します。一度登録すれば毎日使い回せます。登録が済んだら、テンプレートとして保存しておくと安心です。</p>
 <h3>配置場所を追加する</h3>
@@ -3401,7 +3435,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h2>毎日の配置</h2>
 <p>配置は、ネームプレートを指で動かして、配置場所のカードまで持っていくだけです。配置は日付ごとに保存され、アプリを閉じても残ります。</p>
 <h3>置く・動かす・戻す</h3>
-<ul><li>置く：下の未配置の欄から、配置場所のカードへ動かします。2行タイプは、上の段か下の段か、離した位置に置かれます。</li><li>別の場所へ動かす：置いたネームプレートを、そのまま別のカードへ動かします。</li><li>未配置に戻す：画面下の未配置の欄へ動かします。ネームプレートを押して「未配置に戻す」でも戻せます。</li><li>全員を戻す：☰ メニューの「ボード」にある「配置を一括解除」で、その日の全員が未配置に戻ります。配置場所は残ります。</li></ul>
+<ul><li>置く：下の未配置の欄から、配置場所のカードへ動かします。2行タイプは、上の段か下の段か、離した位置に置かれます。</li><li>別の場所へ動かす：置いたネームプレートを、そのまま別のカードへ動かします。</li><li>未配置に戻す：画面下の未配置の欄へ動かします。ネームプレートを押して「未配置に戻す」でも戻せます。</li><li>全員を戻す：☰ メニューの「一括解除」で、その日の全員が未配置に戻ります。配置場所は残ります。</li></ul>
 <h3>自動配置する</h3>
 <p>上のバーの自動配置ボタン（魔法の杖のマーク）を押すと、休みの人を除いた、まだ配置していない人を、配置場所に振り分けます。すでに配置した人は動かしません。気に入らないところは、あとから手で動かせます。やり直したいときは、↶ で戻せます。</p>
 <ul><li>確定の人は、いつもの配置場所に必ず置きます。</li><li>そのほかの人は、いつもの配置場所と、これまでの配置の実績をもとに選びます。人数の偏りは調整しません。いつもの場所も実績もない人は、人が少ない配置場所に置きます。</li><li>配置場所の中の位置（上段・下段・左の独立枠）も、これまでの配置で多かった位置を覚えて、そこに置きます。実績がないときは、人数が少ない段に置きます。</li><li>2人・3人タイプの配置場所は、定員までしか入りません。入りきらなかった人は、未配置のまま残ります。</li></ul>
@@ -3418,21 +3452,21 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h2>テンプレート</h2>
 <p>テンプレートは、配置場所とネームプレートの一覧をまとめて保存したものです。テンプレートは1つだけ持てて、保存や受け取りのたびに前のものと置き換わります。誰をどこに配置したかは、テンプレートには含まれません。</p>
 <h3>保存する</h3>
-<p>☰ メニューのテンプレート欄で、まだ保存していないときは「テンプレートとして保存」、保存済みのときはカードの「上書き保存」を押します。名前を確かめて「保存」を押すと、前の内容と置き換わります。</p>
+<p>☰ メニューの「テンプレ保存」を押します。名前を確かめて「保存」を押すと、前の内容と置き換わります。保存済みのテンプレート名は、メニューの下に出ます。</p>
 <h3>人に送る・受け取る</h3>
-<p>カードの「コードを送る」で、テンプレートを共有コードとQRコードにできます。受け取った側では、今のテンプレートと置き換わり、内容がすぐにボードへ適用されます。名前が同じ配置場所と人は、その日の配置もほかの日付の配置もそのまま残ります。なくなった場所や人の分だけ外れます。</p>
+<p>☰ メニューの「テンプレ送信」で、テンプレートを共有コードとQRコードにできます。受け取った側では、今のテンプレートと置き換わり、内容がすぐにボードへ適用されます。名前が同じ配置場所と人は、その日の配置もほかの日付の配置もそのまま残ります。なくなった場所や人の分だけ外れます。</p>
 <p>送り方と受け取り方は、次の「共有コードとQRコード」の章で説明します。</p>
 <h3>削除する</h3>
-<p>カードの「削除」を押すと、保存したテンプレートが消えます。ボードの配置場所とネームプレートはそのまま残ります。</p>
+<p>☰ メニューの「テンプレ削除」を押すと、保存したテンプレートが消えます。ボードの配置場所とネームプレートはそのまま残ります。</p>
 <h2>共有コードとQRコード</h2>
-<p>配置・テンプレート・シフト（休み）・残業は、共有コードにして別の人の端末へ送れます。受け取るときは、どの種類でも ☰ メニューの「共有」にある「コードを受取」1か所から読み込めます。</p>
+<p>配置・テンプレート・シフト（休み）・残業は、共有コードにして別の人の端末へ送れます。受け取るときは、どの種類でも ☰ メニューの「コード受取」1か所から読み込めます。</p>
 <h3>送る</h3>
-<table><thead><tr><th>送るもの</th><th>作る場所</th><th>中身</th></tr></thead><tbody><tr><td>配置</td><td>☰ メニュー →「配置を送る」</td><td>表示中の日付の、誰がどこにいるか</td></tr><tr><td>テンプレート</td><td>☰ メニュー → テンプレートのカード →「コードを送る」</td><td>配置場所とネームプレートの一覧</td></tr><tr><td>シフト（休み）</td><td>📅 シフト表 →「シフト」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr><tr><td>残業</td><td>📅 シフト表 →「残業」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr></tbody></table>
+<table><thead><tr><th>送るもの</th><th>作る場所</th><th>中身</th></tr></thead><tbody><tr><td>配置</td><td>☰ メニュー →「配置を送る」</td><td>表示中の日付の、誰がどこにいるか</td></tr><tr><td>テンプレート</td><td>☰ メニュー →「テンプレ送信」</td><td>配置場所とネームプレートの一覧</td></tr><tr><td>シフト（休み）</td><td>📅 シフト表 →「シフト」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr><tr><td>残業</td><td>📅 シフト表 →「残業」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr></tbody></table>
 <p>コードの画面が開いたら、次のどれかで相手に渡します。</p>
 <ul><li>相手に、画面のQRコードをカメラで読み取ってもらう</li><li>「コピー」でコードをコピーし、LINEやメールに貼り付けて送る</li><li>「共有…」でLINEなどのアプリを選んで送る（対応している端末のみ）</li></ul>
 <p>シフトや残業でQRコードが大きくなりすぎるときは、期間を「表示中の月」にすると小さくなります。</p>
 <h3>受け取る</h3>
-<ol><li>☰ メニューの「コードを受取」を押します。シフト表の「コードを受取」からも同じ画面が開きます。</li><li>次のどれかで読み込みます。①「QRコードを読み取る」で、相手の画面のQRコードをカメラで写す　②「画像から読み取る」で、送られてきたQRコードのスクリーンショットや写真を選ぶ　③送られてきたコードを、下の欄に貼り付ける</li><li>コードの種類は自動で見分けられ、それぞれの確認画面に進みます。中身を確かめて読み込みます。</li></ol>
+<ol><li>☰ メニューの「コード受取」を押します。シフト表の「コードを受取」からも同じ画面が開きます。</li><li>次のどれかで読み込みます。①「QRコードを読み取る」で、相手の画面のQRコードをカメラで写す　②「画像から読み取る」で、送られてきたQRコードのスクリーンショットや写真を選ぶ　③送られてきたコードを、下の欄に貼り付ける</li><li>コードの種類は自動で見分けられ、それぞれの確認画面に進みます。中身を確かめて読み込みます。</li></ol>
 <p>受け取った内容は、名前が同じ人・配置場所にだけ反映されます。名前が少し違うときは近い名前で照合し、確認画面にどの名前と合わせたかが表示されます。</p>
 <table><thead><tr><th>受け取るもの</th><th>読み込んだあと</th></tr></thead><tbody><tr><td>配置</td><td>その日付の配置が置き換わり、ボードがその日付に切り替わる</td></tr><tr><td>テンプレート</td><td>今のテンプレートと置き換わり、すぐにボードへ適用される</td></tr><tr><td>シフト（休み）</td><td>読み込んだ人の、その期間の休みが置き換わる</td></tr><tr><td>残業</td><td>読み込んだ人の、その期間の残業が置き換わる</td></tr></tbody></table>
 <h2>シフト表</h2>
@@ -3457,9 +3491,14 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <p>読み込めるのは、次の組み合わせだけです（順番は問いません）。これ以外の組み合わせがあると、エラーが出て読み込めません。</p>
 <table><thead><tr><th>片方のシート</th><th>もう片方のシート</th></tr></thead><tbody><tr><td>空欄</td><td>*</td></tr><tr><td>*</td><td>休</td></tr><tr><td>冷</td><td>空欄</td></tr><tr><td>空欄</td><td>欠</td></tr><tr><td>休</td><td>休</td></tr><tr><td>有</td><td>有</td></tr><tr><td>指</td><td>指</td></tr><tr><td>欠</td><td>欠</td></tr><tr><td>健診</td><td>健診</td></tr></tbody></table>
 <p>エラーが出たときは、どの人の何日が、どのシート同士で合っていないかが表示されます。Excelのどちらかのシートを直すか、一覧で片方のシートを「使わない」にしてから、もう一度読み込んでください。</p>
+<h2>給料計算</h2>
+<p>☰ メニューの「給料計算」で、月ごとの給料を入れて、1年の合計（年収）を出せます。計算は、入れた金額を足し合わせるだけです。</p>
+<ol><li>上の ◀ ▶ で、年を選びます。</li><li>月ごとに、「給与」と、あれば「賞与など」の金額を入れます。賞与は、もらった月に入れます。</li><li>上の枠に、年収（給与＋賞与）、給与と賞与それぞれの合計、給与の月平均が出ます。</li></ol>
+<p>前の年にも金額が入っているときは、前の年との差も出ます。金額は、入れるたびに自動で保存されます。</p>
+<p>この金額は、この端末の中だけに保存されます。共有コードには含まれないので、人に送ってしまう心配はありません。元に戻す（↶）の対象にもなりません。</p>
 <h2>着せ替えとデータの保存</h2>
 <h3>着せ替え</h3>
-<p>上のバーの 🎨 で、画面の見た目を「標準」「シンプル」「サクラ」「墨」など20種類から選べます。変わるのは見た目だけで、配置やシフトの内容には影響しません。</p>
+<p>☰ メニューの「着せ替え」で、画面の見た目を「標準」「シンプル」「サクラ」「墨」など20種類から選べます。変わるのは見た目だけで、配置やシフトの内容には影響しません。</p>
 <h3>データの保存について</h3>
 <p>データは、変更するたびに自動で保存されます。保存ボタンはありません。保存先は使っている端末のブラウザの中だけで、ネットやクラウドには送られません。そのため、次の点に気をつけてください。</p>
 <ul><li>ほかの端末とは同期しません。別のスマホで同じ内容を使うときは、共有コードで送ります。</li><li>ブラウザのデータを消すと、すべて消えます。履歴やWebサイトのデータの消去をするときは注意してください。</li><li>iPhoneでは、ホーム画面に追加して使うのがおすすめです。Safariで開くだけの場合、しばらく使わないとデータが消されることがあります。</li><li>同じ端末で2つ同時に開かないでください。ホーム画面のアプリとブラウザなど、2か所で開いて片方で変更すると、もう片方では保存が止まり、読み直すよう案内が出ます。内容が上書きで消えるのを防ぐためです。</li></ul>
@@ -3471,6 +3510,24 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     </div>
   </div>
 
+  <div class="overlay" id="salaryOverlay">
+    <div class="sheet" id="salarySheet" role="dialog" aria-label="給料計算">
+      <div class="help-head">
+        <span>給料計算</span>
+        <button class="icon-btn" id="closeSalaryBtn" type="button" aria-label="閉じる">×</button>
+      </div>
+      <div class="salary-year">
+        <button type="button" class="date-step lg" id="salaryPrevYear" aria-label="前の年">◀</button>
+        <span id="salaryYearLabel"></span>
+        <button type="button" class="date-step lg" id="salaryNextYear" aria-label="次の年">▶</button>
+      </div>
+      <div class="salary-summary" id="salarySummary"></div>
+      <div class="salary-row salary-row-head"><span></span><span>給与</span><span>賞与など</span></div>
+      <div id="salaryRows"></div>
+      <p class="menu-hint">金額は円で入れます。賞与は、もらった月に入れてください。この端末の中だけに保存され、共有コードには含まれません。</p>
+    </div>
+  </div>
+
   <div class="overlay" id="templateOverlay">
     <div class="sheet" id="templateSheet">
       <div class="sheet-header">
@@ -3478,30 +3535,19 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         <button class="icon-btn" id="closeTemplateSheetBtn" type="button">×</button>
       </div>
 
-      <!-- 用途ごとに「共有」「テンプレート」「ボード」の3つにまとめる。シフト表と同じボタンの見た目を使う -->
-      <div class="menu-section-title sheet-section-title">共有</div>
-      <div class="shift-tools" role="group" aria-label="共有コード">
-        <button type="button" class="shift-tool" id="receiveAnyCodeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/><path d="M13 13h1.5M17 13v1.5M13 17h4"/></svg><span>コードを受取</span></button>
-        <button type="button" class="shift-tool" id="sharePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を送る</span></button>
+      <!-- スマホのホーム画面のように、アイコンを並べる。上から「共有・ボード」「テンプレート」「そのほか」 -->
+      <div class="menu-grid" role="group" aria-label="メニュー">
+        <button type="button" class="menu-tile" id="receiveAnyCodeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><rect x="7" y="7" width="4" height="4" rx=".5"/><rect x="13" y="7" width="4" height="4" rx=".5"/><rect x="7" y="13" width="4" height="4" rx=".5"/><path d="M13 13h1.5M17 13v1.5M13 17h4"/></svg><span>コード受取</span></button>
+        <button type="button" class="menu-tile" id="sharePlacementBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>配置を送る</span></button>
+        <button type="button" class="menu-tile danger" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>一括解除</span></button>
+        <button type="button" class="menu-tile" id="tplSaveBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span>テンプレ保存</span></button>
+        <button type="button" class="menu-tile" id="tplShareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>テンプレ送信</span></button>
+        <button type="button" class="menu-tile danger" id="tplDeleteBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 1H8a2 2 0 0 1-2-1L5 6"/><path d="M10 11v6M14 11v6"/></svg><span>テンプレ削除</span></button>
+        <button type="button" class="menu-tile" id="openThemeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/></svg><span>着せ替え</span></button>
+        <button type="button" class="menu-tile" id="openHelpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6M9 12h6"/></svg><span>使い方</span></button>
+        <button type="button" class="menu-tile" id="openSalaryBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><span>給料計算</span></button>
       </div>
-      <p class="menu-hint">QRでも貼り付けでも、どの種類のコードも読めます。</p>
-
-      <div class="sheet-divider menu-divider" role="separator"></div>
-      <div class="menu-section-title sheet-section-title">テンプレート</div>
-      <div class="template-list" id="templateList"></div>
-
-      <div class="sheet-divider menu-divider" role="separator"></div>
-      <div class="menu-section-title sheet-section-title">ボード</div>
-      <div class="shift-tools" role="group" aria-label="ボードの操作">
-        <button type="button" class="shift-tool" id="unassignAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>配置を一括解除</span></button>
-      </div>
-      <p class="menu-hint">表示中の日付の全員を未配置に戻します。配置場所と人の登録は残ります。</p>
-
-      <div class="sheet-divider menu-divider" role="separator"></div>
-      <div class="menu-section-title sheet-section-title">ヘルプ</div>
-      <div class="shift-tools" role="group" aria-label="ヘルプ">
-        <button type="button" class="shift-tool" id="openHelpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6M9 12h6"/></svg><span>使い方を見る</span></button>
-      </div>
+      <p class="menu-caption" id="menuTemplateCaption"></p>
     </div>
   </div>
 
@@ -3519,7 +3565,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {} };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {}, salary: {} };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3721,9 +3767,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   var SAVE_FAIL_MESSAGE = "⚠ 保存できていません。保存領域がいっぱいか、保存が許可されていない可能性があります。このまま閉じると入力した内容が消えます。";
   // ---------- 元に戻す ----------
   // 保存のたびに、変更前の状態を控えておく。150ms 以内の連続した変更は1回分にまとまる。
-  // 見た目だけの設定（着せ替え・シフト絞り込み）は対象外で、戻しても今の設定のまま。
+  // 見た目だけの設定（着せ替え・シフト絞り込み）と、給料計算の金額は対象外で、戻しても今の設定のまま。
   var UNDO_LIMIT = 30;
-  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true };
+  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true, salary: true };
   var undoStack = [];
   var lastSnapshot = null;
   function snapshotState(){
@@ -3879,7 +3925,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {};
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {}; state.salary = {};
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -4065,6 +4111,19 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.dayMarks = isObj(parsed.dayMarks) ? cleanStoredDayMarks(parsed.dayMarks) : {};
         state.workTimes = isObj(parsed.workTimes) ? cleanStoredWorkTimes(parsed.workTimes) : {};
         // ボードの名前 → シフトのExcelでの表記（「佐藤」→「佐藤 花子」など）。残業の読み込みで別人を当てないために使う
+        state.salary = {};
+        if(isObj(parsed.salary)) Object.keys(parsed.salary).forEach(function(y){
+          if(!/^\d{4}$/.test(y) || !isObj(parsed.salary[y])) return;
+          var out = {};
+          Object.keys(parsed.salary[y]).forEach(function(m){
+            var mi = parseInt(m, 10), v = parsed.salary[y][m];
+            if(!(mi >= 1 && mi <= 12) || !isObj(v)) return;
+            var pay = Math.round(Number(v.p)), bonus = Math.round(Number(v.b));
+            pay = (isFinite(pay) && pay > 0) ? pay : 0; bonus = (isFinite(bonus) && bonus > 0) ? bonus : 0;
+            if(pay || bonus) out[mi] = { p: pay, b: bonus };
+          });
+          if(Object.keys(out).length) state.salary[y] = out;
+        });
         state.nameAliases = {};
         if(isObj(parsed.nameAliases)) Object.keys(parsed.nameAliases).forEach(function(k){
           var v = parsed.nameAliases[k];
@@ -5089,6 +5148,87 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function openTemplateSheet(){ closeModal(); renderTemplateList(); templateOverlay.classList.add("open"); }
   function closeTemplateSheet(){ templateOverlay.classList.remove("open"); }
 
+  // ---------- 給料計算 ----------
+  // 月ごとに「給与」と「賞与など」を入れて、年収（1年の合計）を出す。state.salary = { "2026": { 1: {p: 給与, b: 賞与}, … } }
+  var salaryOverlay = document.getElementById("salaryOverlay");
+  var salaryYear = new Date().getFullYear();
+  function yen(n){ return Math.round(n).toLocaleString("ja-JP") + "円"; }
+  function toHalfDigits(str){ return String(str).replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }); }
+  function parseYen(str){ var d = toHalfDigits(str).replace(/[^0-9]/g, ""); return d ? Math.min(parseInt(d, 10), 999999999) : 0; }
+  function salaryTotals(year){
+    var data = state.salary[String(year)] || {};
+    var pay = 0, bonus = 0, months = 0;
+    Object.keys(data).forEach(function(m){ pay += data[m].p || 0; bonus += data[m].b || 0; if(data[m].p > 0) months++; });
+    return { pay: pay, bonus: bonus, total: pay + bonus, months: months, has: Object.keys(data).length > 0 };
+  }
+  function renderSalarySummary(){
+    var t = salaryTotals(salaryYear), prev = salaryTotals(salaryYear - 1);
+    var html = '<div class="salary-total-label">' + salaryYear + '年の年収（給与＋賞与）</div>' +
+      '<div class="salary-total">' + yen(t.total) + '</div>' +
+      '<div class="salary-sub"><div>給与の合計<b>' + yen(t.pay) + '</b></div><div>賞与などの合計<b>' + yen(t.bonus) + '</b></div>' +
+      '<div>給与の月平均<b>' + (t.months ? yen(t.pay / t.months) : "―") + '</b></div><div>入力した月<b>' + t.months + 'か月</b></div></div>';
+    if(t.has && prev.has){
+      var diff = t.total - prev.total;
+      html += '<div class="salary-diff">' + (salaryYear - 1) + '年との差：<b class="' + (diff >= 0 ? "up" : "down") + '">' + (diff >= 0 ? "＋" : "－") + yen(Math.abs(diff)) + '</b></div>';
+    }
+    document.getElementById("salarySummary").innerHTML = html;
+  }
+  function renderSalary(){
+    document.getElementById("salaryYearLabel").textContent = salaryYear + "年";
+    var data = state.salary[String(salaryYear)] || {};
+    var box = document.getElementById("salaryRows");
+    box.innerHTML = "";
+    for(var m = 1; m <= 12; m++){
+      var row = document.createElement("div");
+      row.className = "salary-row";
+      var v = data[m] || { p: 0, b: 0 };
+      row.innerHTML = '<span class="salary-m">' + m + '月</span>' +
+        '<input class="salary-in" type="text" inputmode="numeric" autocomplete="off" data-m="' + m + '" data-k="p" aria-label="' + m + '月の給与" placeholder="0" value="' + (v.p ? v.p.toLocaleString("ja-JP") : "") + '">' +
+        '<input class="salary-in" type="text" inputmode="numeric" autocomplete="off" data-m="' + m + '" data-k="b" aria-label="' + m + '月の賞与など" placeholder="0" value="' + (v.b ? v.b.toLocaleString("ja-JP") : "") + '">';
+      box.appendChild(row);
+    }
+    renderSalarySummary();
+  }
+  function openSalary(){
+    closeTemplateSheet();
+    if(!state.salary[String(salaryYear)]){
+      var y = parseInt((state.boardDate || "").slice(0, 4), 10);
+      if(y && !state.salary[String(y)] && Object.keys(state.salary).length === 0) salaryYear = y;
+    }
+    renderSalary();
+    salaryOverlay.classList.add("open");
+    document.getElementById("salarySheet").scrollTop = 0;
+  }
+  function closeSalary(){ salaryOverlay.classList.remove("open"); }
+  document.getElementById("openSalaryBtn").addEventListener("click", openSalary);
+  document.getElementById("closeSalaryBtn").addEventListener("click", closeSalary);
+  salaryOverlay.addEventListener("pointerdown", function(e){ if(e.target === salaryOverlay) closeSalary(); });
+  document.getElementById("salaryPrevYear").addEventListener("click", function(){ salaryYear--; renderSalary(); });
+  document.getElementById("salaryNextYear").addEventListener("click", function(){ salaryYear++; renderSalary(); });
+  var salaryRows = document.getElementById("salaryRows");
+  salaryRows.addEventListener("input", function(e){
+    var inp = e.target; if(!inp.classList || !inp.classList.contains("salary-in")) return;
+    var m = parseInt(inp.getAttribute("data-m"), 10), k = inp.getAttribute("data-k");
+    var yk = String(salaryYear);
+    var data = state.salary[yk] || (state.salary[yk] = {});
+    var cur = data[m] || { p: 0, b: 0 };
+    cur[k] = parseYen(inp.value);
+    if(cur.p || cur.b) data[m] = cur; else delete data[m];
+    if(Object.keys(data).length === 0) delete state.salary[yk];
+    scheduleSave();
+    renderSalarySummary();
+  });
+  // 入力中は数字だけ、入力が終わったらカンマ区切りで見やすく表示する
+  salaryRows.addEventListener("focusin", function(e){
+    var inp = e.target; if(!inp.classList || !inp.classList.contains("salary-in")) return;
+    inp.value = inp.value.replace(/,/g, "");
+  });
+  salaryRows.addEventListener("focusout", function(e){
+    var inp = e.target; if(!inp.classList || !inp.classList.contains("salary-in")) return;
+    var n = parseYen(inp.value);
+    inp.value = n ? n.toLocaleString("ja-JP") : "";
+  });
+
   // ---------- 使い方（ヘルプ） ----------
   // 説明書は、そのまま画面の中で書き換えられる。書き換えた内容はこの端末の中だけに保存する。
   var HELP_KEY = "placement-board-help-v1";
@@ -5286,63 +5426,32 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function menuIcon(name){
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + MENU_ICONS[name] + '</svg>';
   }
-  // テンプレートは1つだけなので、カード1枚に「上書き保存」「コードを送る」「削除」をまとめる
-  var SAVE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>';
-  function menuToolBtn(iconHtml, label, extraClass, onClick){
-    var b = document.createElement("button");
-    b.type = "button";
-    b.className = "shift-tool" + (extraClass ? " " + extraClass : "");
-    b.innerHTML = iconHtml + "<span>" + label + "</span>";
-    b.addEventListener("click", onClick);
-    return b;
-  }
+  // テンプレートは1つだけ。メニューのアイコン（保存・送信・削除）を、保存の有無に合わせて切り替える
   function renderTemplateList(){
-    var list = document.getElementById("templateList");
-    list.innerHTML = "";
     var tpl = state.templates[0];
-    if(!tpl){
-      var p = document.createElement("p");
-      p.className = "menu-empty";
-      p.textContent = "まだ保存していません。いまの配置場所とネームプレートの一覧を保存しておくと、人に送ったり、別の端末で使ったりできます。";
-      list.appendChild(p);
-      var group = document.createElement("div");
-      group.className = "shift-tools";
-      group.setAttribute("role", "group");
-      group.appendChild(menuToolBtn(SAVE_ICON, "テンプレートとして保存", "", openSaveTemplateModal));
-      list.appendChild(group);
-      return;
+    document.getElementById("tplShareBtn").disabled = !tpl;
+    document.getElementById("tplDeleteBtn").disabled = !tpl;
+    var cap = document.getElementById("menuTemplateCaption");
+    if(tpl){
+      var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
+      cap.textContent = "テンプレート「" + tpl.name + "」（配置場所 " + tpl.locationNames.length + "か所・人 " + npCount + "人）";
+    }else{
+      cap.textContent = "テンプレートは、まだ保存していません。";
     }
-    var row = document.createElement("div");
-    row.className = "shift-toggle-row menu-card";
-    var head = document.createElement("div");
-    head.className = "menu-card-head";
-    var name = document.createElement("div");
-    name.className = "menu-card-name";
-    name.textContent = tpl.name;
-    var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
-    var meta = document.createElement("div");
-    meta.className = "menu-card-meta";
-    meta.textContent = "配置場所 " + tpl.locationNames.length + "か所・ネームプレート " + npCount + "人";
-    head.appendChild(name);
-    head.appendChild(meta);
-    var actions = document.createElement("div");
-    actions.className = "menu-card-actions";
-    actions.appendChild(menuToolBtn(SAVE_ICON, "上書き保存", "", openSaveTemplateModal));
-    actions.appendChild(menuToolBtn(menuIcon("send"), "コードを送る", "", function(){ openShareTemplateModal(tpl); }));
-    actions.appendChild(menuToolBtn(menuIcon("trash"), "削除", "menu-danger", function(){
-      openConfirmModal('テンプレート「' + tpl.name + '」を削除しますか？', function(){
-        state.templates = [];
-        scheduleSave(); renderTemplateList();
-      });
-    }));
-    row.appendChild(head);
-    row.appendChild(actions);
-    list.appendChild(row);
-    var hint = document.createElement("p");
-    hint.className = "menu-hint";
-    hint.textContent = "上書き保存すると、いまの配置場所と人で置き換わります。";
-    list.appendChild(hint);
   }
+  document.getElementById("tplSaveBtn").addEventListener("click", openSaveTemplateModal);
+  document.getElementById("tplShareBtn").addEventListener("click", function(){
+    var tpl = state.templates[0];
+    if(tpl) openShareTemplateModal(tpl);
+  });
+  document.getElementById("tplDeleteBtn").addEventListener("click", function(){
+    var tpl = state.templates[0];
+    if(!tpl) return;
+    openConfirmModal('テンプレート「' + tpl.name + '」を削除しますか？', function(){
+      state.templates = [];
+      scheduleSave(); renderTemplateList();
+    });
+  });
 
   document.getElementById("poolAddBtn").addEventListener("click", openAddNameplateModal);
 
