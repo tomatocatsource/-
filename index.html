@@ -3053,7 +3053,7 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 #templateSheet .menu-divider{margin:20px 0 0;}
 #templateSheet .menu-divider + .menu-section-title{margin-top:16px;}
 .choice-btn.disabled{opacity:.4;cursor:default;}
-.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;}
+.menu-grid{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;}
 .menu-tile{
   appearance:none;-webkit-appearance:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   min-height:92px;padding:12px 4px;border:1px solid var(--line);border-radius:18px;background:var(--bg);color:var(--ink);
@@ -3062,8 +3062,17 @@ html body .shift-tool.menu-danger svg{color:var(--danger);}
 .menu-tile svg{width:28px;height:28px;color:var(--accent);flex:none;}
 .menu-tile:active{transform:scale(.96);}
 .menu-tile.danger svg{color:var(--danger);}
-.menu-tile:disabled{opacity:.35;cursor:default;}
-.menu-tile:disabled:active{transform:none;}
+.menu-tile.is-disabled{opacity:.35;cursor:default;}
+.menu-tile.is-disabled:active{transform:none;}
+.menu-tile{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.menu-tile.menu-ph{opacity:.25;}
+.menu-ghost{position:fixed;z-index:400;margin:0;pointer-events:none;transform:scale(1.08);opacity:.96;box-shadow:0 14px 30px rgba(0,0,0,.28);}
+body.menu-sorting{-webkit-user-select:none;user-select:none;}
+.menu-reset{
+  appearance:none;border:none;background:none;color:var(--ink-soft);font-family:inherit;font-size:12px;
+  text-decoration:underline;cursor:pointer;padding:4px 8px;
+}
+.menu-reset[hidden]{display:none;}
 .menu-caption{margin:12px 2px 0;font-size:12px;line-height:1.6;color:var(--ink-soft);text-align:center;}
 .menu-caption:empty{display:none;}
 #salaryOverlay{z-index:105;}
@@ -3419,6 +3428,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <p>配置ボードは、その日に誰をどこに配置するかを、ネームプレートを動かして決めるアプリです。日付ごとに配置を残せるほか、休みや残業を入れるシフト表、配置やシフトを人に送る共有コード（QRコード）があります。データはすべて使っている端末の中に保存され、ネットにつながっていなくても使えます。</p>
 <p>画面は上から順に、次の4つの部分でできています。</p>
 <table><thead><tr><th>場所</th><th>中身</th><th>できること</th></tr></thead><tbody><tr><td>上のバー</td><td>「配置ボード」の文字と4つのボタン</td><td>自動配置（魔法の杖のマーク）、↶ 元に戻す、📅 シフト表、☰ メニュー</td></tr><tr><td>日付の行</td><td>◀ 日付 ▶、S・M・L・合計の人数</td><td>日付の切り替え、属性ごとの人の確認</td></tr><tr><td>ボード</td><td>配置場所のカード</td><td>ネームプレートを置く・動かす</td></tr><tr><td>下の欄</td><td>まだ配置していないネームプレート</td><td>ここから配置場所へ動かす、＋で人を追加</td></tr></tbody></table>
+<p>☰ メニューのアイコンは、長押ししてそのまま動かすと、並び替えできます。並び順は保存されます。元に戻すときは、メニューの下にある「元の並びに戻す」を押します。</p>
 <h3>まずはここから</h3>
 <p>初めて使うときは、この4つだけで配置ボードとして使えます。くわしい操作は、あとの章で説明します。</p>
 <ol><li>ボードの「＋ 配置場所を追加」で、持ち場を登録する</li><li>未配置の欄の「＋」で、人を登録する</li><li>ネームプレートを動かして、配置場所に置く</li><li>☰ メニューの「テンプレ保存」で、登録した内容を残しておく</li></ol>
@@ -3548,6 +3558,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         <button type="button" class="menu-tile" id="openSalaryBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><span>給料計算</span></button>
       </div>
       <p class="menu-caption" id="menuTemplateCaption"></p>
+      <p class="menu-hint" style="text-align:center;margin-top:4px;">アイコンを長押しすると、並び替えできます。<button type="button" class="menu-reset" id="menuOrderResetBtn" hidden>元の並びに戻す</button></p>
     </div>
   </div>
 
@@ -3565,7 +3576,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {}, salary: {} };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {}, salary: {}, menuOrder: [] };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3769,7 +3780,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // 保存のたびに、変更前の状態を控えておく。150ms 以内の連続した変更は1回分にまとまる。
   // 見た目だけの設定（着せ替え・シフト絞り込み）と、給料計算の金額は対象外で、戻しても今の設定のまま。
   var UNDO_LIMIT = 30;
-  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true, salary: true };
+  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true, salary: true, menuOrder: true };
   var undoStack = [];
   var lastSnapshot = null;
   function snapshotState(){
@@ -3925,7 +3936,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {}; state.salary = {};
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {}; state.salary = {}; state.menuOrder = [];
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -4111,6 +4122,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.dayMarks = isObj(parsed.dayMarks) ? cleanStoredDayMarks(parsed.dayMarks) : {};
         state.workTimes = isObj(parsed.workTimes) ? cleanStoredWorkTimes(parsed.workTimes) : {};
         // ボードの名前 → シフトのExcelでの表記（「佐藤」→「佐藤 花子」など）。残業の読み込みで別人を当てないために使う
+        state.menuOrder = Array.isArray(parsed.menuOrder) ? parsed.menuOrder.filter(function(x){ return typeof x === "string"; }).slice(0, 40) : [];
         state.salary = {};
         if(isObj(parsed.salary)) Object.keys(parsed.salary).forEach(function(y){
           if(!/^\d{4}$/.test(y) || !isObj(parsed.salary[y])) return;
@@ -4167,6 +4179,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     renderDateBar();
     renderAll();
     loaded = true;
+    applyMenuOrder();   // メニューのアイコンを、保存した並びにする
     lastSnapshot = snapshotState();   // 元に戻すの起点（開いた時点の状態）
     if(storageBroken) setSaveWarning(true, SAVE_FAIL_MESSAGE);
     else if(saveBlocked) setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。");
@@ -5429,8 +5442,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // テンプレートは1つだけ。メニューのアイコン（保存・送信・削除）を、保存の有無に合わせて切り替える
   function renderTemplateList(){
     var tpl = state.templates[0];
-    document.getElementById("tplShareBtn").disabled = !tpl;
-    document.getElementById("tplDeleteBtn").disabled = !tpl;
+    ["tplShareBtn", "tplDeleteBtn"].forEach(function(id){
+      var b = document.getElementById(id);
+      b.classList.toggle("is-disabled", !tpl);
+      b.setAttribute("aria-disabled", tpl ? "false" : "true");
+    });
     var cap = document.getElementById("menuTemplateCaption");
     if(tpl){
       var npCount = Array.isArray(tpl.nameplates) ? tpl.nameplates.length : 0;
@@ -5452,6 +5468,136 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       scheduleSave(); renderTemplateList();
     });
   });
+
+  // ---------- メニューのアイコンの並び替え ----------
+  // アイコンを長押しして、そのまま動かすと並び替えできる。並び順はこの端末に保存する（state.menuOrder）。
+  var menuGrid = document.querySelector("#templateSheet .menu-grid");
+  var MENU_DEFAULT_ORDER = Array.prototype.map.call(menuGrid.children, function(el){ return el.id; });
+  function applyMenuOrder(){
+    var byId = Object.create(null);
+    Array.prototype.forEach.call(menuGrid.children, function(el){ byId[el.id] = el; });
+    var seen = Object.create(null), order = [];
+    state.menuOrder.concat(MENU_DEFAULT_ORDER).forEach(function(id){ if(byId[id] && !seen[id]){ seen[id] = true; order.push(id); } });
+    order.forEach(function(id){ menuGrid.appendChild(byId[id]); });
+    document.getElementById("menuOrderResetBtn").hidden = !isMenuOrderCustom();
+  }
+  function currentMenuOrder(){ return Array.prototype.map.call(menuGrid.children, function(el){ return el.id; }); }
+  function isMenuOrderCustom(){ var cur = currentMenuOrder(); return cur.some(function(id, i){ return id !== MENU_DEFAULT_ORDER[i]; }); }
+  function saveMenuOrder(){
+    state.menuOrder = currentMenuOrder();
+    document.getElementById("menuOrderResetBtn").hidden = !isMenuOrderCustom();
+    scheduleSave();
+  }
+  document.getElementById("menuOrderResetBtn").addEventListener("click", function(){
+    state.menuOrder = [];
+    applyMenuOrder();
+    scheduleSave();
+  });
+
+  (function(){
+    var HOLD_MS = 380, MOVE_TOLERANCE = 10;
+    var ctx = null, justDragged = false;
+    function cancelPress(){ if(ctx){ clearTimeout(ctx.timer); } ctx = null; }
+    function flip(movedEl, mutate){
+      var tiles = Array.prototype.slice.call(menuGrid.children);
+      var before = tiles.map(function(el){ return el.getBoundingClientRect(); });
+      mutate();
+      tiles.forEach(function(el, i){
+        if(el === movedEl) return;
+        var r = el.getBoundingClientRect();
+        var dx = before[i].left - r.left, dy = before[i].top - r.top;
+        if(!dx && !dy) return;
+        el.style.transition = "none"; el.style.transform = "translate(" + dx + "px," + dy + "px)";
+        el.getBoundingClientRect();
+        el.style.transition = "transform .18s ease"; el.style.transform = "";
+        setTimeout(function(){ el.style.transition = ""; }, 220);
+      });
+    }
+    function beginDrag(){
+      var c = ctx; if(!c) return;
+      c.dragging = true;
+      var rect = c.tile.getBoundingClientRect();
+      c.offX = c.lastX - rect.left; c.offY = c.lastY - rect.top;
+      var ghost = c.tile.cloneNode(true);
+      ghost.removeAttribute("id");
+      ghost.className = c.tile.className + " menu-ghost";
+      ghost.style.width = rect.width + "px"; ghost.style.height = rect.height + "px";
+      document.body.appendChild(ghost);
+      c.ghost = ghost;
+      c.tile.classList.add("menu-ph");
+      document.body.classList.add("menu-sorting");
+      moveGhost(c.lastX, c.lastY);
+      if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(e){} }
+    }
+    function moveGhost(x, y){
+      ctx.ghost.style.left = (x - ctx.offX) + "px";
+      ctx.ghost.style.top = (y - ctx.offY) + "px";
+    }
+    // 指の下にあるアイコンを探す。動いている途中のアイコンは見た目の位置がずれているので、
+    // 見た目（elementFromPoint）ではなく、動かない元の位置（offset）で調べる。そうしないと、入れ替えが何度も繰り返される
+    function overTile(x, y){
+      var g = menuGrid.getBoundingClientRect();
+      var px = x - g.left, py = y - g.top;
+      var kids = menuGrid.children;
+      for(var i = 0; i < kids.length; i++){
+        var el = kids[i];
+        if(el === ctx.tile) continue;
+        // アイコンの中央寄り（幅・高さの60%）に指が入ったときだけ入れ替える。境目で行ったり来たりしないようにする
+        var mx = el.offsetWidth * 0.2, my = el.offsetHeight * 0.2;
+        if(px >= el.offsetLeft + mx && px <= el.offsetLeft + el.offsetWidth - mx &&
+           py >= el.offsetTop + my && py <= el.offsetTop + el.offsetHeight - my) return el;
+      }
+      return null;
+    }
+    function endPress(){
+      var c = ctx; if(!c) return;
+      clearTimeout(c.timer);
+      if(c.dragging){
+        c.ghost.remove();
+        c.tile.classList.remove("menu-ph");
+        document.body.classList.remove("menu-sorting");
+        justDragged = true; setTimeout(function(){ justDragged = false; }, 350);
+        saveMenuOrder();
+      }
+      ctx = null;
+    }
+    menuGrid.addEventListener("pointerdown", function(e){
+      if(e.pointerType === "mouse" && e.button !== 0) return;
+      var tile = e.target.closest ? e.target.closest(".menu-tile") : null;
+      if(!tile || ctx) return;
+      ctx = { tile: tile, id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, dragging: false };
+      ctx.timer = setTimeout(beginDrag, HOLD_MS);
+    });
+    document.addEventListener("pointermove", function(e){
+      if(!ctx || e.pointerId !== ctx.id) return;
+      ctx.lastX = e.clientX; ctx.lastY = e.clientY;
+      if(!ctx.dragging){
+        if(Math.abs(e.clientX - ctx.startX) > MOVE_TOLERANCE || Math.abs(e.clientY - ctx.startY) > MOVE_TOLERANCE) cancelPress();
+        return;
+      }
+      e.preventDefault();
+      moveGhost(e.clientX, e.clientY);
+      var t = (Date.now() - (ctx.lastSwap || 0) > 120) ? overTile(e.clientX, e.clientY) : null;
+      if(t){
+        ctx.lastSwap = Date.now();
+        var kids = Array.prototype.slice.call(menuGrid.children);
+        var from = kids.indexOf(ctx.tile), to = kids.indexOf(t);
+        flip(ctx.tile, function(){ menuGrid.insertBefore(ctx.tile, to > from ? t.nextSibling : t); });
+      }
+    });
+    document.addEventListener("pointerup", function(e){ if(ctx && e.pointerId === ctx.id) endPress(); });
+    document.addEventListener("pointercancel", function(e){ if(ctx && e.pointerId === ctx.id){ if(ctx.dragging) endPress(); else cancelPress(); } });
+    // 指で動かしている間は、画面のスクロールに取られないようにする（iPhone対策）
+    menuGrid.addEventListener("touchmove", function(e){ if(ctx && ctx.dragging && e.cancelable) e.preventDefault(); }, { passive: false });
+    menuGrid.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+    // 並び替えのあとに、押したアイコンの機能が動いてしまわないようにする
+    menuGrid.addEventListener("click", function(e){
+      if(justDragged){ e.stopPropagation(); e.preventDefault(); return; }
+      var t = e.target.closest ? e.target.closest(".menu-tile.is-disabled") : null;
+      if(t){ e.stopPropagation(); e.preventDefault(); }
+    }, true);
+  })();
+  applyMenuOrder();
 
   document.getElementById("poolAddBtn").addEventListener("click", openAddNameplateModal);
 
