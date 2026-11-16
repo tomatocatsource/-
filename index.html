@@ -2909,19 +2909,19 @@ body[data-theme="apple"] .btn-ghost{
   overflow:auto;max-height:60vh;max-height:60dvh;border:1px solid var(--line);border-radius:10px;
   -webkit-overflow-scrolling:touch;background:var(--surface);
 }
-.shift-table{border-collapse:separate;border-spacing:0;font-size:13px;color:var(--ink);}
+.shift-table{border-collapse:separate;border-spacing:0;font-size:calc(13px * var(--sz,1));color:var(--ink);}
 .shift-table th,.shift-table td{
   border-right:1px solid var(--line);border-bottom:1px solid var(--line);
-  min-width:42px;height:44px;padding:0;text-align:center;font-weight:600;
+  min-width:calc(42px * var(--sz,1));height:calc(44px * var(--sz,1));padding:0;text-align:center;font-weight:600;
 }
-.shift-table thead th{position:sticky;top:0;z-index:2;background:var(--surface);line-height:1.2;height:46px;font-size:14px;}
-.shift-table thead th .wd{font-size:11px;font-weight:500;color:var(--ink-soft);}
+.shift-table thead th{position:sticky;top:0;z-index:2;background:var(--surface);line-height:1.2;height:calc(46px * var(--sz,1));font-size:calc(14px * var(--sz,1));}
+.shift-table thead th .wd{font-size:calc(11px * var(--sz,1));font-weight:500;color:var(--ink-soft);}
 .shift-table th.sun,.shift-table th.sun .wd{color:var(--danger);}
 .shift-table th.sat,.shift-table th.sat .wd{color:var(--plate-blue);}
 .shift-table th.board-col{box-shadow:inset 0 -3px 0 var(--accent);}
 .shift-table .name-col{
   position:sticky;left:0;z-index:1;background:var(--surface);
-  min-width:112px;max-width:150px;padding:0 10px;text-align:left;
+  min-width:calc(112px * var(--szn,1));max-width:calc(150px * var(--szn,1));padding:0 10px;text-align:left;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
 }
 .shift-table thead .name-col{z-index:4;cursor:default;}
@@ -2929,11 +2929,11 @@ body[data-theme="apple"] .btn-ghost{
 .shift-table .name-col .nm{overflow:hidden;text-overflow:ellipsis;}
 .shift-table tfoot th,.shift-table tfoot td{
   position:sticky;bottom:0;z-index:2;background:var(--surface);border-bottom:none;border-top:1px solid var(--line);
-  height:32px;
+  height:calc(32px * var(--sz,1));
 }
 .shift-table tfoot .name-col{z-index:4;}
-.shift-table td.cnt{font-size:11px;font-weight:600;color:var(--ink-soft);}
-.shift-table td.shift-cell{cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;color:var(--accent);font-size:16px;}
+.shift-table td.cnt{font-size:calc(11px * var(--sz,1));font-weight:600;color:var(--ink-soft);}
+.shift-table td.shift-cell{cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;color:var(--accent);font-size:calc(16px * var(--sz,1));}
 .shift-table td.shift-cell.board-col{background:rgba(127,127,127,.10);}
 .shift-range{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;font-size:12px;color:var(--ink-soft);line-height:1.6;}
 /* ---- 表の全画面表示 ---- */
@@ -2994,7 +2994,7 @@ body[data-theme="apple"] .btn-ghost{
   .shift-table td.shift-cell.in-range{background:color-mix(in srgb, var(--accent) 8%, var(--surface));}
   .shift-table th.sel{background:color-mix(in srgb, var(--accent) 18%, var(--surface));}
 }
-.shift-table td.shift-cell.on{background:rgba(127,127,127,.18);font-size:13px;font-weight:700;}
+.shift-table td.shift-cell.on{background:rgba(127,127,127,.18);font-size:calc(13px * var(--sz,1));font-weight:700;}
 @supports (background:color-mix(in srgb, red 10%, transparent)){
   .shift-table td.shift-cell.on{background:color-mix(in srgb, var(--accent) 16%, transparent);}
 }
@@ -3073,6 +3073,61 @@ body.menu-sorting{-webkit-user-select:none;user-select:none;}
   text-decoration:underline;cursor:pointer;padding:4px 8px;
 }
 .menu-reset[hidden]{display:none;}
+/* シフト専用モード：配置ボードの画面を隠して、シフト表を画面いっぱいに出す */
+body.shift-only .info-bar,body.shift-only .board-wrap,body.shift-only .pool-bar,
+body.shift-only #autoPlaceBtn,body.shift-only #openShiftBtn,
+body.shift-only #sharePlacementBtn,body.shift-only #unassignAllBtn,
+body.shift-only #tplSaveBtn,body.shift-only #tplShareBtn,body.shift-only #tplDeleteBtn,
+body.shift-only #menuTemplateCaption,body.shift-only .shift-toggle-row,body.shift-only #closeShiftBtn{display:none !important;}
+body.shift-only #shiftOverlay{top:var(--topbar-h,57px);background:transparent;pointer-events:none;align-items:stretch;}
+body.shift-only #shiftSheet{pointer-events:auto;max-width:none;max-height:none;height:100%;border-radius:0;box-shadow:none;}
+body.shift-only #templateOverlay,body.shift-only #themeOverlay{z-index:100;}
+body.shift-only #shiftSheet > .sheet-header{display:none;}
+/* シフト表の上のボタンの整理：月の切り替え・表示の切り替え・全画面だけを見せて、ほかは「⋯」にまとめる。
+   （ファイル読込・コード・人の追加・文字の大きさは、画面から隠すだけで残してあり、「⋯」から呼び出す） */
+#shiftBody .shift-tools,#shiftBody .shift-people-row,#shiftBody .shift-zoom{display:none !important;}
+.shift-toolbar{position:relative;}
+.shift-more-btn{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:18px;line-height:1;letter-spacing:-1px;}
+.shift-mode-row{
+  gap:0;max-width:340px;margin:0 auto 10px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--bg);
+}
+.shift-mode-btn{flex:1;padding:6px 0;border:none;background:transparent;}
+.shift-mode-btn.selected{box-shadow:0 1px 3px rgba(0,0,0,.18);}
+.shift-hint{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;}
+.shift-range{min-width:0;}
+#shiftFsBtn:not([aria-pressed="true"]) span{display:none;}
+#shiftFsBtn:not([aria-pressed="true"]){padding:6px 8px;}
+.shift-more-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 2px 2px;font-size:14px;font-weight:600;}
+.shift-more-row .shift-zoom{display:flex !important;align-items:center;gap:6px;}
+.shift-more-row .shift-zoom span{min-width:46px;text-align:center;font-size:13px;}
+/* スマホでもシート全体ではなく、表が画面の残りいっぱいに広がって、表の中でスクロールする */
+body.shift-only #shiftSheet:not(.table-fs){display:flex;flex-direction:column;overflow:hidden;}
+body.shift-only #shiftSheet:not(.table-fs) #shiftBody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+body.shift-only #shiftSheet:not(.table-fs) #shiftBody > *{flex:none;}
+body.shift-only #shiftSheet:not(.table-fs) #shiftBody > .shift-fs-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+body.shift-only #shiftSheet:not(.table-fs) .shift-fs-wrap > *{flex:none;}
+body.shift-only #shiftSheet:not(.table-fs) .shift-fs-wrap > .shift-scroll{flex:1 1 auto;min-height:0;max-height:none;}
+body.shift-only .shift-toolbar{margin-bottom:6px;gap:10px;}
+body.shift-only .shift-toolbar .date-step.lg{width:34px;height:34px;}
+body.shift-only .shift-people-row{margin-bottom:6px;}
+body.shift-only .shift-people-row .help-small-btn{padding:5px 10px;font-size:12.5px;}
+body.shift-only .shift-tools{margin-bottom:6px;}
+body.shift-only .shift-fs-row{margin-bottom:6px;}
+body.shift-only .shift-mode-btn{padding:5px 20px;}
+body.shift-only .shift-mode-row{margin-bottom:8px;}
+.shift-zoom{display:flex;gap:4px;flex:none;}
+.shift-zoom-btn{
+  appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);
+  border-radius:999px;padding:6px 10px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;
+}
+.shift-zoom-btn:disabled{opacity:.35;cursor:default;}
+.shift-people-row{display:flex;gap:8px;margin:0 0 10px;}
+.shift-people-row .help-small-btn{flex:1;}
+.people-list{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto;margin:6px 0 10px;}
+.people-list button{
+  appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;
+  padding:10px 12px;font-size:14px;font-family:inherit;text-align:left;cursor:pointer;
+}
 .menu-caption{margin:12px 2px 0;font-size:12px;line-height:1.6;color:var(--ink-soft);text-align:center;}
 .menu-caption:empty{display:none;}
 #salaryOverlay{z-index:105;}
@@ -3471,17 +3526,18 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h2>共有コードとQRコード</h2>
 <p>配置・テンプレート・シフト（休み）・残業は、共有コードにして別の人の端末へ送れます。受け取るときは、どの種類でも ☰ メニューの「コード受取」1か所から読み込めます。</p>
 <h3>送る</h3>
-<table><thead><tr><th>送るもの</th><th>作る場所</th><th>中身</th></tr></thead><tbody><tr><td>配置</td><td>☰ メニュー →「配置を送る」</td><td>表示中の日付の、誰がどこにいるか</td></tr><tr><td>テンプレート</td><td>☰ メニュー →「テンプレ送信」</td><td>配置場所とネームプレートの一覧</td></tr><tr><td>シフト（休み）</td><td>📅 シフト表 →「シフト」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr><tr><td>残業</td><td>📅 シフト表 →「残業」表示で「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr></tbody></table>
+<table><thead><tr><th>送るもの</th><th>作る場所</th><th>中身</th></tr></thead><tbody><tr><td>配置</td><td>☰ メニュー →「配置を送る」</td><td>表示中の日付の、誰がどこにいるか</td></tr><tr><td>テンプレート</td><td>☰ メニュー →「テンプレ送信」</td><td>配置場所とネームプレートの一覧</td></tr><tr><td>シフト（休み）</td><td>📅 シフト表 →「シフト」表示で「⋯」→「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr><tr><td>残業</td><td>📅 シフト表 →「残業」表示で「⋯」→「コードを送る」</td><td>表示中の月、または入力済みのすべて</td></tr></tbody></table>
 <p>コードの画面が開いたら、次のどれかで相手に渡します。</p>
 <ul><li>相手に、画面のQRコードをカメラで読み取ってもらう</li><li>「コピー」でコードをコピーし、LINEやメールに貼り付けて送る</li><li>「共有…」でLINEなどのアプリを選んで送る（対応している端末のみ）</li></ul>
 <p>シフトや残業でQRコードが大きくなりすぎるときは、期間を「表示中の月」にすると小さくなります。</p>
 <h3>受け取る</h3>
-<ol><li>☰ メニューの「コード受取」を押します。シフト表の「コードを受取」からも同じ画面が開きます。</li><li>次のどれかで読み込みます。①「QRコードを読み取る」で、相手の画面のQRコードをカメラで写す　②「画像から読み取る」で、送られてきたQRコードのスクリーンショットや写真を選ぶ　③送られてきたコードを、下の欄に貼り付ける</li><li>コードの種類は自動で見分けられ、それぞれの確認画面に進みます。中身を確かめて読み込みます。</li></ol>
+<ol><li>☰ メニューの「コード受取」を押します。シフト表の「⋯」→「コードを受取」からも同じ画面が開きます。</li><li>次のどれかで読み込みます。①「QRコードを読み取る」で、相手の画面のQRコードをカメラで写す　②「画像から読み取る」で、送られてきたQRコードのスクリーンショットや写真を選ぶ　③送られてきたコードを、下の欄に貼り付ける</li><li>コードの種類は自動で見分けられ、それぞれの確認画面に進みます。中身を確かめて読み込みます。</li></ol>
 <p>受け取った内容は、名前が同じ人・配置場所にだけ反映されます。名前が少し違うときは近い名前で照合し、確認画面にどの名前と合わせたかが表示されます。</p>
 <table><thead><tr><th>受け取るもの</th><th>読み込んだあと</th></tr></thead><tbody><tr><td>配置</td><td>その日付の配置が置き換わり、ボードがその日付に切り替わる</td></tr><tr><td>テンプレート</td><td>今のテンプレートと置き換わり、すぐにボードへ適用される</td></tr><tr><td>シフト（休み）</td><td>読み込んだ人の、その期間の休みが置き換わる</td></tr><tr><td>残業</td><td>読み込んだ人の、その期間の残業が置き換わる</td></tr></tbody></table>
 <h2>シフト表</h2>
 <p>上のバーの 📅 で開くシフト表では、月ごとに休みと残業を管理できます。上の切り替えで表示を選び、◀ ▶ で月を動かします。名前は、ボードのネームプレートの名前がそのまま使われます。</p>
 <table><thead><tr><th>表示</th><th>見られるもの</th><th>入力できるもの</th></tr></thead><tbody><tr><td>シフト</td><td>全員のその月の休み</td><td>休み、日付の印</td></tr><tr><td>残業</td><td>全員のその月の残業時間と合計</td><td>残業時間</td></tr><tr><td>自分</td><td>自分1人の出勤日と休み（カレンダー形式）</td><td>なし（見るだけ）</td></tr></tbody></table>
+<p>表の上には、月の切り替えと、シフト・残業・自分の切り替えだけを出しています。そのほかの操作は、月の右にある「⋯」にまとめてあります。「⋯」を押すと、ファイル読込、コードを送る、コードを受取、文字の大きさ（A−／A＋、5段階。選んだ大きさは保存されます）が出ます。右下の矢印のボタンで、表だけを画面いっぱいに見られます。</p>
 <h3>休みを入れる（シフト）</h3>
 <p>開いた直後は見るだけの状態です。マスを押しても変わらないので、間違えて触っても安心です。入力するときは、次の順に操作します。</p>
 <ol><li>入力したい人の名前か、日付の見出しを押します。その行（または列）が入力できる状態になります。</li><li>マスを押すと「休」が入り、もう一度押すと消えます。</li><li>終わったら「解除」を押すと、見るだけの状態に戻ります。</li></ol>
@@ -3493,7 +3549,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <h3>自分のカレンダー</h3>
 <p>「自分」表示で自分の名前を選ぶと、その月の出勤日と休みがカレンダーで見られます。選んだ名前は次回も残ります。日付を押すと、その日のボードに移動します。</p>
 <h3>Excel・CSVから読み込む</h3>
-<p>「ファイル読込」で、Excel（.xlsx）やCSVのシフト表から休みや残業をまとめて読み込めます。名前の列と、日付（1, 2, 3… や 9/1）の見出しがある表に対応しています。Excelでセルをコピーして、欄に貼り付けることもできます。</p>
+<p>シフト表の「⋯」→「ファイル読込」で、Excel（.xlsx）やCSVのシフト表から休みや残業をまとめて読み込めます。名前の列と、日付（1, 2, 3… や 9/1）の見出しがある表に対応しています。Excelでセルをコピーして、欄に貼り付けることもできます。</p>
 <ul><li>休みとして読む記号：休、有（有給）、指（指定休）、欠（欠勤）、健診、*</li><li>残業として読む書き方：2、1.5、1:30、1時間30分、90分</li></ul>
 <p>ファイルは複数まとめて選べます。読み込んだあとに「元に戻す」で取り消すこともできます。</p>
 <h3>複数のシートを読み込むとき</h3>
@@ -3501,6 +3557,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
 <p>読み込めるのは、次の組み合わせだけです（順番は問いません）。これ以外の組み合わせがあると、エラーが出て読み込めません。</p>
 <table><thead><tr><th>片方のシート</th><th>もう片方のシート</th></tr></thead><tbody><tr><td>空欄</td><td>*</td></tr><tr><td>*</td><td>休</td></tr><tr><td>冷</td><td>空欄</td></tr><tr><td>空欄</td><td>欠</td></tr><tr><td>休</td><td>休</td></tr><tr><td>有</td><td>有</td></tr><tr><td>指</td><td>指</td></tr><tr><td>欠</td><td>欠</td></tr><tr><td>健診</td><td>健診</td></tr></tbody></table>
 <p>エラーが出たときは、どの人の何日が、どのシート同士で合っていないかが表示されます。Excelのどちらかのシートを直すか、一覧で片方のシートを「使わない」にしてから、もう一度読み込んでください。</p>
+<h2>シフトだけ使う（シフト専用）</h2>
+<p>配置を使わない人は、☰ メニューの「シフト専用」を押すと、配置ボードの画面（日付・ボード・未配置の欄・自動配置）が隠れて、シフト表だけの画面になります。データは消えません。元に戻すときは、メニューの「配置も使う」を押します。</p>
+<ul><li>上のバーには、↶（元に戻す）と ☰ メニューだけが残ります。メニューには、コード受取・着せ替え・使い方・給料計算・配置も使う、が残ります。</li><li>表は、画面の残りいっぱいに広がります。人数が多いときは、表の中を上下にスクロールします。</li><li>人の追加は、シフト表の「⋯」→「人を追加」から行います。名前の変更や削除は、「⋯」→「人の一覧・編集」で名前を押します。</li></ul>
+<h3>コードやファイルから読み込むとき</h3>
+<p>シフトや残業の共有コードを受け取ると、ボードにいない名前も、ネームプレートに追加して読み込めます。シフト専用のときは、初めから追加する設定になっています。確認画面で、新しく登録される名前が確かめられます。</p>
+<p>ExcelやCSVから読み込むときも、シフト専用のときは、表にある名前が自動で登録されます。「合計」「備考」のような見出しや、数字だけの行は、名前として取り込みません。</p>
 <h2>給料計算</h2>
 <p>☰ メニューの「給料計算」で、月ごとの給料を入れて、1年の合計（年収）を出せます。計算は、入れた金額を足し合わせるだけです。</p>
 <ol><li>上の ◀ ▶ で、年を選びます。</li><li>月ごとに、「給与」と、あれば「賞与など」の金額を入れます。賞与は、もらった月に入れます。</li><li>上の枠に、年収（給与＋賞与）、給与と賞与それぞれの合計、給与の月平均が出ます。</li></ol>
@@ -3556,6 +3618,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         <button type="button" class="menu-tile" id="openThemeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/></svg><span>着せ替え</span></button>
         <button type="button" class="menu-tile" id="openHelpBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6M9 12h6"/></svg><span>使い方</span></button>
         <button type="button" class="menu-tile" id="openSalaryBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><span>給料計算</span></button>
+        <button type="button" class="menu-tile" id="toggleShiftOnlyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>シフト専用</span></button>
       </div>
       <p class="menu-caption" id="menuTemplateCaption"></p>
       <p class="menu-hint" style="text-align:center;margin-top:4px;">アイコンを長押しすると、並び替えできます。<button type="button" class="menu-reset" id="menuOrderResetBtn" hidden>元の並びに戻す</button></p>
@@ -3576,7 +3639,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   "use strict";
 
   var STORAGE_KEY = "placement-board-state-v1";
-  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {}, salary: {}, menuOrder: [] };
+  var state = { locations: [], nameplates: [], templates: [], boards: [], currentTemplateName: null, boardDate: null, theme: "default", dayoffs: {}, workMarks: {}, overtime: {}, otAlert: { warn: 40, limit: 45 }, dayPlacements: {}, shiftFilter: false, myName: null, dayMarks: {}, workTimes: {}, nameAliases: {}, salary: {}, menuOrder: [], shiftOnly: false, shiftZoom: null };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function todayISO(){
@@ -3780,7 +3843,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // 保存のたびに、変更前の状態を控えておく。150ms 以内の連続した変更は1回分にまとまる。
   // 見た目だけの設定（着せ替え・シフト絞り込み）と、給料計算の金額は対象外で、戻しても今の設定のまま。
   var UNDO_LIMIT = 30;
-  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true, salary: true, menuOrder: true };
+  var UNDO_SKIP_KEYS = { theme: true, shiftFilter: true, salary: true, menuOrder: true, shiftOnly: true, shiftZoom: true };
   var undoStack = [];
   var lastSnapshot = null;
   function snapshotState(){
@@ -3936,7 +3999,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   function resetStateToDefaults(){
     state.locations = []; state.nameplates = []; state.templates = []; state.boards = [];
     state.currentTemplateName = null; state.boardDate = null; state.theme = "default";
-    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {}; state.salary = {}; state.menuOrder = [];
+    state.dayoffs = {}; state.workMarks = {}; state.overtime = {}; state.otAlert = { warn: 40, limit: 45 }; state.dayPlacements = {}; state.shiftFilter = false; state.myName = null; state.dayMarks = {}; state.workTimes = {}; state.nameAliases = {}; state.salary = {}; state.menuOrder = []; state.shiftOnly = false; state.shiftZoom = null;
   }
   // 読めなかった元データを別のキーへ退避する（最新の2件だけ残す）。失敗したら null。
   function backupCorruptData(raw){
@@ -4122,6 +4185,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         state.dayMarks = isObj(parsed.dayMarks) ? cleanStoredDayMarks(parsed.dayMarks) : {};
         state.workTimes = isObj(parsed.workTimes) ? cleanStoredWorkTimes(parsed.workTimes) : {};
         // ボードの名前 → シフトのExcelでの表記（「佐藤」→「佐藤 花子」など）。残業の読み込みで別人を当てないために使う
+        state.shiftOnly = parsed.shiftOnly === true;
+        state.shiftZoom = (typeof parsed.shiftZoom === "number" && parsed.shiftZoom >= 0.7 && parsed.shiftZoom <= 2) ? parsed.shiftZoom : null;
         state.menuOrder = Array.isArray(parsed.menuOrder) ? parsed.menuOrder.filter(function(x){ return typeof x === "string"; }).slice(0, 40) : [];
         state.salary = {};
         if(isObj(parsed.salary)) Object.keys(parsed.salary).forEach(function(y){
@@ -4180,6 +4245,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     renderAll();
     loaded = true;
     applyMenuOrder();   // メニューのアイコンを、保存した並びにする
+    applyShiftOnlyMode();
     lastSnapshot = snapshotState();   // 元に戻すの起点（開いた時点の状態）
     if(storageBroken) setSaveWarning(true, SAVE_FAIL_MESSAGE);
     else if(saveBlocked) setSaveWarning(true, "⚠ 元のデータを守るため、保存を止めています。このまま閉じると入力した内容が消えます。");
@@ -4195,7 +4261,15 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   var templateOverlay = document.getElementById("templateOverlay");
 
   // ---------- render ----------
-  function renderAll(){ renderBoard(); renderPool(); renderStats(); }
+  var shiftRendering = false;
+  function renderAll(){
+    renderBoard(); renderPool(); renderStats();
+    // シフト専用のときは、人を足したり直したりしたら、シフト表もすぐ描き直す
+    if(state.shiftOnly && shiftOverlay && shiftMonth && shiftOverlay.classList.contains("open") && !shiftRendering){
+      shiftRendering = true;
+      try{ renderShiftSheet(true); }finally{ shiftRendering = false; }
+    }
+  }
 
   function renderStats(){
     var statsBar = document.getElementById("statsBar");
@@ -5469,6 +5543,79 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     });
   });
 
+  // ---------- シフト専用モード ----------
+  // 配置を使わない人向け。配置ボードの画面（日付・ボード・未配置の欄・自動配置）を隠して、シフト表だけを出す。
+  // データは消えない。メニューの「配置も使う」でいつでも元に戻せる。
+  function updateTopbarHeight(){
+    var tb = document.querySelector(".topbar");
+    if(tb) document.documentElement.style.setProperty("--topbar-h", tb.offsetHeight + "px");
+  }
+  window.addEventListener("resize", updateTopbarHeight);
+  function applyShiftOnlyMode(){
+    document.body.classList.toggle("shift-only", !!state.shiftOnly);
+    var lbl = document.querySelector("#toggleShiftOnlyBtn span");
+    if(lbl) lbl.textContent = state.shiftOnly ? "配置も使う" : "シフト専用";
+    var title = document.querySelector(".title-main");
+    if(title) title.textContent = state.shiftOnly ? "シフト表" : "配置ボード";
+    updateTopbarHeight();
+    if(state.shiftOnly){
+      if(!shiftOverlay.classList.contains("open")) openShiftSheet();
+    }else if(shiftOverlay.classList.contains("open")){
+      closeShiftSheet();
+    }
+  }
+  document.getElementById("toggleShiftOnlyBtn").addEventListener("click", function(){
+    var on = !state.shiftOnly;
+    function go(){
+      state.shiftOnly = on; scheduleSave();
+      closeTemplateSheet();
+      applyShiftOnlyMode();
+    }
+    if(on) openConfirmModal("シフト専用の画面にします。配置ボードの画面（配置・自動配置・テンプレート）は隠れますが、データは消えません。メニューの「配置も使う」で、いつでも元に戻せます。", go);
+    else go();
+  });
+
+  // 人の一覧（シフト専用のとき、ネームプレートの編集・削除に使う）
+  function openPeopleListModal(){
+    openModal(function(box){
+      var list = sortByNumber(state.nameplates);
+      box.innerHTML =
+        '<div class="sheet-header"><span>人の一覧</span></div>' +
+        (list.length ? '<p class="confirm-msg">名前を押すと、名前の変更や削除ができます。</p>' : '<p class="confirm-msg">まだ人がいません。</p>') +
+        '<div class="people-list" id="peopleList"></div>' +
+        '<div class="modal-actions"><button class="btn-primary" id="okBtn" type="button">閉じる</button></div>';
+      var el = box.querySelector("#peopleList");
+      list.forEach(function(np){
+        var b = document.createElement("button");
+        b.type = "button"; b.textContent = np.name;
+        b.addEventListener("click", function(){ closeModal(); openEditNameplateModal(np.id); });
+        el.appendChild(b);
+      });
+      box.querySelector("#okBtn").addEventListener("click", closeModal);
+    });
+  }
+
+  // 名前として取り込んでよさそうな文字か（「合計」「備考」などの見出しや、数字だけの行は除く）
+  function looksLikePersonName(label){
+    var t = String(label == null ? "" : label).trim();
+    if(!t || t.length > 16) return false;
+    if(/^[\d\s\/:：.\-ー－〜~,、，]+$/.test(t)) return false;
+    if(/^(合計|総計|小計|計|人数|備考|メモ|出勤|休み?|欠|有|指|健診|曜日|日付|日|名前|氏名|社員|従業員|担当|シフト|残業|時間|平均|締め|週|月)$/.test(t)) return false;
+    return true;
+  }
+  // 読み込む人のうち、ネームプレートがない名前を追加する（シフト専用の読み込み用）
+  function ensureNameplates(people){
+    var added = 0;
+    people.forEach(function(pp){
+      var nm = String(pp.name || "").trim();
+      if(!nm) return;
+      if(state.nameplates.some(function(n){ return n.name === nm; })) return;
+      state.nameplates.push({ id: uid(), name: nm, color: "white", locationId: null, slot: null, number: null, time: null, categories: [] });
+      added++;
+    });
+    return added;
+  }
+
   // ---------- メニューのアイコンの並び替え ----------
   // アイコンを長押しして、そのまま動かすと並び替えできる。並び順はこの端末に保存する（state.menuOrder）。
   var menuGrid = document.querySelector("#templateSheet .menu-grid");
@@ -6502,7 +6649,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     shiftOverlay.classList.add("open");
     renderShiftSheet(false);
   }
-  function closeShiftSheet(){ setShiftFs(false, true); shiftOverlay.classList.remove("open"); }
+  function closeShiftSheet(){
+    if(state.shiftOnly) return;   // シフト専用のときは閉じない
+    setShiftFs(false, true); shiftOverlay.classList.remove("open");
+  }
   // 表の全画面表示。noRender なら見た目のクラスだけ切り替える
   function setShiftFs(on, noRender){
     shiftFs = !!on;
@@ -6522,7 +6672,71 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<span>' + label + '</span></button>';
   }
 
+  // シフト表の大きさ（文字・マスの大きさ）。A−／A＋で変える。何も選んでいないときは、シフト専用なら少し大きめ
+  var SHIFT_ZOOMS = [0.8, 1, 1.25, 1.5, 1.8];
+  function currentShiftZoom(){ return state.shiftZoom || (state.shiftOnly ? 1.25 : 1); }
+  function shiftZoomIndex(){
+    var z = currentShiftZoom(), best = 0;
+    SHIFT_ZOOMS.forEach(function(v, i){ if(Math.abs(v - z) < Math.abs(SHIFT_ZOOMS[best] - z)) best = i; });
+    return best;
+  }
+  function applyShiftZoom(){
+    var z = SHIFT_ZOOMS[shiftZoomIndex()], sheet = document.getElementById("shiftSheet");
+    sheet.style.setProperty("--sz", String(z));
+    sheet.style.setProperty("--szn", String(1 + (z - 1) * 0.5));   // 名前の列は、増やしすぎない
+  }
+  // 「⋯」：ファイル読込・コード・人の追加・文字の大きさを、まとめて呼び出す
+  var MORE_ICONS = {
+    file: SHIFT_TOOL_ICONS.file, send: SHIFT_TOOL_ICONS.send, receive: SHIFT_TOOL_ICONS.receive,
+    userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'
+  };
+  function openShiftMoreSheet(){
+    var items = [
+      { fwd: shiftMode === "off" ? "shiftImportBtn" : "shiftOtImportBtn", icon: "file", label: "ファイル読込" },
+      { fwd: "shiftShareBtn", icon: "send", label: "コードを送る" },
+      { fwd: "shiftReceiveBtn", icon: "receive", label: "コードを受取" },
+      { fwd: "shiftAddPersonBtn", icon: "userPlus", label: "人を追加" },
+      { fwd: "shiftEditPeopleBtn", icon: "users", label: "人の一覧・編集" }
+    ].filter(function(it){ return !!document.getElementById(it.fwd); });
+    openModal(function(box){
+      box.innerHTML =
+        '<div class="sheet-header"><span>シフトの操作</span></div>' +
+        '<div class="menu-grid" id="shiftMoreGrid">' + items.map(function(it, i){
+          return '<button type="button" class="menu-tile" data-i="' + i + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + MORE_ICONS[it.icon] + '</svg><span>' + it.label + '</span></button>';
+        }).join("") + '</div>' +
+        '<div class="shift-more-row"><span>文字の大きさ</span><div class="shift-zoom">' +
+          '<button type="button" class="shift-zoom-btn" id="zmOut" aria-label="小さくする">A−</button><span id="zmLabel"></span>' +
+          '<button type="button" class="shift-zoom-btn" id="zmIn" aria-label="大きくする">A＋</button></div></div>' +
+        '<div class="modal-actions"><button class="btn-primary" id="okBtn" type="button">閉じる</button></div>';
+      function refreshZoom(){
+        var i = shiftZoomIndex();
+        box.querySelector("#zmLabel").textContent = Math.round(SHIFT_ZOOMS[i] * 100) + "%";
+        box.querySelector("#zmOut").disabled = i <= 0;
+        box.querySelector("#zmIn").disabled = i >= SHIFT_ZOOMS.length - 1;
+      }
+      refreshZoom();
+      box.querySelector("#zmOut").addEventListener("click", function(){ stepShiftZoom(-1); refreshZoom(); });
+      box.querySelector("#zmIn").addEventListener("click", function(){ stepShiftZoom(1); refreshZoom(); });
+      box.querySelector("#shiftMoreGrid").addEventListener("click", function(e){
+        var b = e.target.closest ? e.target.closest(".menu-tile") : null;
+        if(!b) return;
+        var it = items[+b.getAttribute("data-i")];
+        closeModal();
+        setTimeout(function(){ var el = document.getElementById(it.fwd); if(el) el.click(); }, 0);
+      });
+      box.querySelector("#okBtn").addEventListener("click", closeModal);
+    });
+  }
+  function stepShiftZoom(delta){
+    var i = Math.max(0, Math.min(SHIFT_ZOOMS.length - 1, shiftZoomIndex() + delta));
+    state.shiftZoom = SHIFT_ZOOMS[i];
+    scheduleSave();
+    renderShiftSheet(true);
+  }
+
   function renderShiftSheet(keepScroll){
+    applyShiftZoom();
     var y = shiftMonth.y, m = shiftMonth.m, n = daysInMonth(y, m);
     var boardIso = state.boardDate || todayISO();
     var oldScroll = shiftBody.querySelector(".shift-scroll");
@@ -6539,10 +6753,12 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '<div class="shift-toggle-title">出勤者だけをボードに表示</div>' +
         '<button type="button" class="switch-btn" id="shiftFilterSwitch" role="switch" aria-checked="' + (state.shiftFilter ? "true" : "false") + '"><i></i></button>' +
       '</div>' +
+      (state.shiftOnly ? '<div class="shift-people-row"><button type="button" class="help-small-btn" id="shiftAddPersonBtn">＋ 人を追加</button><button type="button" class="help-small-btn" id="shiftEditPeopleBtn">人の一覧・編集</button></div>' : '') +
       '<div class="shift-toolbar">' +
         '<button type="button" class="date-step lg" id="shiftPrevMonth" aria-label="前の月">◀</button>' +
         '<span class="shift-month">' + y + '年' + m + '月</span>' +
         '<button type="button" class="date-step lg" id="shiftNextMonth" aria-label="次の月">▶</button>' +
+        '<button type="button" class="date-step lg shift-more-btn" id="shiftMoreBtn" aria-label="その他の操作" title="その他の操作">⋯</button>' +
       '</div>' +
       '<div class="shift-mode-row" role="tablist">' +
         '<button type="button" role="tab" class="shift-mode-btn' + (shiftMode === "off" ? ' selected' : '') + '" data-mode="off" aria-selected="' + (shiftMode === "off") + '">シフト</button>' +
@@ -6563,7 +6779,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         : '');
 
     if(shiftPeople.length === 0){
-      html += '<p class="confirm-msg">ネームプレートがありません。先に「＋」から追加してください。</p>';
+      html += '<p class="confirm-msg">' + (state.shiftOnly
+        ? '人がいません。「＋ 人を追加」で名前を入れるか、シフトのコードやファイルを読み込むと、名前が自動で入ります。'
+        : 'ネームプレートがありません。先に「＋」から追加してください。') + '</p>';
       setShiftFs(false, true);
       document.getElementById("shiftSheet").classList.remove("has-table");
       shiftBody.innerHTML = html;
@@ -6575,6 +6793,10 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     var t = '<div class="shift-fs-wrap">' +
       '<div class="shift-fs-title">' + y + '年' + m + '月の' + (shiftMode === "ot" ? '残業' : 'シフト') + '</div>' +
       '<div class="shift-fs-row"><div class="shift-range" id="shiftRange"></div>' +
+        '<div class="shift-zoom" role="group" aria-label="文字の大きさ">' +
+          '<button type="button" class="shift-zoom-btn" id="shiftZoomOut" aria-label="小さくする"' + (shiftZoomIndex() <= 0 ? ' disabled' : '') + '>A−</button>' +
+          '<button type="button" class="shift-zoom-btn" id="shiftZoomIn" aria-label="大きくする"' + (shiftZoomIndex() >= SHIFT_ZOOMS.length - 1 ? ' disabled' : '') + '>A＋</button>' +
+        '</div>' +
         '<button type="button" class="shift-fs-btn" id="shiftFsBtn" aria-pressed="' + (shiftFs ? 'true' : 'false') + '">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             (shiftFs ? '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>' : '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>') +
@@ -6785,7 +7007,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     var bar = document.getElementById("shiftRange");
     if(!bar) return;
     if(!has){
-      bar.innerHTML = '<span>いまは閲覧のみ。名前か日付をタップすると、その行・列の' + (shiftMode === "ot" ? '残業' : '休み') + 'を入力できます。</span>';
+      bar.innerHTML = '<span class="shift-hint">名前か日付をタップして' + (shiftMode === "ot" ? '残業' : '休み') + 'を入力</span>';
       return;
     }
     var names = selectedShiftNames();
@@ -7108,7 +7330,17 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   // 名字と名前で別の人に当たったときは名前のほうを選ぶ（名字が同じ人を区別するため、名前で登録していることが多い）。
   // それ以外で候補が2人以上に分かれたら決めずに「照合できない」とする（取り違えを防ぐため）
   // 読み込み用の名前照合（休み・残業とも同じ照合を使う）
-  function buildImportMatcher(isOT){ return buildNameMatcher(); }
+  function buildImportMatcher(isOT){
+    var base = buildNameMatcher();
+    if(!state.shiftOnly) return base;
+    // シフト専用のときは、ネームプレートにない名前も、そのまま新しい人として読み込む
+    return function(label){
+      var h = base(label);
+      if(h) return h;
+      var nm = String(label == null ? "" : label).trim();
+      return looksLikePersonName(nm) ? { name: nm, fuzzy: false } : null;
+    };
+  }
   function buildNameMatcher(){
     var byKey = Object.create(null), keys = [], parenList = [];
     state.nameplates.forEach(function(np){
@@ -7460,6 +7692,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
   // 読み込んだ残業を反映する。読み込んだ人の、表の日付の範囲は置き換え（表で空のマスは残業なしになる）
   function applyOvertimeImport(res){
+    var addedPeople = ensureNameplates(res.people);
+    if(addedPeople) setTimeout(function(){ showUndoToast(addedPeople + "人を新しく登録しました"); }, 400);
     var backup = JSON.parse(JSON.stringify(state.overtime));
     res.people.forEach(function(pp){
       (pp.cols || res.cols).forEach(function(dc){ setOvertime(pp.name, dc.iso, pp.offs[dc.iso] || 0); });
@@ -7587,6 +7821,8 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
   }
 
   function applyShiftImport(res){
+    var addedPeople = ensureNameplates(res.people);
+    if(addedPeople) setTimeout(function(){ showUndoToast(addedPeople + "人を新しく登録しました"); }, 400);
     syncPlacementsToDay();
     var backup = JSON.parse(JSON.stringify(state.dayoffs)), backupPl = JSON.parse(JSON.stringify(state.dayPlacements)),
         backupMarks = JSON.parse(JSON.stringify(state.workMarks)), backupDayMarks = JSON.parse(JSON.stringify(state.dayMarks));
@@ -8371,30 +8607,49 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         '<label>共有コードを貼り付け</label>' +
         '<textarea id="shiftCodeArea" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" rows="5" placeholder="' + (isOT ? 'P6' : 'P5') + ': で始まるコード"></textarea>' +
         '<div class="imp-preview" id="shiftCodePreview">' + kindName + 'の共有コードを貼り付けてください。</div>' +
+        '<label class="imp-check" id="addUnmatchedRow" hidden><input type="checkbox" id="addUnmatchedChk"><span id="addUnmatchedText"></span></label>' +
         '<div class="modal-actions">' +
           '<button class="btn-secondary" id="cancelBtn" type="button">キャンセル</button>' +
           '<button class="btn-primary" id="okBtn" type="button" disabled>読み込む</button>' +
         '</div>';
       var area = box.querySelector("#shiftCodeArea"), pv = box.querySelector("#shiftCodePreview"), okBtn = box.querySelector("#okBtn");
+      var addRow = box.querySelector("#addUnmatchedRow"), addChk = box.querySelector("#addUnmatchedChk"), addText = box.querySelector("#addUnmatchedText");
+      var lastValue = null;
+      addChk.addEventListener("change", function(){ area.dispatchEvent(new Event("input")); });
       function setPreview(html, isErr){ pv.innerHTML = html; pv.classList.toggle("err", !!isErr); }
 
       area.addEventListener("input", async function(){
         var my = ++token;
         decoded = null; okBtn.disabled = true;
-        if(!area.value.trim()){ setPreview(kindName + "の共有コードを貼り付けてください。"); return; }
+        var freshCode = (area.value !== lastValue); lastValue = area.value;
+        if(!area.value.trim()){ addRow.hidden = true; setPreview(kindName + "の共有コードを貼り付けてください。"); return; }
         var code;
         try{ code = await (isOT ? decodeOvertimeCode : decodeShiftCode)(area.value); }
         catch(err){ if(my === token) setPreview(escapeHtml(err.message), true); return; }
         if(my !== token) return;
-        var match = buildNameMatcher(), people = [], unmatched = [], fuzzy = [], offCount = 0, otTotal = 0;
+        var match = buildNameMatcher(), people = [], unmatched = [], fuzzy = [], extras = [], added = [], offCount = 0, otTotal = 0;
         code.people.forEach(function(pp){
           var hit = match(pp.name);
-          if(!hit){ unmatched.push(pp.name); return; }
+          if(!hit){ unmatched.push(pp.name); if(looksLikePersonName(pp.name)) extras.push(pp); return; }
           if(hit.fuzzy) fuzzy.push(pp.name + "→" + hit.name);
           offCount += Object.keys(pp.offs).length;
           if(isOT) Object.keys(pp.offs).forEach(function(k){ otTotal += pp.offs[k]; });
           people.push({ name: hit.name, offs: pp.offs, marks: pp.marks, time: pp.time || null, frozen: pp.frozen });
         });
+        // ボードにいない名前は、ネームプレートに追加して読み込める（シフト専用のときや、一致する人がいないときは、初めからオン）
+        if(freshCode) addChk.checked = !!state.shiftOnly || (!people.length && extras.length > 0);
+        addRow.hidden = extras.length === 0;
+        addText.textContent = "ボードにいない名前を、ネームプレートに追加して読み込む（" + extras.length + "人）";
+        if(addChk.checked && extras.length){
+          extras.forEach(function(pp){
+            var nm = String(pp.name).trim();
+            added.push(nm);
+            offCount += Object.keys(pp.offs).length;
+            if(isOT) Object.keys(pp.offs).forEach(function(k){ otTotal += pp.offs[k]; });
+            people.push({ name: nm, offs: pp.offs, marks: pp.marks, time: pp.time || null, frozen: pp.frozen });
+          });
+          unmatched = unmatched.filter(function(n){ return added.indexOf(String(n).trim()) === -1; });
+        }
         if(!people.length){
           setPreview("ボードの名前と一致する人がいませんでした。" + (unmatched.length ? "<br>コードの名前: <b>" + expandableList(unmatched, 6) + "</b>" : ""), true);
           return;
@@ -8407,6 +8662,7 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
         var html = '<b>' + people.length + '人</b> × <b>' + cols.length + '日</b>（' + mdOfISO(code.start) + '〜' + mdOfISO(code.end) + '）／' + what + ' <b>' + offCount + '</b>マス' +
           (isOT ? '・合計 <b>' + fmtHours(otTotal) + '</b>時間' : '');
         if(fuzzy.length) html += '<br>近い名前で照合: ' + expandableList(fuzzy, 3);
+        if(added.length) html += '<br>新しく登録する名前: <b>' + added.length + '人</b>（' + expandableList(added, 6) + '）';
         if(unmatched.length) html += '<br>ボードに同じ名前がなく、読み込まない人: ' + expandableList(unmatched, 6);
         var wtN = people.filter(function(pp){ return pp.time; }).length;
         var fzN = people.filter(function(pp){ return pp.frozen === true; }).length;
@@ -8783,6 +9039,11 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     if(t.closest("#shiftOtImportBtn")){ openShiftImportModal("ot"); return; }
     if(t.closest("#otAlertSettingBtn")){ openOvertimeAlertSettings(); return; }
     if(t.closest("#shiftShareBtn")){ openShiftShareModal(shiftMode); return; }
+    if(t.closest("#shiftMoreBtn")){ openShiftMoreSheet(); return; }
+    if(t.closest("#shiftZoomIn")){ stepShiftZoom(1); return; }
+    if(t.closest("#shiftZoomOut")){ stepShiftZoom(-1); return; }
+    if(t.closest("#shiftAddPersonBtn")){ openAddNameplateModal(); return; }
+    if(t.closest("#shiftEditPeopleBtn")){ openPeopleListModal(); return; }
     if(t.closest("#shiftReceiveBtn")){ openReceiveAnyCodeModal(); return; }
     var myDay = t.closest(".my-cal td.my-day");
     if(myDay){ setBoardDate(myDay.dataset.d); closeShiftSheet(); return; }   // 個人カレンダー：その日のボードへ
