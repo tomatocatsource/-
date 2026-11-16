@@ -6,6 +6,18 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <script>
+    // iPhoneのホーム画面に追加して使っているとき（アプリ化）だけ、画面の下の余白を広げるための目印をつける。
+    // 画面の一番下を上にスワイプすると、アプリが閉じる動作と重なってしまうため。Androidやブラウザには影響しない。
+    (function(){
+      try{
+        var ua = navigator.userAgent || "";
+        var ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        var standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+        if(ios && standalone) document.documentElement.classList.add("ios-standalone");
+      }catch(e){}
+    })();
+  </script>
 <title>配置ボード</title>
 <style>
   :root{
@@ -3073,6 +3085,11 @@ body.menu-sorting{-webkit-user-select:none;user-select:none;}
   text-decoration:underline;cursor:pointer;padding:4px 8px;
 }
 .menu-reset[hidden]{display:none;}
+/* iPhoneのアプリ化（ホーム画面に追加）のときだけ：画面の下の余白を広げて、
+   一番下を上にスワイプする「アプリを閉じる」動作と、チップやボタンの操作が重ならないようにする */
+html.ios-standalone .pool-bar{padding-bottom:max(46px,calc(env(safe-area-inset-bottom) + 30px));}
+html.ios-standalone .sheet,html.ios-standalone #shiftSheet,html.ios-standalone #helpSheet,html.ios-standalone #salarySheet{padding-bottom:max(40px,calc(env(safe-area-inset-bottom) + 26px));}
+html.ios-standalone .qr-scan-overlay,html.ios-standalone .qr-zoom-overlay{padding-bottom:max(40px,calc(env(safe-area-inset-bottom) + 26px));}
 /* シフト専用モード：配置ボードの画面を隠して、シフト表を画面いっぱいに出す */
 body.shift-only .info-bar,body.shift-only .board-wrap,body.shift-only .pool-bar,
 body.shift-only #autoPlaceBtn,body.shift-only #openShiftBtn,
@@ -6672,9 +6689,9 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       '<span>' + label + '</span></button>';
   }
 
-  // シフト表の大きさ（文字・マスの大きさ）。A−／A＋で変える。何も選んでいないときは、シフト専用なら少し大きめ
+  // シフト表の大きさ（文字・マスの大きさ）。A−／A＋で変える。何も選んでいないときは100%
   var SHIFT_ZOOMS = [0.8, 1, 1.25, 1.5, 1.8];
-  function currentShiftZoom(){ return state.shiftZoom || (state.shiftOnly ? 1.25 : 1); }
+  function currentShiftZoom(){ return state.shiftZoom || 1; }
   function shiftZoomIndex(){
     var z = currentShiftZoom(), best = 0;
     SHIFT_ZOOMS.forEach(function(v, i){ if(Math.abs(v - z) < Math.abs(SHIFT_ZOOMS[best] - z)) best = i; });
