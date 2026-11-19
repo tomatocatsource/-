@@ -8248,6 +8248,36 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
       return mode;
     });
   }
+  // QRの解読（jsQR）は重い処理なので、画面とは別の処理（Web Worker）で行う。
+  // 追加のファイルは要らない。同梱の jsQR.js の中身を読み込んで、その場で作る。
+  // 作れないとき（file:// で開いた場合など）は、これまでどおり画面と同じ処理の中で解読する。
+  var qrWorker = null, qrWorkerState = "none", qrWorkerSeq = 0, qrWorkerPending = Object.create(null);
+  function failQRWorker(){
+    qrWorkerState = "failed";
+    Object.keys(qrWorkerPending).forEach(function(id){ var r = qrWorkerPending[id]; delete qrWorkerPending[id]; r(null); });
+  }
+  function ensureQRWorker(){
+    if(qrWorkerState !== "none") return;
+    qrWorkerState = "loading";
+    try{
+      if(typeof Worker !== "function" || typeof Blob !== "function" || !window.URL || !URL.createObjectURL || typeof fetch !== "function"){ failQRWorker(); return; }
+      setTimeout(function(){ if(qrWorkerState === "loading") failQRWorker(); }, 6000);
+      fetch(JSQR_URL).then(function(r){ if(!r.ok) throw new Error("jsqr"); return r.text(); }).then(function(src){
+        var code = src + "\n;(function(){ self.onmessage = function(e){ var d = e.data, r = null;" +
+          " try{ var h = self.jsQR(new Uint8ClampedArray(d.buf), d.w, d.h, { inversionAttempts: 'dontInvert' }); r = (h && h.data) ? h.data : null; }catch(err){}" +
+          " self.postMessage({ id: d.id, data: r }); }; self.postMessage({ ready: true }); })();";
+        var url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+        var w = new Worker(url);
+        w.onmessage = function(e){
+          var d = e.data || {};
+          if(d.ready){ qrWorker = w; qrWorkerState = "ready"; URL.revokeObjectURL(url); return; }
+          var r = qrWorkerPending[d.id];
+          if(r){ delete qrWorkerPending[d.id]; r(d.data || null); }
+        };
+        w.onerror = function(){ failQRWorker(); };
+      }).catch(function(){ failQRWorker(); });
+    }catch(e){ failQRWorker(); }
+  }
   // 読み取り方法ごとに「映像から文字を探す」関数を作る。見つからなければ null を返す（Promise）
   function makeQRReader(mode){
     if(mode === "native"){
@@ -8258,20 +8288,39 @@ html body .shift-table td.shift-cell.work-mark{color:#2A7FB8;font-size:13px;font
     }
     var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
     var tick = 0;
-    return function(video){
+    // 映像の1コマを取り出す。細かいQRは縮めると潰れて読めなくなるので、縮めるのは大きすぎる映像だけにする。
+    // 1回おきに「画面全体」と「中央の7割（縮めずに）」を交互に調べる（QRは中央に映すことが多いため）
+    function grabFrame(video){
       var vw = video.videoWidth, vh = video.videoHeight;
-      if(!vw || !vh) return Promise.resolve(null);
-      // 細かいQRは縮めると潰れて読めなくなるので、縮めるのは大きすぎる映像だけにする。
-      // 1回おきに「画面全体」と「中央の7割（縮めずに）」を交互に調べる（QRは中央に映すことが多いため）
+      if(!vw || !vh) return null;
       var center = (tick++ % 2 === 1);
       var sx = 0, sy = 0, sw = vw, sh = vh;
       if(center){ sw = Math.round(vw * 0.7); sh = Math.round(vh * 0.7); sx = Math.round((vw - sw) / 2); sy = Math.round((vh - sh) / 2); }
       var scale = Math.min(1, 1600 / Math.max(sw, sh));
       canvas.width = Math.round(sw * scale); canvas.height = Math.round(sh * scale);
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-      var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+    // 別の処理（Worker）が使えないときだけ、画面と同じ処理の中で解読する（QRが映ると映像がカクつく）
+    function readOnMainThread(video){
+      var img = grabFrame(video);
+      if(!img) return Promise.resolve(null);
       var hit = window.jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
       return Promise.resolve(hit && hit.data ? hit.data : null);
+    }
+    ensureQRWorker();
+    return function(video){
+      if(qrWorkerState === "failed") return readOnMainThread(video);
+      if(qrWorkerState !== "ready") return Promise.resolve(null);   // 準備中
+      var img = grabFrame(video);
+      if(!img) return Promise.resolve(null);
+      return new Promise(function(resolve){
+        var id = ++qrWorkerSeq;
+        qrWorkerPending[id] = resolve;
+        // 解読は別の処理に任せる。画面の描画が止まらないので、QRが映ってもカクつかない
+        qrWorker.postMessage({ id: id, buf: img.data.buffer, w: img.width, h: img.height }, [img.data.buffer]);
+        setTimeout(function(){ if(qrWorkerPending[id]){ delete qrWorkerPending[id]; resolve(null); } }, 3000);
+      });
     };
   }
 
